@@ -1,0 +1,22 @@
+# Binaries
+**/bin/
+bin-int/
+
+# Logs
+*.log
+
+# Visual Studio files and folder
+.vs/
+**.sln
+**.vcxproj
+**.vcxproj.filters
+**.vcxproj.user
+
+# Directories
+Debug/
+x64/
+build/
+Game/assets/textures/tiles/out/
+
+profile.spall
+GitExtensions.settings
