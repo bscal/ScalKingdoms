@@ -67,6 +67,8 @@ newaction
 
 filter {}
 
+local SrcDir = "Game/src/"
+
 project "Game"
     kind "ConsoleApp"
     language "C++"
@@ -78,9 +80,7 @@ project "Game"
 
     files
     {
-        "Game/src/main.cpp",
-        "Game/src/GameState.cpp",
-        "Game/vendor/zpl/zpl.h"
+        SrcDir .. "**.cpp",
     }
 
     defines
@@ -103,7 +103,7 @@ project "Game"
 
     links
     {
-        "sx"
+        "sx", "raylib"
     }
 
     dependson

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <raylib/src/raylib.h>
-#include <zpl/zpl.h>
-
 #include <stdint.h>
+#include <zpl/zpl.h>
+#include <raylib/src/raylib.h>
 
+#include "Memory.h"
 #include "Vector2i.h"
 
 /*
@@ -84,7 +84,7 @@ typedef Vector2 Vec2;
 #define BitToggle(state, bit) (state ^ 1ULL << bit)
 #define BitMask(state, mask) (FlagTrue(state, mask))
 
-#define Swap(x, y, T) T temp = x; x = y; y = temp
+#define Swap(x, y, T) (T temp = x; x = y; y = temp)
 
 #if SCAL_DEBUG
 
@@ -107,23 +107,23 @@ typedef Vector2 Vec2;
 #define SLOG_INFO(msg, ... ) TraceLog(LOG_INFO, msg, __VA_ARGS__)
 #define SLOG_DEBUG(msg, ...) TraceLog(LOG_DEBUG, msg, __VA_ARGS__)
 
-#define S_WARN(msg, ... ) TraceLog(LOG_WARNING, msg, __VA_ARGS__)
+#define SWARN(msg, ... ) TraceLog(LOG_WARNING, msg, __VA_ARGS__)
 
-#define S_ERR(msg, ...) \
-	TraceLog(LOG_ERROR, msg, __VA_ARGS__) \
+#define SERR(msg, ...) \
+	TraceLog(LOG_ERROR, msg, __VA_ARGS__); \
 	DEBUG_BREAK(void) \
 
-#define S_FATAL(msg, ...) \
+#define SFATAL(msg, ...) \
 	TraceLog(LOG_ERROR, msg, __VA_ARGS__); \
 	TraceLog(LOG_FATAL, "Fatal error detected, program crashed! File: %s, Line: %s", __FILE__, __LINE__); \
 	DEBUG_BREAK(void) \
 
 #define CALL_CONSTRUCTOR(object) new (object)
 
-constexpr global_var float TAO = static_cast<float>(PI) * 2.0f;
+constexpr global_var float TAO = (double)PI * 2.0;
 
-#define WIDTH 1080
-#define HEIGHT 920
+constexpr global_var int WIDTH = 1080;
+constexpr global_var int HEIGHT = 920;
 
 constexpr global_var const char* TITLE = "Kingdoms";
 constexpr global_var int MAX_FPS = 60;
@@ -134,23 +134,26 @@ constexpr global_var float HALF_TILE_SIZE = TILE_SIZE / 2.0f;
 
 constexpr global_var int CHUNK_SIZE = 32;
 constexpr global_var int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
+constexpr global_var int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
 constexpr global_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
-constexpr global_var int VIEW_DISTANCE = 2;
+constexpr global_var int VIEW_RADIUS = 2;
+constexpr global_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2 + 1) * (VIEW_RADIUS * 2 + 1);
+constexpr global_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 2) * CHUNK_SIZE) * ((VIEW_RADIUS + 2) * CHUNK_SIZE);
 
 enum class Direction : uint8_t
 {
-	North,
-	East,
-	South,
-	West
+	NORTH,
+	EAST,
+	SOUTH,
+	WEST
 };
 
 constexpr global_var float
 TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 
 constexpr global_var Vector2
-TileDirectionVectors[] = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } };
+TileDirectionVectors[] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
 
 #define FMT_VEC2(v) TextFormat("Vector2(x: %.3f, y: %.3f)", v.x, v.y)
 #define FMT_VEC2I(v) TextFormat("Vector2i(x: %d, y: %d)", v.x, v.y)
@@ -158,7 +161,8 @@ TileDirectionVectors[] = { { 0, -1 }, { 1, 0 }, { 0, 1 }, { -1, 0 } };
 #define FMT_BOOL(boolVar) TextFormat("%s", ((boolVar)) ? "true" : "false")
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
 
-inline double GetMicroTime()
+constexpr int IntModNegative(int a, int b)
 {
-	return GetTime() * 1000000.0;
+	int res = a % b;
+	return (res < 0) ? res + b : res;
 }

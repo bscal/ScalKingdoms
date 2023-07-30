@@ -1,11 +1,11 @@
-#include "GameState.h"
-
 #define ZPL_IMPL
 #include <zpl/zpl.h>
 
-int main(int argCount, char** args)
-{
-	GameInitialize();
+#include "GameEntry.h"
 
-	return 0;
+int
+main(int argCount, char** args)
+{
+	int result = GameInitialize();
+	return result;
 }

@@ -1,15 +1,39 @@
 #include "Vector2i.h"
 
-int64_t Vec2iPackInt64(Vector2i v)
+#include <math.h>
+
+struct Vector2
 {
-    return (int64_t)v.x << 32 | v.y;
+    float x;
+    float y;
+};
+
+long long Vec2iPackInt64(Vector2i v)
+{
+    return (long long)v.x << 32ll | v.y;
 }
 
-Vector2i Vec2iUnpackInt64(int64_t packedVector)
+Vector2i Vec2iUnpackInt64(long long packedI64)
 {
-    int y = (int)packedVector;
-    int x = (int)(packedVector >> 32);
+    int y = (int)packedI64;
+    int x = (int)(packedI64 >> 32);
     return { x, y };
+}
+
+Vector2 Vec2iToVec2(Vector2i v)
+{
+    Vector2 res;
+    res.x = (float)v.x;
+    res.y = (float)v.y;
+    return res;
+}
+
+Vector2i Vec2ToVec2i(Vector2 v)
+{
+    Vector2i res;
+    res.x = (int)floorf(v.x);
+    res.y = (int)floorf(v.y);
+    return res;
 }
 
 Vector2i Vector2i::Add(Vector2i o) const

@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-#include <math.h>
+struct Vector2;
 
 struct Vector2i
 {
@@ -20,30 +19,30 @@ struct Vector2i
     Vector2i Negate() const;
     Vector2i Min(Vector2i min) const;
     Vector2i Max(Vector2i max) const;
-    inline bool Equals(Vector2i other) const { return (x == other.x && y == other.y); }
-
-    inline Vector2 AsVec2() const { return { (float)x, (float)y }; }
-    static inline Vector2i FromVec2(Vector2 v) { return { (int)floorf(v.x), (int)floorf(v.y) }; }
 };
 
-inline const Vector2i Vec2i_ONE     = { 1, 1 };
-inline const Vector2i Vec2i_ZERO    = { 0, 0 };
-inline const Vector2i Vec2i_UP      = { 0, -1 };
-inline const Vector2i Vec2i_DOWN    = { 0, 1 };
-inline const Vector2i Vec2i_LEFT    = { 1, 0 };
-inline const Vector2i Vec2i_RIGHT   = { -1, 0 };
+constexpr static Vector2i Vec2i_ONE     = { 1, 1 };
+constexpr static Vector2i Vec2i_ZERO    = { 0, 0 };
+constexpr static Vector2i Vec2i_UP      = { 0, -1 };
+constexpr static Vector2i Vec2i_DOWN    = { 0, 1 };
+constexpr static Vector2i Vec2i_LEFT    = { 1, 0 };
+constexpr static Vector2i Vec2i_RIGHT   = { -1, 0 };
 
-inline const Vector2i Vec2i_NEIGHTBORS[4] = { Vec2i_UP, Vec2i_LEFT, Vec2i_DOWN, Vec2i_RIGHT };
-inline const Vector2i Vec2i_NEIGHTBORS_CORNERS[8] = {
+constexpr static Vector2i Vec2i_NEIGHTBORS[4] = { Vec2i_UP, Vec2i_LEFT, Vec2i_DOWN, Vec2i_RIGHT };
+
+constexpr static Vector2i Vec2i_NEIGHTBORS_CORNERS[8] = {
     Vec2i_UP, { 1, -1 }, Vec2i_LEFT, { 1, 1 },
     Vec2i_DOWN, { -1, 1 }, Vec2i_RIGHT, { -1, -1 } };
 
-int64_t Vec2iPackInt64(Vector2i v);
-Vector2i Vec2iUnpackInt64(int64_t packedVector);
+long long Vec2iPackInt64(Vector2i v);
+Vector2i Vec2iUnpackInt64(long long packedI64);
+Vector2 Vec2iToVec2(Vector2i v);
+// Floored
+Vector2i Vec2ToVec2i(Vector2 v);
 
 static inline bool operator==(Vector2i left, Vector2i right)
 {
-    return left.Equals(right);
+    return left.x == right.x && left.y == right.y;
 }
 
 static inline Vector2i operator+(Vector2i left, Vector2i right)
@@ -64,24 +63,4 @@ static inline Vector2i operator*(Vector2i left, Vector2i right)
 static inline Vector2i operator/(Vector2i left, Vector2i right)
 {
     return left.Divide(right);
-}
-
-static inline Vector2i operator+=(Vector2i left, Vector2i right)
-{
-    return left = left.Add(right);
-}
-
-static inline Vector2i operator-=(Vector2i left, Vector2i right)
-{
-    return left = left.Subtract(right);
-}
-
-static inline Vector2i operator*=(Vector2i left, Vector2i right)
-{
-    return left = left.Multiply(right);
-}
-
-static inline Vector2i operator/=(Vector2i left, Vector2i right)
-{
-    return left = left.Divide(right);
 }

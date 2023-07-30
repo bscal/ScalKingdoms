@@ -63,7 +63,7 @@ project "raylib"
         architecture "x86_64"
 
     filter {}
---[[
+
     postbuildcommands
     {
         ("{COPYFILE} %{wks.location}bin/" .. outputdir .. "/%{prj.name}/raylib.dll "
@@ -71,5 +71,6 @@ project "raylib"
 
         ("{COPYFILE} %{wks.location}bin/" .. outputdir .. "/%{prj.name}/raylib.dll "
             .. "%{wks.location}bin/" .. outputdir .. "/%{prj.name}/../Game/raylib.dll");
+
+        ("echo Copying raylib.dll to Game file!");
     }
-]]
