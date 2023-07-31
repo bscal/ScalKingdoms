@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <zpl/zpl.h>
 #include <raylib/src/raylib.h>
+#include <flecs/flecs.h>
 
 #include "Memory.h"
 #include "Vector2i.h"
@@ -120,7 +121,7 @@ typedef Vector2 Vec2;
 
 #define CALL_CONSTRUCTOR(object) new (object)
 
-constexpr global_var float TAO = (double)PI * 2.0;
+constexpr global_var float TAO = PI * 2.0;
 
 constexpr global_var int WIDTH = 1080;
 constexpr global_var int HEIGHT = 920;
@@ -133,13 +134,14 @@ constexpr global_var float INVERSE_TILE_SIZE = 1.0f / TILE_SIZE;
 constexpr global_var float HALF_TILE_SIZE = TILE_SIZE / 2.0f;
 
 constexpr global_var int CHUNK_SIZE = 32;
+constexpr global_var float INVERSE_CHUNK_SIZE = 1.0f / CHUNK_SIZE;
 constexpr global_var int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
 constexpr global_var int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
 constexpr global_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
 constexpr global_var int VIEW_RADIUS = 2;
 constexpr global_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2 + 1) * (VIEW_RADIUS * 2 + 1);
-constexpr global_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 2) * CHUNK_SIZE) * ((VIEW_RADIUS + 2) * CHUNK_SIZE);
+constexpr global_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
 
 enum class Direction : uint8_t
 {
@@ -148,6 +150,12 @@ enum class Direction : uint8_t
 	SOUTH,
 	WEST
 };
+
+constexpr global_var Vector2 VEC2_ZERO = { 0 , 0 };
+constexpr global_var Vector2 VEC2_UP = { 0 , -1 };
+constexpr global_var Vector2 VEC2_RIGHT = { 1 , 0 };
+constexpr global_var Vector2 VEC2_DOWN = { 0 , 1 };
+constexpr global_var Vector2 VEC2_LEFT = { -1 , 0 };
 
 constexpr global_var float
 TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };

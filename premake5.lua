@@ -72,6 +72,7 @@ local SrcDir = "Game/src/"
 project "Game"
     kind "ConsoleApp"
     language "C++"
+    cdialect "C99"
     cppdialect "C++17"
     staticruntime "off"
 
@@ -81,6 +82,7 @@ project "Game"
     files
     {
         SrcDir .. "**.cpp",
+        "Game/vendor/flecs/flecs.c"
     }
 
     defines
@@ -101,9 +103,14 @@ project "Game"
         "D:/dev-libs/sx/build/Debug"
     }
 
+    buildoptions
+    {
+        "-std=c++0x"
+    }
+
     links
     {
-        "sx", "raylib"
+        "sx"
     }
 
     dependson

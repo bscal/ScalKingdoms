@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core/Core.h"
-#include "Core/SMemory.h"
 
 #include <stdarg.h>
 
@@ -13,63 +12,61 @@ SASSERT(dataOffsetPtr >= (T*)dataPtr); \
 SASSERT(dataOffsetPtr < (T*)dataPtr + size); \
 
 template<typename T, size_t ElementCount>
-struct SStaticArray
+struct StaticArray
 {
 	T Data[ElementCount];
 
-	_FORCE_INLINE_ const T& operator[](size_t idx) const
+	constexpr _FORCE_INLINE_ const T& operator[](size_t idx) const
 	{
 		BoundsCheck(Data, idx, ElementCount);
 		return Data[idx];
 	}
 
-	_FORCE_INLINE_ T& operator[](size_t idx)
+	constexpr _FORCE_INLINE_ T& operator[](size_t idx)
 	{
 		BoundsCheck(Data, idx, ElementCount);
 		return Data[idx];
 	}
 
-	_FORCE_INLINE_ void Fill(const T& value)
-	{
-		for (size_t i = 0; i < ElementCount; ++i)
-		{
-			SMemCopy(&Data[i], &value, sizeof(T));
-		}
-	}
-
-	_FORCE_INLINE_ size_t Count(void) const
+	constexpr _FORCE_INLINE_ size_t Count(void) const
 	{
 		return ElementCount;
 	}
 
-	_FORCE_INLINE_ size_t MemorySize() const
+	constexpr _FORCE_INLINE_ size_t MemorySize() const
 	{
 		return ElementCount * sizeof(T);
 	}
 };
 
-template <typename T, size_t N>
-using StaticArray = SStaticArray<T, N>;
-
 template<typename T>
 struct DynamicArray
 {
 	T* Memory;
-	uint32_t Count;
-	SAllocator Allocator;
+	size_t Count;
 
-	void Initialize(uint32_t capacity, SAllocator allocator)
+	void Initialize(size_t capacity, void*(*allocator)(size_t))
 	{
-		SASSERT(Count == 0);
-
-		Count = capacity;
-		Allocator = allocator;
-		Memory = (T*)SAlloc(Allocator, SizeOf(), MemoryTag::Arrays);
+		SASSERT(capacity > 0);
+		SASSERT(allocator);
+		Count = capacity
+		Memory = (T*)allocator(Count * sizeof(T));
 	}
 
-	void FromVarArgs(uint32_t count, T values...)
+	void Free(void(*free)(void*))
 	{
-		Initialize(count, SAllocator::Game);
+		SASSERT(free);
+		if (Memory)
+		{
+			Memory = free(Memory);
+			Memory = nullptr;
+			Count = 0;
+		}
+	}
+
+	void FromVarArgs(size_t capacity, void* (*allocator)(size_t), T values...)
+	{
+		Initialize(capacity, allocator);
 
 		va_list ap;
 		va_start(ap, values);
@@ -81,13 +78,4 @@ struct DynamicArray
 
 		va_end(ap);
 	}
-
-	_FORCE_INLINE_ T& operator[](uint32_t idx)
-	{
-		SASSERT(Memory);
-		SASSERT(idx < Count);
-		return Memory[idx];
-	}
-
-	_FORCE_INLINE_ size_t SizeOf() const { return Count * sizeof(T); }
 };
