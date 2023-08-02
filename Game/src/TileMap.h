@@ -31,8 +31,8 @@ struct Chunk
 {
 	Vec2i Coord;
 	Rectangle BoundingBox;
-	RenderTexture2D RenderTexture;
-	Vector2 CenterCoord;
+	Vec2 TextureDrawPosition;
+	Vec2 CenterCoord;
 	bool IsDirty;
 	bool IsGenerated;
 	bool IsWaitingToLoad;
@@ -46,8 +46,9 @@ ZPL_TABLE_DECLARE(, ChunkTable, chunk_, Chunk*);
 
 struct TileMap
 {
+	RenderTexture2D TileMapTexture;
 	ChunkTable Table;
-	zpl_array(RenderTexture2D) TexturePool;
+	zpl_array(Vec2) TexturePool;
 };
 
 void TileMapInit(GameState* gameState, TileMap* tilemap);

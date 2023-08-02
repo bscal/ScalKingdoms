@@ -142,7 +142,7 @@ constexpr global_var int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
 constexpr global_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
 constexpr global_var int VIEW_RADIUS = 2;
-constexpr global_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2 + 1) * (VIEW_RADIUS * 2 + 1);
+constexpr global_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2 + 1) * (VIEW_RADIUS * 2 + 1) + 1;
 constexpr global_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
 
 enum class Direction : uint8_t
@@ -180,4 +180,56 @@ constexpr int IntModNegative(int a, int b)
 _FORCE_INLINE_ double GetMicroTime()
 {
 	return GetTime() * 1000000.0;
+}
+
+_FORCE_INLINE_ constexpr size_t
+AlignPowTwo64(size_t num)
+{
+	if (num == 0) return 0;
+
+	size_t power = 1;
+	while (num >>= 1) power <<= 1;
+	return power;
+}
+
+_FORCE_INLINE_ constexpr uint32_t
+AlignPowTwo32(uint32_t num)
+{
+	if (num == 0) return 0;
+
+	uint32_t power = 1;
+	while (num >>= 1) power <<= 1;
+	return power;
+}
+
+_FORCE_INLINE_ constexpr size_t
+AlignPowTwo64Ceil(size_t x)
+{
+	if (x <= 1) return 1;
+	size_t power = 2;
+	--x;
+	while (x >>= 1) power <<= 1;
+	return power;
+}
+
+_FORCE_INLINE_ constexpr uint32_t
+AlignPowTwo32Ceil(uint32_t x)
+{
+	if (x <= 1) return 1;
+	uint32_t power = 2;
+	--x;
+	while (x >>= 1) power <<= 1;
+	return power;
+}
+
+_FORCE_INLINE_ constexpr bool
+IsPowerOf2_32(uint32_t num)
+{
+	return (num > 0 && ((num & (num - 1)) == 0));
+}
+
+_FORCE_INLINE_ constexpr size_t
+AlignSize(size_t size, size_t alignment)
+{
+	return (size + (alignment - 1)) & ~(alignment - 1);
 }

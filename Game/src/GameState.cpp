@@ -9,13 +9,9 @@
 
 
 global_var struct GameState State;
+global_var struct zpl_random Random;
 global_var struct ecs_world_t* World;
-
-struct GameClient
-{
-	ecs_entity_t Player;
-};
-global_var GameClient Client;
+global_var struct GameClient Client;
 
 internal void GameRun();
 internal void GameUpdate();
@@ -42,10 +38,13 @@ GameInitialize()
 	State.TileSpriteSheet = LoadTexture("Game/assets/16x16.bmp");
 	State.EntitySpriteSheet = LoadTexture("Game/assets/SpriteSheet.png");
 
+	zpl_random_init(&Random);
+
 	SpriteMgrInitialize(State.EntitySpriteSheet);
 	Sprite* sprite = SpriteGet(Sprites::PLAYER);
 
 	TileMapInit(&State, &State.TileMap);
+
 
 	// Entities
 	World = ecs_init();
@@ -158,8 +157,8 @@ void InputUpdate()
 	velocity.ay = movement.y;
 	ecs_set(World, Client.Player, CVelocity, velocity);
 
-	//const CTransform* transform = ecs_get(World, Client.Player, CTransform);
-	//State.Camera.target = Vector2Add(State.Camera.target, transform->Pos);
+	const CTransform* transform = ecs_get(World, Client.Player, CTransform);
+	State.Camera.target = transform->Pos;
 
 	float mouseWheel = GetMouseWheelMove();
 	if (mouseWheel != 0)
@@ -209,7 +208,17 @@ ScreenToTile(Vec2 pos)
 	return Vec2ToVec2i(worldPos);
 }
 
+zpl_random* GetRandom()
+{
+	return &Random;
+}
+
 GameState* GetGameState()
 {
 	return &State;
+}
+
+GameClient* GetClient()
+{
+	return &Client;
 }

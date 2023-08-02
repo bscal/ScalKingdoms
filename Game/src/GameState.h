@@ -14,6 +14,15 @@ struct GameState
 	Texture2D EntitySpriteSheet;
 };
 
+struct GameClient
+{
+	ecs_entity_t Player;
+};
+
 #define DeltaTime GetFrameTime()
 
+zpl_random* GetRandom();
+
 GameState* GetGameState();
+
+GameClient* GetClient();
