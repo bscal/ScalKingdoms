@@ -28,9 +28,9 @@ GetLocalTileIdx(Vec2i tile)
 {
 	int x = IntModNegative(tile.x, CHUNK_SIZE);
 	int y = IntModNegative(tile.y, CHUNK_SIZE);
-	int idx = x + y * CHUNK_SIZE;
-	SASSERT(idx >= 0);
-	return (size_t)idx;
+	size_t idx = (size_t)x + (size_t)y * CHUNK_SIZE;
+	SASSERT(idx < CHUNK_AREA);
+	return idx;
 }
 
 Chunk* 
@@ -138,7 +138,7 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 	zpl_array(zpl_u64) unloadQueue;
 	zpl_array_init_reserve(unloadQueue, gameState->FrameAllocator, 8);
 
-	Vec2 position = gameState->CameraPosition;
+	Vec2 position = gameState->Camera.target;
 	position.x *= INVERSE_TILE_SIZE;
 	position.y *= INVERSE_TILE_SIZE;
 
@@ -159,8 +159,11 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 			if (chunk->IsWaitingToLoad && zpl_array_count(tilemap->TexturePool) > 0)
 			{
 				chunk->IsWaitingToLoad = false;
+				chunk->IsDirty = true;
+
 				size_t idx = (zpl_array_count(tilemap->TexturePool) - 1);
 				chunk->RenderTexture = tilemap->TexturePool[idx];
+				
 				zpl_array_pop(tilemap->TexturePool);
 			}
 			
@@ -179,23 +182,31 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 		chunk_remove(&tilemap->Table, unloadQueue[i]);
 	}
 
-	position.x *= INVERSE_CHUNK_SIZE;
-	position.y *= INVERSE_CHUNK_SIZE;
+	Vec2 chunkPos = position;
+	chunkPos.x *= INVERSE_CHUNK_SIZE;
+	chunkPos.y *= INVERSE_CHUNK_SIZE;
 
 	// Checks for chunks needing to be loaded
-	Vec2i start = Vec2ToVec2i(position) - Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
-	Vec2i end = Vec2ToVec2i(position) + Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
+	Vec2i start = Vec2ToVec2i(chunkPos) - Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
+	Vec2i end = Vec2ToVec2i(chunkPos) + Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
 	for (int y = start.y; y < end.y; ++y)
 	{
 		for (int x = start.x; x < end.x; ++x)
 		{
 			Vec2i coord = { x, y };
-			zpl_u64 hash = Vec2iHash(coord);
-			Chunk** contains = chunk_get(&tilemap->Table, hash);
-			if (!contains)
+			Vec2 center;
+			center.x = (float)coord.x * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
+			center.y = (float)coord.y * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
+			float distance = Vector2DistanceSqr(center, position);
+			if (distance < VIEW_DISTANCE_SQR)
 			{
-				Chunk* chunk = ChunkLoad(gameState, tilemap, coord);
-				chunk_set(&tilemap->Table, hash, chunk);
+				zpl_u64 hash = Vec2iHash(coord);
+				Chunk** contains = chunk_get(&tilemap->Table, hash);
+				if (!contains)
+				{
+					Chunk* chunk = ChunkLoad(gameState, tilemap, coord);
+					chunk_set(&tilemap->Table, hash, chunk);
+				}
 			}
 		}
 	}
@@ -209,7 +220,7 @@ TileMapDraw(TileMap* tilemap, Rectangle screenRect)
 		0,
 		0,
 		CHUNK_SIZE_PIXELS,
-		CHUNK_SIZE_PIXELS
+		-CHUNK_SIZE_PIXELS
 	};
 
 	for (zpl_isize i = 0; i < zpl_array_count(tilemap->Table.entries); ++i)
@@ -256,7 +267,8 @@ ChunkUnload(TileMap* tilemap, Chunk* chunk)
 
 	SLOG_DEBUG("Chunk unloaded. %s", FMT_VEC2I(chunk->Coord));
 
-	zpl_array_append(tilemap->TexturePool, chunk->RenderTexture);
+	if (chunk->RenderTexture.id > 0)
+		zpl_array_append(tilemap->TexturePool, chunk->RenderTexture);
 
 	SFree(SPersistent, chunk);
 }
@@ -284,7 +296,8 @@ ChunkBake(GameState* gameState, Chunk* chunk)
 			{
 				int localIdx = x + y * CHUNK_SIZE;
 
-				Rectangle src = { 128, 0, 16, 16 };
+				Tile* tile = &chunk->TileArray[localIdx];
+				Rectangle src = { 16 * tile->TileId, 0, 16, 16 };
 				Rectangle dst = { (float)x * TILE_SIZE, (float)y * TILE_SIZE, TILE_SIZE, TILE_SIZE };
 				DrawTexturePro(gameState->TileSpriteSheet, src, dst, {}, 0, WHITE);
 			}

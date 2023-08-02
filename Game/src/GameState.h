@@ -10,8 +10,8 @@ struct GameState
 	TileMap TileMap;
 
 	Camera2D Camera;
-	Vector2 CameraPosition;
 	Texture2D TileSpriteSheet;
+	Texture2D EntitySpriteSheet;
 };
 
 #define DeltaTime GetFrameTime()

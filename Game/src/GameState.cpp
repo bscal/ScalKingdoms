@@ -1,16 +1,30 @@
 #include "GameState.h"
 #include "GameEntry.h"
 
+#include "Sprite.h"
+#include "Components.h"
+#include "Systems.h"
+
 #include <raylib/src/raymath.h>
 
-#include "Structures/HashMap.h"
 
 global_var struct GameState State;
+global_var struct ecs_world_t* World;
+
+struct GameClient
+{
+	ecs_entity_t Player;
+};
+global_var GameClient Client;
 
 internal void GameRun();
 internal void GameUpdate();
 internal void GameShutdown();
 internal void InputUpdate();
+internal Vec2i ScreenToTile(Vec2 pos);
+
+ECS_COMPONENT_DECLARE(CTransform);
+ECS_COMPONENT_DECLARE(CVelocity);
 
 int 
 GameInitialize()
@@ -26,8 +40,40 @@ GameInitialize()
 	State.Camera.offset = { (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
 
 	State.TileSpriteSheet = LoadTexture("Game/assets/16x16.bmp");
+	State.EntitySpriteSheet = LoadTexture("Game/assets/SpriteSheet.png");
+
+	SpriteMgrInitialize(State.EntitySpriteSheet);
+	Sprite* sprite = SpriteGet(Sprites::PLAYER);
 
 	TileMapInit(&State, &State.TileMap);
+
+	// Entities
+	World = ecs_init();
+
+	ECS_COMPONENT_DEFINE(World, CTransform);
+	ECS_COMPONENT(World, CRender);
+	ECS_COMPONENT_DEFINE(World, CVelocity);
+	ECS_COMPONENT(World, CCollider);
+
+	ECS_SYSTEM(World, DrawEntities, EcsOnUpdate, CTransform, CRender);
+	ECS_SYSTEM(World, MoveSystem, EcsOnUpdate, CTransform, CVelocity, CCollider);
+
+	Client.Player = ecs_new_id(World);
+	ecs_add(World, Client.Player, CTransform);
+	ecs_add(World, Client.Player, CRender);
+	ecs_add(World, Client.Player, CVelocity);
+	ecs_add(World, Client.Player, CCollider);
+	
+	ecs_set_ex(World, Client.Player, CTransform, {});
+	CRender render = {};
+	render.Scale = 1;
+	render.Color = WHITE;
+	ecs_set(World, Client.Player, CRender, render);
+
+	ecs_set_ex(World, Client.Player, CVelocity, {});
+
+	CCollider c = { { 1, 1, 15.f, 15.f } };
+	ecs_set(World, Client.Player, CCollider, c);
 
 	GameRun();
 
@@ -51,18 +97,24 @@ GameRun()
 
 		// Draw
 
+
 		Vector2 screenXY = GetScreenToWorld2D({ 0, 0 }, State.Camera);
 		Rectangle screenRect;
 		screenRect.x = screenXY.x;
 		screenRect.y = screenXY.y;
-		screenRect.width = (float)GetScreenWidth();
-		screenRect.height = (float)GetScreenHeight();
+		screenRect.width = (float)GetScreenWidth() / State.Camera.zoom;
+		screenRect.height = (float)GetScreenHeight() / State.Camera.zoom;
 
 		BeginDrawing();
 		ClearBackground(BLACK);
 		BeginMode2D(State.Camera);
 
 		TileMapDraw(&State.TileMap, screenRect);
+
+		ecs_progress(World, DeltaTime);
+
+		Vector2 target = State.Camera.target;
+		DrawRectangleLines((int)target.x, (int)target.y, 16, 16, MAGENTA);
 
 		EndMode2D();
 
@@ -101,14 +153,19 @@ void InputUpdate()
 		movement.y += VEC2_RIGHT.y * DeltaTime * 160;
 	}
 
-	State.Camera.target = Vector2Add(State.Camera.target, movement);
-	State.CameraPosition = State.Camera.target;
+	CVelocity velocity = *ecs_get(World, Client.Player, CVelocity);
+	velocity.ax = movement.x;
+	velocity.ay = movement.y;
+	ecs_set(World, Client.Player, CVelocity, velocity);
+
+	//const CTransform* transform = ecs_get(World, Client.Player, CTransform);
+	//State.Camera.target = Vector2Add(State.Camera.target, transform->Pos);
 
 	float mouseWheel = GetMouseWheelMove();
 	if (mouseWheel != 0)
 	{
 		constexpr float ZOOM_MAX = 5.0f;
-		constexpr float ZOOM_MIN = 1.0f;
+		constexpr float ZOOM_MIN = .40f;
 		constexpr float ZOOM_SPD = .20f;
 
 		float newZoom = State.Camera.zoom + ZOOM_SPD * mouseWheel;
@@ -120,6 +177,17 @@ void InputUpdate()
 
 		State.Camera.zoom = newZoom;
 	}
+
+	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+	{
+		Vec2i tile = ScreenToTile(GetMousePosition());
+		SLOG_INFO("Tile: %s", FMT_VEC2I(tile));
+
+		Tile t = {};
+		t.TileId = 8;
+		t.Flags.Set(TILE_FLAG_COLLISION, true);
+		SetTile(&State.TileMap, tile, &t);
+	}
 }
 
 void
@@ -127,7 +195,18 @@ GameShutdown()
 {
 	TileMapFree(&State.TileMap);
 
+	UnloadTexture(State.TileSpriteSheet);
+	UnloadTexture(State.EntitySpriteSheet);
+
 	CloseWindow();
+}
+
+internal Vec2i 
+ScreenToTile(Vec2 pos)
+{
+	Vec2 worldPos = GetScreenToWorld2D(pos, State.Camera);
+	worldPos = Vector2Multiply(worldPos, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
+	return Vec2ToVec2i(worldPos);
 }
 
 GameState* GetGameState()

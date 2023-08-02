@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <zpl/zpl.h>
 #include <raylib/src/raylib.h>
+
+#define FLECS_SYSTEM
 #include <flecs/flecs.h>
 
 #include "Memory.h"
@@ -123,8 +125,8 @@ typedef Vector2 Vec2;
 
 constexpr global_var float TAO = PI * 2.0;
 
-constexpr global_var int WIDTH = 1080;
-constexpr global_var int HEIGHT = 920;
+constexpr global_var int WIDTH = 1600;
+constexpr global_var int HEIGHT = 900;
 
 constexpr global_var const char* TITLE = "Kingdoms";
 constexpr global_var int MAX_FPS = 60;
@@ -173,4 +175,9 @@ constexpr int IntModNegative(int a, int b)
 {
 	int res = a % b;
 	return (res < 0) ? res + b : res;
+}
+
+_FORCE_INLINE_ double GetMicroTime()
+{
+	return GetTime() * 1000000.0;
 }

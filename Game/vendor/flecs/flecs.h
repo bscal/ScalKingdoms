@@ -8502,6 +8502,13 @@ int ecs_value_move_ctor(
 #define ecs_set(world, entity, component, ...)\
     ecs_set_id(world, entity, ecs_id(component), sizeof(component), &(component)__VA_ARGS__)
 
+// bscal
+#define ecs_set_ex(world, entity, component, ...)\
+    { \
+        component tmp = __VA_ARGS__;    \
+        ecs_set_id(world, entity, ecs_id(component), sizeof(component), &tmp); \
+    }
+
 #define ecs_set_pair(world, subject, First, second, ...)\
     ecs_set_id(world, subject,\
         ecs_pair(ecs_id(First), second),\
