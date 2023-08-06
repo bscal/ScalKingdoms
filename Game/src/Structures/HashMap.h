@@ -3,8 +3,13 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#ifndef HashMapAllocate
 #define HashMapAllocate(size, oldSize) _aligned_malloc(size, 16);
+#endif // !HashMapAllocate
+
+#ifndef HashMapFree
 #define HashMapFree(ptr, oldSize) _aligned_free(ptr);
+#endif // !HashMapFree
 
 #define KeyToIdx(hash, cap) (hash % cap)
 #define HashMapSwap(V0, V1, T) T tmp = V0; V0 = V1; V1 = tmp
@@ -16,9 +21,9 @@ constexpr static float HASHMAP_LOAD_FACTOR = 0.85f;
 
 struct HashBucket
 {
-	uint64_t Hash;
-	uint32_t ProbeLength;
-	bool Tombstoned;
+	uint32_t Hash;
+	uint32_t ProbeLength : 31;
+	uint32_t Tombstoned : 1;
 };
 
 template<typename V>

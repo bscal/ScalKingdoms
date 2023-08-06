@@ -79,12 +79,11 @@ typedef Vector2 Vec2;
 
 #define FlagTrue(state, flag) ((state & flag) == flag)
 #define FlagFalse(state, flag) ((state & flag) != flag)
-#define FlagAny(state, flag) ((state * flag) != 0)
 
 #define BitGet(state, bit) ((state >> bit) & 1ULL)
-#define BitSet(state, bit) (state | 1ULL << bit)
+#define BitSet(state, bit) ((state | 1ULL) << bit)
 #define BitClear(state, bit) (state & ~(1ULL << bit))
-#define BitToggle(state, bit) (state ^ 1ULL << bit)
+#define BitToggle(state, bit) (state ^ (1ULL << bit))
 #define BitMask(state, mask) (FlagTrue(state, mask))
 
 #define Swap(x, y, T) (T temp = x; x = y; y = temp)
@@ -170,6 +169,9 @@ TileDirectionVectors[] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
 #define FMT_RECT(rect) TextFormat("Rectangle(x: %.3f, y: %.3f, w: %.3f, h: %.3f)", rect.x, rect.y, rect.width, rect.height)
 #define FMT_BOOL(boolVar) TextFormat("%s", ((boolVar)) ? "true" : "false")
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
+
+#define HashMapAllocate(size, oldSize) zpl_alloc(zpl_heap_allocator(), size);
+#define HashMapFree(ptr, oldSize) zpl_free(zpl_heap_allocator(), ptr);
 
 constexpr int IntModNegative(int a, int b)
 {

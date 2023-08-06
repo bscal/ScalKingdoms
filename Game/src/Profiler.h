@@ -2,8 +2,8 @@
 
 #include "Core.h"
 
-#define ENABLE_PROFILING 1
-#define USE_THREADS 1
+#define ENABLE_PROFILING 0
+#define USE_THREADS 0
 
 #if ENABLE_PROFILING
 #include <spall/spall.h>

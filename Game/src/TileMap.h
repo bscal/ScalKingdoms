@@ -8,8 +8,8 @@ struct GameState;
 
 struct TileRenderData
 {
-	uint16_t x;
-	uint16_t y;
+	uint16_t bgId;
+	uint16_t fgId;
 };
 
 enum TileFlags : uint8_t 
@@ -31,11 +31,11 @@ struct Chunk
 {
 	Vec2i Coord;
 	Rectangle BoundingBox;
-	Vec2 TextureDrawPosition;
+	Vec2 TextureDrawPosition;	// Start coords in the chunk texture
 	Vec2 CenterCoord;
-	bool IsDirty;
+	bool IsDirty;				// Should Redraw chunk
 	bool IsGenerated;
-	bool IsWaitingToLoad;
+	bool IsWaitingToLoad;		// Waits for render texture from pool
 	TileRenderData TileRenderDataArray[CHUNK_AREA];
 	Tile TileArray[CHUNK_AREA];
 };
@@ -47,11 +47,13 @@ ZPL_TABLE_DECLARE(, ChunkTable, chunk_, Chunk*);
 struct TileMap
 {
 	RenderTexture2D TileMapTexture;
-	ChunkTable Table;
+	zpl_thread ChunkThread;
+	ChunkTable Chunks;
+	Rectangle Dimensions;
 	zpl_array(Vec2) TexturePool;
 };
 
-void TileMapInit(GameState* gameState, TileMap* tilemap);
+void TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions);
 void TileMapFree(TileMap* tilemap);
 void TileMapUpdate(GameState* gameState, TileMap* tilemap);
 void TileMapDraw(TileMap* tilemap, Rectangle screenRect);
@@ -64,14 +66,17 @@ Chunk* GetChunk(TileMap* tilemap, Vec2i tile);
 
 Tile* GetTile(TileMap* tilemap, Vec2i tile);
 
-struct TileResult
+struct TileFindResult
 {
-	Tile* Tile;
 	Chunk* Chunk;
 	size_t Index;
 };
-// Returns Tile*, Chunk* and index of tile in chunk's tile array
-TileResult GetTileResult(TileMap* tilemap, Vec2i coord);
+// Returns Chunk* and Index of coord in that chunk
+TileFindResult FindTile(TileMap* tilemap, Vec2i coord);
 
 // Copies tile into chunks array.
-void SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile);
+void SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer);
+
+void SetTile(Chunk* chunk, size_t idx, const Tile* tile, short layer);
+
+bool IsChunkInBounds(TileMap* tilemap, Vec2i coord);

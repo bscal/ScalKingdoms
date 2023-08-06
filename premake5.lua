@@ -94,7 +94,7 @@ project "Game"
     {
         "Game/src",
         "Game/vendor",
-        "D:/dev-libs/sx/include"
+        "D:/dev-libs/sx/include",
     }
 
     libdirs

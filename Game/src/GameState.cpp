@@ -1,12 +1,12 @@
 #include "GameState.h"
 #include "GameEntry.h"
 
+#include "Tile.h"
 #include "Sprite.h"
 #include "Components.h"
 #include "Systems.h"
 
 #include <raylib/src/raymath.h>
-
 
 global_var struct GameState State;
 global_var struct zpl_random Random;
@@ -43,8 +43,9 @@ GameInitialize()
 	SpriteMgrInitialize(State.EntitySpriteSheet);
 	Sprite* sprite = SpriteGet(Sprites::PLAYER);
 
-	TileMapInit(&State, &State.TileMap);
+	TileMgrInitialize(&State.TileSpriteSheet);
 
+	TileMapInit(&State, &State.TileMap, {-100, -100, 100, 100});
 
 	// Entities
 	World = ecs_init();
@@ -183,9 +184,9 @@ void InputUpdate()
 		SLOG_INFO("Tile: %s", FMT_VEC2I(tile));
 
 		Tile t = {};
-		t.TileId = 8;
+		t.TileId = Tiles::WOOD_DOOR;
 		t.Flags.Set(TILE_FLAG_COLLISION, true);
-		SetTile(&State.TileMap, tile, &t);
+		SetTile(&State.TileMap, tile, &t, 0);
 	}
 }
 

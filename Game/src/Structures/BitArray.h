@@ -10,7 +10,6 @@ struct BigFlags8
 
 	_FORCE_INLINE_ bool Get(uint8_t index) const { SASSERT(index < FLAG_COUNT); return BitGet(Flags, index); }
 	_FORCE_INLINE_ bool Mask(uint8_t mask) const { return FlagTrue(Flags, mask); }
-	_FORCE_INLINE_ bool Any(uint8_t flags) const { return FlagAny(Flags, flags); }
 	_FORCE_INLINE_ void Toggle(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitToggle(Flags, index); }
 	_FORCE_INLINE_ void True(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitSet(Flags, index); }
 	_FORCE_INLINE_ void False(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitClear(Flags, index); }
@@ -29,7 +28,6 @@ struct BigFlags32
 
 	_FORCE_INLINE_ bool Get(uint8_t index) const { SASSERT(index < FLAG_COUNT); return BitGet(Flags, index); }
 	_FORCE_INLINE_ bool Mask(uint8_t mask) const { return FlagTrue(Flags, mask); }
-	_FORCE_INLINE_ bool Any(uint8_t flags) const { return FlagAny(Flags, flags); }
 	_FORCE_INLINE_ void Toggle(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitToggle(Flags, index); }
 	_FORCE_INLINE_ void True(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitSet(Flags, index); }
 	_FORCE_INLINE_ void False(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitClear(Flags, index); }
@@ -48,7 +46,6 @@ struct BitFlags64
 
 	_FORCE_INLINE_ bool Get(uint64_t index) const { SASSERT(index < FLAG_COUNT); return BitGet(Flags, index); }
 	_FORCE_INLINE_ bool Mask(uint64_t mask) const { return FlagTrue(Flags, mask); }
-	_FORCE_INLINE_ bool Any(uint64_t flags) const { return FlagAny(Flags, flags); }
 	_FORCE_INLINE_ void Toggle(uint64_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitToggle(Flags, index); }
 	_FORCE_INLINE_ void True(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitSet(Flags, index); }
 	_FORCE_INLINE_ void False(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitClear(Flags, index); }
