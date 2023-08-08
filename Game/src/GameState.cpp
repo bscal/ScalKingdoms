@@ -9,8 +9,6 @@
 #include <raylib/src/raymath.h>
 
 global_var struct GameState State;
-global_var struct zpl_random Random;
-global_var struct ecs_world_t* World;
 global_var struct GameClient Client;
 
 internal void GameRun();
@@ -20,7 +18,7 @@ internal void InputUpdate();
 internal Vec2i ScreenToTile(Vec2 pos);
 
 ECS_COMPONENT_DECLARE(CTransform);
-ECS_COMPONENT_DECLARE(CVelocity);
+ECS_COMPONENT_DECLARE(CMove);
 
 int 
 GameInitialize()
@@ -38,42 +36,41 @@ GameInitialize()
 	State.TileSpriteSheet = LoadTexture("Game/assets/16x16.bmp");
 	State.EntitySpriteSheet = LoadTexture("Game/assets/SpriteSheet.png");
 
-	zpl_random_init(&Random);
+	State.EntityMap.Initialize(sizeof(ecs_entity_t), 64, DefaultAllocFunc, DefaultFreeFunc);
+
+	zpl_random_init(&State.Random);
 
 	SpriteMgrInitialize(State.EntitySpriteSheet);
 	Sprite* sprite = SpriteGet(Sprites::PLAYER);
 
 	TileMgrInitialize(&State.TileSpriteSheet);
 
-	TileMapInit(&State, &State.TileMap, {-100, -100, 100, 100});
+	TileMapInit(&State, &State.TileMap, { 0, 0, 4, 4 });
 
 	// Entities
-	World = ecs_init();
+	State.World = ecs_init();
 
-	ECS_COMPONENT_DEFINE(World, CTransform);
-	ECS_COMPONENT(World, CRender);
-	ECS_COMPONENT_DEFINE(World, CVelocity);
-	ECS_COMPONENT(World, CCollider);
+	ECS_COMPONENT_DEFINE(State.World, CTransform);
+	ECS_COMPONENT(State.World, CRender);
+	ECS_COMPONENT_DEFINE(State.World, CMove);
 
-	ECS_SYSTEM(World, DrawEntities, EcsOnUpdate, CTransform, CRender);
-	ECS_SYSTEM(World, MoveSystem, EcsOnUpdate, CTransform, CVelocity, CCollider);
+	ECS_SYSTEM(State.World, DrawEntities, EcsOnUpdate, CTransform, CRender);
+	ECS_SYSTEM(State.World, MoveSystem, EcsOnUpdate, CTransform, CMove);
 
-	Client.Player = ecs_new_id(World);
-	ecs_add(World, Client.Player, CTransform);
-	ecs_add(World, Client.Player, CRender);
-	ecs_add(World, Client.Player, CVelocity);
-	ecs_add(World, Client.Player, CCollider);
+	Client.Player = ecs_new_id(State.World);
+	ecs_add(State.World, Client.Player, CTransform);
+	ecs_add(State.World, Client.Player, CRender);
+	ecs_add(State.World, Client.Player, CMove);
 	
-	ecs_set_ex(World, Client.Player, CTransform, {});
+	ecs_set_ex(State.World, Client.Player, CTransform, {});
 	CRender render = {};
-	render.Scale = 1;
 	render.Color = WHITE;
-	ecs_set(World, Client.Player, CRender, render);
+	render.Width = TILE_SIZE;
+	render.Height = TILE_SIZE;
+	ecs_set(State.World, Client.Player, CRender, render);
 
-	ecs_set_ex(World, Client.Player, CVelocity, {});
-
-	CCollider c = { { 1, 1, 15.f, 15.f } };
-	ecs_set(World, Client.Player, CCollider, c);
+	CMove c = {};
+	ecs_set(State.World, Client.Player, CMove, c);
 
 	GameRun();
 
@@ -97,7 +94,6 @@ GameRun()
 
 		// Draw
 
-
 		Vector2 screenXY = GetScreenToWorld2D({ 0, 0 }, State.Camera);
 		Rectangle screenRect;
 		screenRect.x = screenXY.x;
@@ -111,7 +107,7 @@ GameRun()
 
 		TileMapDraw(&State.TileMap, screenRect);
 
-		ecs_progress(World, DeltaTime);
+		ecs_progress(State.World, DeltaTime);
 
 		Vector2 target = State.Camera.target;
 		DrawRectangleLines((int)target.x, (int)target.y, 16, 16, MAGENTA);
@@ -130,35 +126,38 @@ void GameUpdate()
 void InputUpdate()
 {
 	Vector2 movement = VEC2_ZERO;
+	int8_t moveX = 0;
+	int8_t moveY = 0;
 
-	if (IsKeyDown(KEY_W))
+	if (IsKeyPressed(KEY_W))
 	{
 		movement.x += VEC2_UP.x * DeltaTime * 160;
 		movement.y += VEC2_UP.y * DeltaTime * 160;
+		moveY = -1;
 	}
-	else if (IsKeyDown(KEY_S))
+	else if (IsKeyPressed(KEY_S))
 	{
 		movement.x += VEC2_DOWN.x * DeltaTime * 160;
 		movement.y += VEC2_DOWN.y * DeltaTime * 160;
+		moveY = 1;
 	}
 
-	if (IsKeyDown(KEY_A))
+	if (IsKeyPressed(KEY_A))
 	{
 		movement.x += VEC2_LEFT.x * DeltaTime * 160;
 		movement.y += VEC2_LEFT.y * DeltaTime * 160;
+		moveX = -1;
 	}
-	else if (IsKeyDown(KEY_D))
+	else if (IsKeyPressed(KEY_D))
 	{
 		movement.x += VEC2_RIGHT.x * DeltaTime * 160;
 		movement.y += VEC2_RIGHT.y * DeltaTime * 160;
+		moveX = 1;
 	}
 
-	CVelocity velocity = *ecs_get(World, Client.Player, CVelocity);
-	velocity.ax = movement.x;
-	velocity.ay = movement.y;
-	ecs_set(World, Client.Player, CVelocity, velocity);
+	ecs_set_ex(State.World, Client.Player, CMove, { moveX, moveY });
 
-	const CTransform* transform = ecs_get(World, Client.Player, CTransform);
+	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
 	State.Camera.target = transform->Pos;
 
 	float mouseWheel = GetMouseWheelMove();
@@ -207,11 +206,6 @@ ScreenToTile(Vec2 pos)
 	Vec2 worldPos = GetScreenToWorld2D(pos, State.Camera);
 	worldPos = Vector2Multiply(worldPos, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
 	return Vec2ToVec2i(worldPos);
-}
-
-zpl_random* GetRandom()
-{
-	return &Random;
 }
 
 GameState* GetGameState()

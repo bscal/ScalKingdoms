@@ -52,7 +52,8 @@ LoadRenderTextureEx(Vec2i resolution, PixelFormat format, bool useDepth)
 	return target;
 }
 
-void DrawSprite(Texture2D* texture, Rectangle source, Rectangle dest, Vec2 origin, Color tint, bool flipX)
+void
+DrawSprite(Texture2D* texture, Rectangle source, Rectangle dest, Vec2 origin, Color tint, bool flipX)
 {
 	SASSERT(texture);
 	SASSERT(IsTextureReady(*texture));
@@ -128,4 +129,149 @@ void DrawSprite(Texture2D* texture, Rectangle source, Rectangle dest, Vec2 origi
 
     rlEnd();
     rlSetTexture(0);
+}
+
+// Read a line from memory
+// REQUIRES: memcpy()
+// NOTE: Returns the number of bytes read
+static int GetLine(const char* origin, char* buffer, int maxLength)
+{
+	int count = 0;
+	for (; count < maxLength; count++) if (origin[count] == '\n') break;
+	memcpy(buffer, origin, count);
+	return count;
+}
+
+// Load a BMFont file (AngelCode font file)
+// REQUIRES: strstr(), sscanf(), strrchr(), memcpy()
+Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 offset)
+{
+	#define MAX_BUFFER_SIZE     256
+
+	SASSERT(fileName);
+	SASSERT(fontTexture);
+	
+	if (!FileExists(fileName))
+	{
+		SERR("BMFont file does not exist, %s", fileName);
+	}
+
+	if (!IsTextureReady(*fontTexture))
+	{
+		SWARN("Font texture atlas is not loaded!");
+	}
+
+	Font font = { 0 };
+
+	char buffer[MAX_BUFFER_SIZE] = { 0 };
+	char* searchPoint = NULL;
+
+	int fontSize = 0;
+	int glyphCount = 0;
+
+	int imWidth = 0;
+	int imHeight = 0;
+	char imFileName[129] = { 0 };
+
+	int base = 0;   // Useless data
+
+	char* fileText = LoadFileText(fileName);
+
+	if (fileText == NULL) return font;
+
+	char* fileTextPtr = fileText;
+
+	// NOTE: We skip first line, it contains no useful information
+	int lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
+	fileTextPtr += (lineBytes + 1);
+
+	// Read line data
+	lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
+	searchPoint = strstr(buffer, "lineHeight");
+	sscanf(searchPoint, "lineHeight=%i base=%i scaleW=%i scaleH=%i", &fontSize, &base, &imWidth, &imHeight);
+	fileTextPtr += (lineBytes + 1);
+
+	TRACELOGD("FONT: [%s] Loaded font info:", fileName);
+	TRACELOGD("    > Base size: %i", fontSize);
+	TRACELOGD("    > Texture scale: %ix%i", imWidth, imHeight);
+
+	lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
+	searchPoint = strstr(buffer, "file");
+	sscanf(searchPoint, "file=\"%128[^\"]\"", imFileName);
+	fileTextPtr += (lineBytes + 1);
+
+	TRACELOGD("    > Texture filename: %s", imFileName);
+
+	lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
+	searchPoint = strstr(buffer, "count");
+	sscanf(searchPoint, "count=%i", &glyphCount);
+	fileTextPtr += (lineBytes + 1);
+
+	TRACELOGD("    > Chars count: %i", glyphCount);
+
+	// Compose correct path using route of .fnt file (fileName) and imFileName
+	char* imPath = NULL;
+	char* lastSlash = NULL;
+
+	lastSlash = (char*)strrchr(fileName, '/');
+	if (lastSlash == NULL) lastSlash = (char*)strrchr(fileName, '\\');
+
+	if (lastSlash != NULL)
+	{
+		// NOTE: We need some extra space to avoid memory corruption on next allocations!
+		imPath = (char*)RL_CALLOC(TextLength(fileName) - TextLength(lastSlash) + TextLength(imFileName) + 4, 1);
+		memcpy(imPath, fileName, TextLength(fileName) - TextLength(lastSlash) + 1);
+		memcpy(imPath + TextLength(fileName) - TextLength(lastSlash) + 1, imFileName, TextLength(imFileName));
+	}
+	else imPath = imFileName;
+
+	TRACELOGD("    > Image loading path: %s", imPath);
+
+	font.texture = *fontTexture;
+
+	if (lastSlash != NULL) RL_FREE(imPath);
+
+	Image imFont = LoadImageFromTexture(font.texture);
+
+	// Fill font characters info data
+	font.baseSize = fontSize;
+	font.glyphCount = glyphCount;
+	font.glyphPadding = 0;
+	font.glyphs = (GlyphInfo*)RL_MALLOC(glyphCount * sizeof(GlyphInfo));
+	font.recs = (Rectangle*)RL_MALLOC(glyphCount * sizeof(Rectangle));
+
+	int charId, charX, charY, charWidth, charHeight, charOffsetX, charOffsetY, charAdvanceX;
+
+	for (int i = 0; i < glyphCount; i++)
+	{
+		lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
+		sscanf(buffer, "char id=%i x=%i y=%i width=%i height=%i xoffset=%i yoffset=%i xadvance=%i",
+			&charId, &charX, &charY, &charWidth, &charHeight, &charOffsetX, &charOffsetY, &charAdvanceX);
+		fileTextPtr += (lineBytes + 1);
+
+		// Get character rectangle in the font atlas texture
+		font.recs[i] = Rectangle{ (float)charX + offset.x, (float)charY + offset.y, (float)charWidth, (float)charHeight };
+
+		// Save data properly in sprite font
+		font.glyphs[i].value = charId;
+		font.glyphs[i].offsetX = charOffsetX;
+		font.glyphs[i].offsetY = charOffsetY;
+		font.glyphs[i].advanceX = charAdvanceX;
+
+		// Fill character image data from imFont data
+		font.glyphs[i].image = ImageFromImage(imFont, font.recs[i]);
+	}
+
+	UnloadImage(imFont);
+	UnloadFileText(fileText);
+
+	if (font.texture.id == 0)
+	{
+		UnloadFont(font);
+		font = GetFontDefault();
+		TRACELOG(LOG_WARNING, "FONT: [%s] Failed to load texture, reverted to default font", fileName);
+	}
+	else TRACELOG(LOG_INFO, "FONT: [%s] Font loaded successfully (%i glyphs)", fileName, font.glyphCount);
+
+	return font;
 }

@@ -3,6 +3,8 @@
 #include "Core.h"
 #include "TileMap.h"
 
+#include "Structures/HashMap.h"
+
 struct GameState
 {
 	zpl_stack_memory FrameStack;
@@ -12,6 +14,11 @@ struct GameState
 	Camera2D Camera;
 	Texture2D TileSpriteSheet;
 	Texture2D EntitySpriteSheet;
+
+	zpl_random Random;
+	ecs_world_t* World;
+
+	HashMap EntityMap;
 };
 
 struct GameClient
@@ -20,8 +27,6 @@ struct GameClient
 };
 
 #define DeltaTime GetFrameTime()
-
-zpl_random* GetRandom();
 
 GameState* GetGameState();
 

@@ -82,6 +82,7 @@ project "Game"
     files
     {
         SrcDir .. "**.cpp",
+        SrcDir .. "**.h",
         "Game/vendor/flecs/flecs.c"
     }
 

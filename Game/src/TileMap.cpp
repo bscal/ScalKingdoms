@@ -49,6 +49,12 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	SASSERT(gameState);
 	SASSERT(tilemap);
 
+	if (dimensions.width <= 0 || dimensions.height <= 0)
+	{
+		SERR("TileMap dimensions need to be greater than 0");
+		return;
+	}
+
 	tilemap->Dimensions = dimensions;
 
 	zpl_array_init_reserve(tilemap->TexturePool, zpl_heap_allocator(), VIEW_DISTANCE_TOTAL_CHUNKS);
@@ -216,7 +222,7 @@ ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
 
 	Chunk* chunk = (Chunk*)SAlloc(SPersistent, sizeof(Chunk));
 	SASSERT(chunk);
-	SMemZero(chunk, sizeof(Chunk));
+	SClear(chunk, sizeof(Chunk));
 
 	chunk->Coord = coord;
 	chunk->BoundingBox.x = (float)coord.x * CHUNK_SIZE_PIXELS;
@@ -271,7 +277,14 @@ ChunkBake(GameState* gameState, Chunk* chunk)
 
 			Rectangle src = GetTileInfo(data->bgId)->Src;
 			Rectangle dst = { posX, posY, TILE_SIZE, TILE_SIZE };
+			
 			DrawTexturePro(*tileSpriteSheet, src, dst, {}, 0, WHITE);
+
+			if (data->fgId > 0)
+			{
+				src = GetTileInfo(data->fgId)->Src;
+				DrawTexturePro(*tileSpriteSheet, src, dst, {}, 0, WHITE);
+			}
 		}
 	}
 	chunk->IsDirty = false;
@@ -307,7 +320,10 @@ ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 				tile.TileId = Tiles::BLUE_STONE;
 			}
 
-			SetTile(chunk, localIdx, &tile, 0);
+			Tile fgTile = {};
+
+			SetChunkTile(chunk, localIdx, &tile, 0);
+			SetChunkTile(chunk, localIdx, &fgTile, 1);
 		}
 	}
 }
@@ -382,11 +398,11 @@ SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer)
 	if (chunk)
 	{
 		size_t idx = GetLocalTileIdx(coord);
-		SetTile(chunk, idx, tile, layer);
+		SetChunkTile(chunk, idx, tile, layer);
 	}
 }
 
-void SetTile(Chunk* chunk, size_t idx, const Tile* tile, short layer)
+void SetChunkTile(Chunk* chunk, size_t idx, const Tile* tile, short layer)
 {
 	SASSERT(chunk);
 	SASSERT(idx < CHUNK_AREA);
@@ -421,8 +437,20 @@ void SetTile(Chunk* chunk, size_t idx, const Tile* tile, short layer)
 
 bool IsChunkInBounds(TileMap* tilemap, Vec2i coord)
 {
-	return (coord.x >= tilemap->Dimensions.x && coord.y >= tilemap->Dimensions.y
-		&& coord.x < tilemap->Dimensions.width && coord.y < tilemap->Dimensions.height);
+	return (coord.x >= tilemap->Dimensions.x
+		&& coord.y >= tilemap->Dimensions.y
+		&& coord.x < tilemap->Dimensions.x + tilemap->Dimensions.width
+		&& coord.y < tilemap->Dimensions.y + tilemap->Dimensions.height);
+}
+
+bool IsTileInBounds(TileMap* tilemap, Vec2i coord)
+{
+	float x = (float)coord.x * INVERSE_CHUNK_SIZE;
+	float y = (float)coord.y * INVERSE_CHUNK_SIZE;
+	return (x >= tilemap->Dimensions.x
+		&& y >= tilemap->Dimensions.y
+		&& x < tilemap->Dimensions.x + tilemap->Dimensions.width
+		&& y < tilemap->Dimensions.y + tilemap->Dimensions.height);
 }
 
 internal zpl_isize

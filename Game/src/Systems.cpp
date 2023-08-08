@@ -16,68 +16,53 @@ void DrawEntities(ecs_iter_t* it)
 	for (int i = 0; i < it->count; ++i)
 	{
 		Sprite* sprite = SpriteGet(renders[i].SpriteId);
-		//Vec2 worldPos = transforms[i].ToWorld();
 		Rectangle dst;
 		dst.x = transforms[i].Pos.x;
 		dst.y = transforms[i].Pos.y;
-		dst.width = TILE_SIZE * renders[i].Scale;
-		dst.height = TILE_SIZE * renders[i].Scale;
+		dst.width = renders[i].Width;
+		dst.height = renders[i].Height;
 		DrawSprite(SpriteGetTexture(), sprite->CastRect(), dst, sprite->Origin, renders[i].Color, false);
 	}
-}
-
-internal _FORCE_INLINE_ bool 
-HandleCollision(Rectangle rec1, Rectangle rec2, Vec2 lastPos, Vec2* newPos)
-{
-	if (CheckCollisionRecs(rec1, rec2))
-	{
-		if (rec1.x <= rec2.x)
-			newPos->x = lastPos.x;
-		
-		if (rec1.y <= rec2.y)
-			newPos->y = lastPos.y;
-
-		return true;
-	}
-	return false;
 }
 
 void MoveSystem(ecs_iter_t* it)
 {
 	CTransform* transforms = ecs_field(it, CTransform, 1);
-	CVelocity* velocitys = ecs_field(it, CVelocity, 2);
-	CCollider* colliders = ecs_field(it, CCollider, 3);
+	CMove* moves = ecs_field(it, CMove, 2);
 
 	TileMap* tilemap = &GetGameState()->TileMap;
-
-	float drag = .7f;
+	HashMap* entityMap = &GetGameState()->EntityMap;
 
 	for (int i = 0; i < it->count; ++i)
 	{
-		CVelocity* v = &velocitys[i];
-		v->x += v->ax;
-		v->y += v->ay;
-
-		Vec2 newPos =
+		if (moves[i].x || moves[i].y)
 		{
-			transforms[i].Pos.x += v->x,
-			transforms[i].Pos.y += v->y
-		};
+			Vec2i directionVec = { (int)moves[i].x, (int)moves[i].y };
+			Vec2i playerPos = transforms->ToWorld();
+			Vec2i tilePos = playerPos + directionVec;
 
-		v->x *= drag;
-		if (v->x <= .1 && v->x >= -.1)
-			v->x = 0;
-		v->y *= drag;
-		if (v->y <= .1 && v->y >= -.1)
-			v->y = 0;
-	}
+			if (!IsTileInBounds(tilemap, tilePos))
+				continue;
 
-	for (int i = 0; i < it->count; ++i)
-	{
-		Vec2i tilePos;
-		tilePos.x = (int)zpl_floor((transforms[i].Pos.x + 8) * TILE_SIZE);
-		tilePos.y = (int)zpl_floor((transforms[i].Pos.y + 8) * TILE_SIZE);
+			Tile* tile = GetTile(tilemap, tilePos);
+			SASSERT(tile);
 
-		Tile* tile = GetTile(tilemap, tilePos);
+			if (!tile->Flags.Get(TILE_FLAG_SOLID))
+			{
+				zpl_u32 tileHash = zpl_fnv32a(&tilePos, sizeof(Vec2i));
+				ecs_entity_t* occupiedEntity = HashMapGet((*entityMap), tileHash, ecs_entity_t);
+				if (!occupiedEntity)
+				{
+					ecs_entity_t entity = it->entities[i];
+					entityMap->Put(tileHash, &entity);
+
+					zpl_u32 plyHash = zpl_fnv32a(&playerPos, sizeof(Vec2i));
+					entityMap->Remove(plyHash);
+
+					transforms[i].Pos.x += directionVec.x * TILE_SIZE;
+					transforms[i].Pos.y += directionVec.y * TILE_SIZE;
+				}
+			}
+		}
 	}
 }

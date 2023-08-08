@@ -135,7 +135,7 @@ constexpr global_var float INVERSE_TILE_SIZE = 1.0f / TILE_SIZE;
 constexpr global_var float HALF_TILE_SIZE = TILE_SIZE / 2.0f;
 
 constexpr global_var int CHUNK_SIZE = 32;
-constexpr global_var float INVERSE_CHUNK_SIZE = 1.0f / CHUNK_SIZE;
+constexpr global_var float INVERSE_CHUNK_SIZE = 1.0f / (float)CHUNK_SIZE;
 constexpr global_var int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
 constexpr global_var int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
 constexpr global_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
@@ -162,7 +162,10 @@ constexpr global_var float
 TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 
 constexpr global_var Vector2
-TileDirectionVectors[] = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}};
+TileDirectionVectors[] = {{0, -TILE_SIZE}, {TILE_SIZE, 0}, {0, TILE_SIZE}, {-TILE_SIZE, 0}};
+
+constexpr global_var Vector2i
+TileDirectionVectorInts[] = { {0, -1}, {1, 0}, {0, 1}, {-1, 0} };
 
 #define FMT_VEC2(v) TextFormat("Vector2(x: %.3f, y: %.3f)", v.x, v.y)
 #define FMT_VEC2I(v) TextFormat("Vector2i(x: %d, y: %d)", v.x, v.y)
@@ -234,4 +237,78 @@ _FORCE_INLINE_ constexpr size_t
 AlignSize(size_t size, size_t alignment)
 {
 	return (size + (alignment - 1)) & ~(alignment - 1);
+}
+
+// TODO move
+inline void 
+TextSplitBuffered(
+	const char* _RESTRICT_ text,
+	char delimiter,
+	int* _RESTRICT_ count,
+	char* _RESTRICT_ buffer,
+	int bufferLength,
+	char** _RESTRICT_ splitBuffer,
+	int splitBufferLength)
+{
+	splitBuffer[0] = buffer;
+	int counter = 0;
+
+	if (text != NULL)
+	{
+		counter = 1;
+
+		// Count how many substrings we have on text and point to every one
+		for (int i = 0; i < bufferLength; i++)
+		{
+			buffer[i] = text[i];
+			if (buffer[i] == '\0') break;
+			else if (buffer[i] == delimiter)
+			{
+				buffer[i] = '\0';   // Set an end of string at this point
+				splitBuffer[counter] = buffer + i + 1;
+				counter++;
+
+				if (counter == splitBufferLength) break;
+			}
+		}
+	}
+
+	*count = counter;
+}
+
+constexpr void 
+RemoveWhitespace(char* s)
+{
+	char* d = s;
+	do {
+		while (*d == ' ') {
+			++d;
+		}
+	} while (*s++ = *d++);
+}
+
+enum STR2INT
+{
+	STR2INT_SUCCESS,
+	STR2INT_OVERFLOW,
+	STR2INT_UNDERFLOW,
+	STR2INT_INCONVERTIBLE
+};
+
+inline STR2INT Str2Int(int* out, const char* s, int base)
+{
+	char* end;
+	if (s[0] == '\0' || isspace(s[0]))
+		return STR2INT_INCONVERTIBLE;
+	errno = 0;
+	long l = strtol(s, &end, base);
+	/* Both checks are needed because INT_MAX == LONG_MAX is possible. */
+	if (l > INT_MAX || (errno == ERANGE && l == LONG_MAX))
+		return STR2INT_OVERFLOW;
+	if (l < INT_MIN || (errno == ERANGE && l == LONG_MIN))
+		return STR2INT_UNDERFLOW;
+	if (*end != '\0')
+		return STR2INT_INCONVERTIBLE;
+	*out = l;
+	return STR2INT_SUCCESS;
 }

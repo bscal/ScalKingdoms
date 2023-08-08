@@ -6,6 +6,9 @@
 
 struct GameState;
 
+constexpr global_var int LAYER_BACKGROUND = 0;
+constexpr global_var int LAYER_FOREGROUND = 1;
+
 struct TileRenderData
 {
 	uint16_t bgId;
@@ -23,6 +26,7 @@ enum TileFlags : uint8_t
 
 struct Tile
 {
+	ecs_entity_t Entity;
 	uint16_t TileId;
 	BigFlags8 Flags;
 };
@@ -77,6 +81,7 @@ TileFindResult FindTile(TileMap* tilemap, Vec2i coord);
 // Copies tile into chunks array.
 void SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer);
 
-void SetTile(Chunk* chunk, size_t idx, const Tile* tile, short layer);
+void SetChunkTile(Chunk* chunk, size_t idx, const Tile* tile, short layer);
 
 bool IsChunkInBounds(TileMap* tilemap, Vec2i coord);
+bool IsTileInBounds(TileMap* tilemap, Vec2i coord);
