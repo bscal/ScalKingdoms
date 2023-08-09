@@ -1,5 +1,8 @@
 #include "RenderUtils.h"
 
+#include "GameState.h"
+#include "Utils.h"
+
 #include <raylib/src/rlgl.h>
 
 RenderTexture2D
@@ -274,4 +277,188 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	else TRACELOG(LOG_INFO, "FONT: [%s] Font loaded successfully (%i glyphs)", fileName, font.glyphCount);
 
 	return font;
+}
+
+void 
+DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
+	Vector2 position, float fontSize, float spacing, Color tint)
+{
+	SASSERT(font);
+	SASSERT(text);
+	SASSERT(fontSize > 0);
+
+	if (font->texture.id == 0)
+	{
+		font = &GetFontDefault();
+	}
+
+	int size = TextLength(text);    // Total size in bytes of the text, scanned by codepoints in loop
+
+	int textOffsetY = 0;            // Offset between lines (on linebreak '\n')
+	float textOffsetX = 0.0f;       // Offset X to next character to draw
+
+	float scaleFactor = fontSize / font->baseSize;         // Character quad scaling factor
+
+	// Note: Different cases handle I increment differently
+	for (int i = 0; i < size;)
+	{
+		// Get next codepoint from byte string and glyph index in font
+		int codepointByteCount = 1;
+		int codepoint = text[i];
+
+		// IsRichText
+		if (codepoint == '{')
+		{
+			const char* keywordStart = &text[i + 1];
+
+			// Copies over the input ignoreing {} chars.
+			// If no } is found in length, then abort.
+			int end = -1;
+			char input[32] = {};
+			for (int c = 0; c < ArrayLength(input); ++c)
+			{
+				char val = keywordStart[c];
+				if (val == '}')
+				{
+					end = c;
+					break;
+				}
+				else
+					input[c] = val;
+			}
+
+			if (end == -1)
+			{
+				i += codepointByteCount;
+				continue;
+			}
+
+			int params = 0;
+			const char** split = TextSplit(input, ',', &params);
+			SASSERT(params > 0);
+			SASSERT(strlen(split[0]) == 1);
+
+			int type = FastAtoi(split[0]);
+			switch (type)
+			{
+			case(RICHTEXT_COLOR):
+			{
+				SASSERT(params == 2);
+				uint32_t colorInt;
+				Str2UInt(&colorInt, split[1], 16);
+				tint = IntToColor(colorInt);
+			}
+			break;
+
+			case(RICHTEXT_IMG):
+			{
+				SASSERT(params == 4);
+				int id = FastAtoi(split[1]);
+				int w = FastAtoi(split[2]);
+				int h = FastAtoi(split[3]);
+
+				Rectangle src = { 2, 52, 16, 16 };
+				Rectangle dst = { position.x + textOffsetX, position.y + textOffsetY, (float)w, (float)h };
+				DrawTexturePro(font->texture, src, dst, {}, 0, WHITE);
+
+				textOffsetX += w * scaleFactor + spacing;
+			}
+			break;
+
+			case(RICHTEXT_TOOLTIP):
+			{
+				SASSERT(params >= 2);
+				// Seach spaces until we find space
+				Rectangle wordRect;
+				wordRect.x = position.x + textOffsetX;
+				wordRect.y = position.y + textOffsetY;
+				if (params > 2)
+				{
+					wordRect.width = (float)FastAtoi(split[2]);
+					wordRect.height = (float)FastAtoi(split[3]);
+				}
+				else
+				{
+					wordRect.width = 32 * 10;
+					wordRect.height = fontSize;
+
+					for (short c = 0; c < 32; ++c)
+					{
+						char val = keywordStart[end + c];
+						if (val == ' ')
+						{
+							wordRect.width = (float)c * 10;
+							break;
+						}
+					}
+				}
+
+				Vector2 mouse = GetMousePosition();
+				if (CheckCollisionPointRec(mouse, wordRect))
+				{
+					const char* tooltip = split[1];
+					//Vector2 textSize = MeasureTextEx(font, tooltip, fontSize, spacing);
+					Vector2 dst;
+					dst.x = mouse.x + wordRect.width + 2;
+					dst.y = mouse.y + wordRect.height + 2;
+					DrawTextEx(*font, tooltip, dst, fontSize, spacing, WHITE);
+				}
+			}
+			break;
+
+			default:
+				SWARN("Using invalid type for RichType. Type: %d", type);
+				break;
+			}
+			// +3 for ${ and } chars
+			i += end + 3;
+		}
+		else
+		{
+			int index = GetGlyphIndex(*font, codepoint);
+			// NOTE: Normally we exit the decoding sequence as soon as a bad byte is found (and return 0x3f)
+			// but we need to draw all the bad bytes using the '?' symbol moving one byte
+			if (codepoint == 0x3f) codepointByteCount = 1;
+
+			if (codepoint == '\n')
+			{
+				// NOTE: Fixed line spacing of 1.5 line-height
+				// TODO: Support custom line spacing defined by user
+				textOffsetY += (int)((font->baseSize + font->baseSize / 2.0f) * scaleFactor);
+				textOffsetX = 0.0f;
+			}
+			else
+			{
+				if ((codepoint != ' ') && (codepoint != '\t'))
+				{
+					DrawTextCodepoint(*font, codepoint, Vector2{ position.x + textOffsetX, position.y + textOffsetY }, fontSize, tint);
+				}
+
+				if (font->glyphs[index].advanceX == 0) textOffsetX += ((float)font->recs[index].width * scaleFactor + spacing);
+				else textOffsetX += ((float)font->glyphs[index].advanceX * scaleFactor + spacing);
+			}
+
+			i += codepointByteCount;   // Move text bytes counter to next codepoint
+		}
+	}
+}
+
+const char*
+NewRichTextColor(int color)
+{
+	char* buffer = {};
+	zpl_alloc_str_len(GetGameState()->FrameAllocator, buffer, RICH_TEXT_MAX_LENGTH + 2);
+	SASSERT(buffer);
+	SClear(buffer, RICH_TEXT_MAX_LENGTH + 2);
+
+	int pos = 0;
+	const char* colorStr = TextFormat("%d", color);
+
+	buffer[0] = '{';
+	buffer[1] = RICHTEXT_COLOR;
+	buffer[2] = ',';
+	TextAppend(buffer, colorStr, &pos);
+	buffer[pos] = '}';
+
+	return buffer;
 }

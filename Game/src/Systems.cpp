@@ -5,6 +5,7 @@
 #include "Sprite.h"
 #include "RenderUtils.h"
 #include "TileMap.h"
+#include "Structures/ActionQueue.h"
 
 #include <raylib/src/raymath.h>
 
@@ -64,5 +65,18 @@ void MoveSystem(ecs_iter_t* it)
 				}
 			}
 		}
+	}
+}
+
+void UpdateActions(ecs_iter_t* it)
+{
+	CTransform* transforms = ecs_field(it, CTransform, 1);
+	CMove* moves = ecs_field(it, CMove, 2);
+	CEntityPriorityMap* priorities = ecs_field(it, CEntityPriorityMap, 3);
+	CEntityAction* actions = ecs_field(it, CEntityAction, 4);
+
+	for (int i = 0; i < it->count; ++i)
+	{
+
 	}
 }

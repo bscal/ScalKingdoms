@@ -12,7 +12,7 @@ constexpr static float HASHMAP_LOAD_FACTOR = 0.80f;
 typedef void* (*HashMapAlloc)(size_t, size_t);
 typedef void(*HashMapFree)(void*, size_t);
 
-#define HashMapGet(hashmap, hash, T) ((T*)hashmap.Get(hash))
+#define HashMapGet(hashmap, hash, T) ((T*)(hashmap.Get(hash)))
 #define HashMapValuesIndex(hashmap, idx, T) ((T)hashmap->Values[idx * hashmap->Stride])
 
 struct HashBucket

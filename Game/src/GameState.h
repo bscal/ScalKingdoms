@@ -24,6 +24,7 @@ struct GameState
 struct GameClient
 {
 	ecs_entity_t Player;
+	ecs_entity_t SelectedEntity;
 };
 
 #define DeltaTime GetFrameTime()

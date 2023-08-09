@@ -1,6 +1,8 @@
 #include "HashMap.h"
 
-#define HashMapKeyIndex(hash, cap) (hash &= (cap - 1))
+#include "Utils.h"
+
+#define HashMapKeyIndex(hash, cap) (hash & (cap - 1))
 #define HashMapSwap(V0, V1, T) T tmp = V0; V0 = V1; V1 = tmp
 #define HashMapKeySize(hashmap) (hashmap->Capacity * sizeof(HashBucket))
 #define HashMapValueSize(hashmap) (hashmap->Capacity * hashmap->Stride)

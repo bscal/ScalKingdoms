@@ -1,6 +1,7 @@
 #include "TextureAtlas.h"
 
 #include "GameState.h"
+#include "Utils.h"
 
 #define HashString(str, len) zpl_fnv32a(str, len);
 

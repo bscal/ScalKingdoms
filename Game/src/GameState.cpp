@@ -187,6 +187,19 @@ void InputUpdate()
 		t.Flags.Set(TILE_FLAG_COLLISION, true);
 		SetTile(&State.TileMap, tile, &t, 0);
 	}
+
+	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+	{
+		Vec2i tile = ScreenToTile(GetMousePosition());
+
+		u32 hash = zpl_fnv32a(&tile, sizeof(Vec2i));
+		ecs_entity_t* entity = HashMapGet(State.EntityMap, hash, ecs_entity_t);
+		if (entity)
+		{
+			const char* entityInfo = ecs_entity_str(State.World, *entity);
+			SLOG_INFO("%s", entityInfo);
+		}
+	}
 }
 
 void
