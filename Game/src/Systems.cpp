@@ -5,14 +5,17 @@
 #include "Sprite.h"
 #include "RenderUtils.h"
 #include "TileMap.h"
-#include "Structures/ActionQueue.h"
 
 #include <raylib/src/raymath.h>
+
+#define HashTile(vec) zpl_fnv32a(&vec, sizeof(Vec2i))
 
 void DrawEntities(ecs_iter_t* it)
 {
 	CTransform* transforms = ecs_field(it, CTransform, 1);
 	CRender* renders = ecs_field(it, CRender, 2);
+
+	Texture2D* texture = &GetGameState()->AssetMgr.EntitySpriteSheet;
 
 	for (int i = 0; i < it->count; ++i)
 	{
@@ -22,7 +25,7 @@ void DrawEntities(ecs_iter_t* it)
 		dst.y = transforms[i].Pos.y;
 		dst.width = renders[i].Width;
 		dst.height = renders[i].Height;
-		DrawSprite(SpriteGetTexture(), sprite->CastRect(), dst, sprite->Origin, renders[i].Color, false);
+		DrawSprite(texture, sprite->CastRect(), dst, sprite->Origin, renders[i].Color, false);
 	}
 }
 
@@ -39,8 +42,16 @@ void MoveSystem(ecs_iter_t* it)
 		if (moves[i].x || moves[i].y)
 		{
 			Vec2i directionVec = { (int)moves[i].x, (int)moves[i].y };
-			Vec2i playerPos = transforms->ToWorld();
-			Vec2i tilePos = playerPos + directionVec;
+
+			float movespeed = 160.0f * it->delta_time;
+
+			Vec2 pos;
+			pos.x = transforms[i].Pos.x + directionVec.x * movespeed;
+			pos.y = transforms[i].Pos.y + directionVec.y * movespeed;
+
+			Vec2i tilePos;
+			tilePos.x = (int)zpl_floor((pos.x + HALF_TILE_SIZE) * INVERSE_TILE_SIZE);
+			tilePos.y = (int)zpl_floor((pos.y + HALF_TILE_SIZE) * INVERSE_TILE_SIZE);
 
 			if (!IsTileInBounds(tilemap, tilePos))
 				continue;
@@ -50,33 +61,25 @@ void MoveSystem(ecs_iter_t* it)
 
 			if (!tile->Flags.Get(TILE_FLAG_SOLID))
 			{
-				zpl_u32 tileHash = zpl_fnv32a(&tilePos, sizeof(Vec2i));
-				ecs_entity_t* occupiedEntity = HashMapGet((*entityMap), tileHash, ecs_entity_t);
-				if (!occupiedEntity)
+
+				if (tilePos != transforms[i].TilePos)
 				{
-					ecs_entity_t entity = it->entities[i];
-					entityMap->Put(tileHash, &entity);
+					zpl_u32 tileHash = HashTile(tilePos);
+					ecs_entity_t* occupiedEntity = HashMapGet(entityMap, tileHash, ecs_entity_t);
+					if (!occupiedEntity)
+					{
+						HashMapSet(entityMap, tileHash, it->entities[i], ecs_entity_t);
 
-					zpl_u32 plyHash = zpl_fnv32a(&playerPos, sizeof(Vec2i));
-					entityMap->Remove(plyHash);
-
-					transforms[i].Pos.x += directionVec.x * TILE_SIZE;
-					transforms[i].Pos.y += directionVec.y * TILE_SIZE;
+						zpl_u32 oldPos = HashTile(transforms[i].TilePos);
+						entityMap->Remove(oldPos);
+					}
+					else
+						continue;
 				}
+
+				transforms[i].Pos = pos;
+				transforms[i].TilePos = tilePos;
 			}
 		}
-	}
-}
-
-void UpdateActions(ecs_iter_t* it)
-{
-	CTransform* transforms = ecs_field(it, CTransform, 1);
-	CMove* moves = ecs_field(it, CMove, 2);
-	CEntityPriorityMap* priorities = ecs_field(it, CEntityPriorityMap, 3);
-	CEntityAction* actions = ecs_field(it, CEntityAction, 4);
-
-	for (int i = 0; i < it->count; ++i)
-	{
-
 	}
 }

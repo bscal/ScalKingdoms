@@ -5,15 +5,7 @@
 struct CTransform
 {
 	Vec2 Pos;
-
-	_FORCE_INLINE_ Vec2i ToWorld() const 
-	{ 
-		return
-		{ 
-			(int)zpl_floor((float)Pos.x * INVERSE_TILE_SIZE),
-			(int)zpl_floor((float)Pos.y * INVERSE_TILE_SIZE)
-		};
-	}
+	Vec2i TilePos;
 };
 
 struct CRender

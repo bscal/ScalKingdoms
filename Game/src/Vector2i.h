@@ -45,6 +45,11 @@ static inline bool operator==(Vector2i left, Vector2i right)
     return left.x == right.x && left.y == right.y;
 }
 
+static inline bool operator!=(Vector2i left, Vector2i right)
+{
+    return left.x != right.x || left.y != right.y;
+}
+
 static inline Vector2i operator+(Vector2i left, Vector2i right)
 {
     return left.Add(right);

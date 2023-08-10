@@ -15,6 +15,10 @@ internal void GameRun();
 internal void GameUpdate();
 internal void GameShutdown();
 internal void InputUpdate();
+
+internal void LoadAssets(GameState* gameState);
+internal void UnloadAssets(GameState* gameState);
+
 internal Vec2i ScreenToTile(Vec2 pos);
 
 ECS_COMPONENT_DECLARE(CTransform);
@@ -33,17 +37,14 @@ GameInitialize()
 	State.Camera.zoom = 1.0f;
 	State.Camera.offset = { (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
 
-	State.TileSpriteSheet = LoadTexture("Game/assets/16x16.bmp");
-	State.EntitySpriteSheet = LoadTexture("Game/assets/SpriteSheet.png");
+	LoadAssets(&State);
 
 	State.EntityMap.Initialize(sizeof(ecs_entity_t), 64, DefaultAllocFunc, DefaultFreeFunc);
 
 	zpl_random_init(&State.Random);
-
-	SpriteMgrInitialize(State.EntitySpriteSheet);
 	Sprite* sprite = SpriteGet(Sprites::PLAYER);
 
-	TileMgrInitialize(&State.TileSpriteSheet);
+	TileMgrInitialize(&State.AssetMgr.TileSpriteSheet);
 
 	TileMapInit(&State, &State.TileMap, { 0, 0, 4, 4 });
 
@@ -129,32 +130,32 @@ void InputUpdate()
 	int8_t moveX = 0;
 	int8_t moveY = 0;
 
-	if (IsKeyPressed(KEY_W))
+	if (IsKeyDown(KEY_W))
 	{
 		movement.x += VEC2_UP.x * DeltaTime * 160;
 		movement.y += VEC2_UP.y * DeltaTime * 160;
 		moveY = -1;
 	}
-	else if (IsKeyPressed(KEY_S))
+	else if (IsKeyDown(KEY_S))
 	{
 		movement.x += VEC2_DOWN.x * DeltaTime * 160;
 		movement.y += VEC2_DOWN.y * DeltaTime * 160;
 		moveY = 1;
 	}
 
-	if (IsKeyPressed(KEY_A))
+	if (IsKeyDown(KEY_A))
 	{
 		movement.x += VEC2_LEFT.x * DeltaTime * 160;
 		movement.y += VEC2_LEFT.y * DeltaTime * 160;
 		moveX = -1;
 	}
-	else if (IsKeyPressed(KEY_D))
+	else if (IsKeyDown(KEY_D))
 	{
 		movement.x += VEC2_RIGHT.x * DeltaTime * 160;
 		movement.y += VEC2_RIGHT.y * DeltaTime * 160;
 		moveX = 1;
 	}
-
+	 
 	ecs_set_ex(State.World, Client.Player, CMove, { moveX, moveY });
 
 	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
@@ -193,7 +194,7 @@ void InputUpdate()
 		Vec2i tile = ScreenToTile(GetMousePosition());
 
 		u32 hash = zpl_fnv32a(&tile, sizeof(Vec2i));
-		ecs_entity_t* entity = HashMapGet(State.EntityMap, hash, ecs_entity_t);
+		ecs_entity_t* entity = HashMapGet(&State.EntityMap, hash, ecs_entity_t);
 		if (entity)
 		{
 			const char* entityInfo = ecs_entity_str(State.World, *entity);
@@ -207,10 +208,23 @@ GameShutdown()
 {
 	TileMapFree(&State.TileMap);
 
-	UnloadTexture(State.TileSpriteSheet);
-	UnloadTexture(State.EntitySpriteSheet);
+	UnloadAssets(&State);
 
 	CloseWindow();
+}
+
+internal void 
+LoadAssets(GameState* gameState)
+{
+	gameState->AssetMgr.TileSpriteSheet = LoadTexture("Game/assets/16x16.bmp");
+	gameState->AssetMgr.EntitySpriteSheet = LoadTexture("Game/assets/SpriteSheet.png");
+}
+
+internal void 
+UnloadAssets(GameState* gameState)
+{
+	UnloadTexture(gameState->AssetMgr.TileSpriteSheet);
+	UnloadTexture(gameState->AssetMgr.EntitySpriteSheet);
 }
 
 internal Vec2i 

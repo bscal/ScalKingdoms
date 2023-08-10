@@ -12,8 +12,10 @@ constexpr static float HASHMAP_LOAD_FACTOR = 0.80f;
 typedef void* (*HashMapAlloc)(size_t, size_t);
 typedef void(*HashMapFree)(void*, size_t);
 
-#define HashMapGet(hashmap, hash, T) ((T*)(hashmap.Get(hash)))
-#define HashMapValuesIndex(hashmap, idx, T) ((T)hashmap->Values[idx * hashmap->Stride])
+#define HashMapGet(hashmap, hash, T) ((T*)((hashmap)->Get(hash)))
+#define HashMapSet(hashmap, hash, value, T) { T tmp = value; (hashmap)->Put(hash, &tmp); }
+#define HashMapSetKey(hashmap, hash, T) ((T*)(hashmap)->PutKey(hash))
+#define HashMapValuesIndex(hashmap, idx, T) ((T)(hashmap)->Values[idx * (hashmap)->Stride])
 
 struct HashBucket
 {
@@ -41,13 +43,15 @@ struct HashMap
 
 	uint32_t Put(uint32_t hash, void* value);
 
+	void* PutKey(uint32_t hash);
+
 	uint32_t Index(uint32_t hash);
 
 	bool Remove(uint64_t hash);
 
 	void ForEach(void(*Fn(uint32_t, void*, void*)), void* stackMemory);
 
-	inline uint8_t* Get(uint32_t hash)
+	_FORCE_INLINE_ uint8_t* Get(uint32_t hash)
 	{
 		uint32_t idx = Index(hash);
 		return (idx == HASHMAP_NOT_FOUND) ? nullptr : &Values[idx];

@@ -39,14 +39,12 @@ struct Chunk
 	Vec2 CenterCoord;
 	bool IsDirty;				// Should Redraw chunk
 	bool IsGenerated;
-	bool IsWaitingToLoad;		// Waits for render texture from pool
+	bool IsLoaded;
 	TileRenderData TileRenderDataArray[CHUNK_AREA];
 	Tile TileArray[CHUNK_AREA];
 };
 
 ZPL_TABLE_DECLARE(, ChunkTable, chunk_, Chunk*);
-
-#define Vec2iHash(vec) zpl_fnv64a(&vec, sizeof(Vec2i));
 
 struct TileMap
 {
@@ -54,7 +52,7 @@ struct TileMap
 	zpl_thread ChunkThread;
 	ChunkTable Chunks;
 	Rectangle Dimensions;
-	zpl_array(Vec2) TexturePool;
+	zpl_array(Chunk*) ChunkPool;
 };
 
 void TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions);

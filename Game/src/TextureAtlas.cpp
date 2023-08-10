@@ -77,7 +77,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 		line += 7;
 
 		zpl_u32 hash = HashString(name, strlen(name));
-		atlas.NameToIndex.Put(hash, &entryCounter);
+		HashMapSet(&atlas.NameToIndex, hash, entryCounter, u16);
 
 		int err;
 
@@ -150,7 +150,7 @@ Rectangle SpriteAtlasGet(SpriteAtlas* atlas, const char* name)
 	Rectangle result = {};
 
 	zpl_u32 hash = HashString(name, strlen(name));
-	uint16_t* idx = HashMapGet(atlas->NameToIndex, hash, uint16_t);
+	uint16_t* idx = HashMapGet(&atlas->NameToIndex, hash, uint16_t);
 	if (idx)
 	{
 		Rect16 textRect = atlas->Rects[*idx];

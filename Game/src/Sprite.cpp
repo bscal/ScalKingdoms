@@ -5,16 +5,10 @@
 
 struct SpriteMgr
 {
-	Texture2D SpriteSheet;
 	zpl_array(Sprite) Sprites;
 };
 
 global_var SpriteMgr SpriteManager;
-
-void SpriteMgrInitialize(Texture2D spriteSheetTexture)
-{
-	SpriteManager.SpriteSheet = spriteSheetTexture;
-}
 
 uint16_t SpriteRegister(SpriteRect rect, Vector2 origin)
 {
@@ -41,10 +35,4 @@ Sprite*
 SpriteGet(uint16_t id)
 {
 	return &SpriteManager.Sprites[id];
-}
-
-Texture2D*
-SpriteGetTexture()
-{
-	return &SpriteManager.SpriteSheet;
 }

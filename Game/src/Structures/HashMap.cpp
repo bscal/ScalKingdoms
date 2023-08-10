@@ -159,6 +159,102 @@ uint32_t HashMap::Put(uint32_t hash, void* value)
 	return insertedIndex;
 }
 
+void* HashMap::PutKey(uint32_t hash)
+{
+	if (Count >= MaxCount)
+	{
+		Reserve(Capacity * HASHMAP_DEFAULT_RESIZE);
+	}
+
+	SASSERT(Keys);
+
+	void* swapMemory = _malloca(Stride);
+	if (!swapMemory)
+	{
+		SERR("Could not allocate swap memory on stack!");
+		return nullptr;
+	}
+	uint32_t swapIndex = HASHMAP_NOT_FOUND;
+	uint32_t insertedIndex = HASHMAP_NOT_FOUND;
+	uint32_t swapHash = hash;
+	uint32_t probeLength = 0;
+
+	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	while (true)
+	{
+		HashBucket* bucket = &Keys[idx];
+		if (!bucket->IsUsed) // Bucket is not used
+		{
+			bucket->Hash = swapHash;
+			bucket->ProbeLength = probeLength;
+			bucket->IsUsed = 1;
+
+			// Don't swap anything if we insert into empty bucket
+			if (swapIndex != HASHMAP_NOT_FOUND)
+			{
+				uint8_t* swapValue = &Values[swapIndex];
+				uint8_t* currentValue = &Values[idx];
+				for (uint32_t i = 0; i < Stride; ++i)
+				{
+					uint8_t tmp = currentValue[i];
+					currentValue[i] = swapValue[i];
+					swapValue[i] = tmp;
+				}
+			}
+
+			++Count;
+
+			if (insertedIndex == HASHMAP_NOT_FOUND)
+				insertedIndex = idx;
+
+			break;
+		}
+		else
+		{
+			if (bucket->Hash == hash)
+				break;
+
+			if (probeLength > bucket->ProbeLength)
+			{
+				if (insertedIndex == UINT32_MAX)
+					insertedIndex = idx;
+
+				{
+					HashMapSwap(bucket->ProbeLength, probeLength, uint32_t);
+				}
+				{
+					HashMapSwap(bucket->Hash, swapHash, uint32_t);
+				}
+
+				// We are not copying into insertIdx, so we use that bucket,
+				// to swap values. First collision does not need to be
+				// swapped. 
+				if (swapIndex != HASHMAP_NOT_FOUND)
+				{
+					uint8_t* swapValue = &Values[swapIndex];
+					uint8_t* currentValue = &Values[idx];
+					for (uint32_t i = 0; i < Stride; ++i)
+					{
+						uint8_t tmp = currentValue[i];
+						currentValue[i] = swapValue[i];
+						swapValue[i] = tmp;
+					}
+				}
+				else 
+					swapIndex = idx;
+			}
+
+			++probeLength;
+			++idx;
+			if (idx == Capacity)
+				idx = 0;
+		}
+	}
+
+	SClear(&Values[insertedIndex], Stride);
+	return &Values[insertedIndex];
+}
+
 uint32_t HashMap::Index(uint32_t hash)
 {
 	if (!Keys || Count == 0)
@@ -213,7 +309,7 @@ bool HashMap::Remove(uint64_t hash)
 					if (!nextBucket->IsUsed || nextBucket->ProbeLength == 0) // No more entires to move
 					{
 						Keys[lastIdx].ProbeLength = 0;
-						Keys[lastIdx].IsUsed = true;
+						Keys[lastIdx].IsUsed = 0;
 						--Count;
 						return true;
 					}

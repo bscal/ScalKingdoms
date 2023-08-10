@@ -6,13 +6,15 @@ struct ActionType;
 struct Action;
 struct CEntityAction;
 
-typedef void(*PreAction)(ecs_entity_t, ActionType*, CEntityAction*);
-typedef void(*StartAction)(ecs_entity_t, ActionType*, CEntityAction*);
-typedef void(*UpdateAction)(ecs_entity_t, ActionType*, CEntityAction*);
-typedef void(*EndAction)(ecs_entity_t, ActionType*, CEntityAction*);
+typedef void(*InitAction)(Action*, ecs_entity_t, u16);
+typedef bool(*PreAction)(ecs_entity_t, ActionType*, CEntityAction*);
+typedef bool(*StartAction)(ecs_entity_t, ActionType*, CEntityAction*);
+typedef bool(*UpdateAction)(ecs_entity_t, ActionType*, CEntityAction*);
+typedef u16(*EndAction)(ecs_entity_t, ActionType*, CEntityAction*);
 
 struct ActionType
 {
+	InitAction OnInitAction;
 	PreAction OnPreAction;
 	StartAction OnStartAction;
 	UpdateAction OnUpdateAction;
@@ -28,14 +30,14 @@ struct Action
 	u16 Progress;
 	union
 	{
-		struct Move
+		struct
 		{
 			Vec2i Pos;
-		};
-		struct MeleeAtk
+		} Move;
+		struct
 		{
 			ecs_entity_t Entity;
-		};
+		} AtkMelee;
 	};
 };
 

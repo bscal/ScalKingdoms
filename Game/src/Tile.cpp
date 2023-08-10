@@ -2,8 +2,8 @@
 
 struct TileMgr
 {
-	zpl_array(TileInfo) TileDefinitions;
 	Texture2D* TileSetTexture;
+	zpl_array(TileInfo) TileDefinitions;
 };
 
 global_var TileMgr TileManager;

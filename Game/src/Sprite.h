@@ -21,12 +21,9 @@ struct Sprite
     }
 };
 
-void SpriteMgrInitialize(Texture2D spriteSheetTexture);
-
 uint16_t SpriteRegister(SpriteRect rect, Vector2 origin);
 
 Sprite* SpriteGet(uint16_t id);
-Texture2D* SpriteGetTexture();
 
 namespace Sprites
 {

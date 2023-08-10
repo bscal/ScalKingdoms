@@ -12,7 +12,10 @@
 
 #include <math.h>
 
+#define Vec2iHash(vec) zpl_fnv64a(&vec, sizeof(Vec2i));
+
 constexpr global_var int MAX_CHUNKS_TO_PROCESS = 12;
+
 struct ChunkLoaderData
 {
 	Chunk* ChunkPtr;
@@ -58,15 +61,19 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 
 	tilemap->Dimensions = dimensions;
 
-	zpl_array_init_reserve(tilemap->TexturePool, zpl_heap_allocator(), VIEW_DISTANCE_TOTAL_CHUNKS);
-	zpl_array_resize(tilemap->TexturePool, VIEW_DISTANCE_TOTAL_CHUNKS);
-
 	Vec2i reso = { VIEW_DISTANCE_TOTAL_CHUNKS * CHUNK_SIZE_PIXELS, CHUNK_SIZE_PIXELS };
 	tilemap->TileMapTexture = LoadRenderTextureEx(reso, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, false);
 
-	for (int i = 0; i < zpl_array_count(tilemap->TexturePool); ++i)
+	zpl_array_init_reserve(tilemap->ChunkPool, zpl_heap_allocator(), VIEW_DISTANCE_TOTAL_CHUNKS);
+
+	for (int i = 0; i < zpl_array_capacity(tilemap->ChunkPool); ++i)
 	{
-		tilemap->TexturePool[i] = { (float)i * CHUNK_SIZE_PIXELS, 0 };
+		Chunk* chunk = (Chunk*)zpl_alloc(zpl_heap_allocator(), sizeof(Chunk));
+		SClear(chunk, sizeof(Chunk));
+
+		chunk->TextureDrawPosition = { (float)i * CHUNK_SIZE_PIXELS, 0 };
+
+		zpl_array_append(tilemap->ChunkPool, chunk);
 	}
 
 	chunk_init(&tilemap->Chunks, zpl_heap_allocator());
@@ -108,14 +115,12 @@ TileMapFree(TileMap* tilemap)
 	for (zpl_isize i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
 	{
 		Chunk* chunk = tilemap->Chunks.entries[i].value;
-		// TODO: ? Chunk is unloaded here since it both free's the chunk and
-		// appends the render texture to the pool. Though some chunk unloading
-		// should be done on the thread. Like, serialization.
 		ChunkUnload(tilemap, chunk);
+		zpl_free(zpl_heap_allocator(), chunk);
 	}
 	chunk_destroy(&tilemap->Chunks);
 
-	zpl_array_free(tilemap->TexturePool);
+	zpl_array_free(tilemap->ChunkPool);
 
 	UnloadRenderTexture(tilemap->TileMapTexture);
 }
@@ -136,7 +141,6 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 		for (zpl_isize i = 0; i < zpl_array_count(ChunkLoader.ChunkToRemove); ++i)
 		{
 			chunk_remove(&tilemap->Chunks, ChunkLoader.ChunkToRemove[i].Hash);
-			ChunkUnload(tilemap, ChunkLoader.ChunkToRemove[i].ChunkPtr);
 		}
 		zpl_array_clear(ChunkLoader.ChunkToRemove);
 
@@ -163,25 +167,16 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 	// handles dirty chunks, and updates chunks.
 	for (zpl_isize i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
 	{
-		zpl_u64 key = tilemap->Chunks.entries[i].key;
 		Chunk* chunk = tilemap->Chunks.entries[i].value;
-		if (chunk->IsWaitingToLoad && zpl_array_count(tilemap->TexturePool) > 0)
-		{
-			chunk->IsWaitingToLoad = false;
-			chunk->IsDirty = true;
 
-			size_t idx = (zpl_array_count(tilemap->TexturePool) - 1);
-			chunk->TextureDrawPosition = tilemap->TexturePool[idx];
-
-			zpl_array_pop(tilemap->TexturePool);
-		}
-
-		if (chunk->IsDirty && !chunk->IsWaitingToLoad)
+		if (chunk->IsDirty)
 		{
 			ChunkBake(gameState, chunk);
 		}
-
-		ChunkUpdate(gameState, tilemap, chunk);
+		else
+		{
+			ChunkUpdate(gameState, tilemap, chunk);
+		}
 	}
 
 	EndTextureMode();
@@ -221,9 +216,10 @@ ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
 	if (!IsChunkInBounds(tilemap, coord))
 		return nullptr;
 
-	Chunk* chunk = (Chunk*)SAlloc(SPersistent, sizeof(Chunk));
+	Chunk* chunk = zpl_array_back(tilemap->ChunkPool);
+	zpl_array_pop(tilemap->ChunkPool);
+
 	SASSERT(chunk);
-	SClear(chunk, sizeof(Chunk));
 
 	chunk->Coord = coord;
 	chunk->BoundingBox.x = (float)coord.x * CHUNK_SIZE_PIXELS;
@@ -232,8 +228,8 @@ ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
 	chunk->BoundingBox.height = CHUNK_SIZE_PIXELS;
 	chunk->CenterCoord.x = (float)coord.x * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
 	chunk->CenterCoord.y = (float)coord.y * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
-	chunk->IsWaitingToLoad = true;
 	chunk->IsDirty = true;
+	chunk->IsLoaded = true;
 
 	ChunkGenerate(gameState, tilemap, chunk);
 
@@ -245,14 +241,14 @@ ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
 internal void
 ChunkUnload(TileMap* tilemap, Chunk* chunk)
 {
+	SASSERT(tilemap);
 	SASSERT(chunk);
+
+	chunk->IsLoaded = false;
 
 	SLOG_DEBUG("Chunk unloaded. %s", FMT_VEC2I(chunk->Coord));
 
-	if (!chunk->IsWaitingToLoad)
-		zpl_array_append(tilemap->TexturePool, chunk->TextureDrawPosition);
-
-	zpl_free(zpl_heap_allocator(), chunk);
+	zpl_array_append(tilemap->ChunkPool, chunk);
 }
 
 internal void
@@ -477,6 +473,8 @@ ChunkThreadFunc(zpl_thread* thread)
 			float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
 			if (distance > VIEW_DISTANCE_SQR)
 			{
+				ChunkUnload(state->Tilemap, chunk);
+
 				ChunkLoaderData data;
 				data.ChunkPtr = chunk;
 				data.Hash = key;
