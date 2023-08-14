@@ -1,5 +1,6 @@
 #include "TextureAtlas.h"
 
+#include "Memory.h"
 #include "GameState.h"
 #include "Utils.h"
 
@@ -26,9 +27,9 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 	int count = 0;
 	int bufferSize = Kilobytes(10);
-	char* buffer = (char*)SAllocTemp(bufferSize);
+	char* buffer = (char*)AllocTempAlign(bufferSize, 16);
 	int splitBufferSize = Kilobytes(1);
-	char** split = (char**)SAllocTemp(splitBufferSize * sizeof(char*));
+	char** split = (char**)AllocTempAlign(splitBufferSize * sizeof(char*), 16);
 	TextSplitBuffered(atlasData, '\n', &count, buffer, bufferSize, split, splitBufferSize);
 
 	// 1st line empty

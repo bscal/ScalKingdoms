@@ -1,6 +1,9 @@
 #define ZPL_IMPL
 #include <zpl/zpl.h>
 
+#define FNL_IMPL
+#include <FastNoiseLite/FastNoiseLite.h>
+
 #include "GameEntry.h"
 
 int

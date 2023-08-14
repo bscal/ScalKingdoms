@@ -1,5 +1,6 @@
 #include "TileMap.h"
 
+#include "Memory.h"
 #include "GameState.h"
 #include "RenderUtils.h"
 #include "Tile.h"
@@ -7,35 +8,11 @@
 
 #include <raylib/src/raymath.h>
 
-#define FNL_IMPL
-#include <FastNoiseLite/FastNoiseLite.h>
-
 #include <math.h>
 
 #define Vec2iHash(vec) zpl_fnv64a(&vec, sizeof(Vec2i));
 
 constexpr global_var int MAX_CHUNKS_TO_PROCESS = 12;
-
-struct ChunkLoaderData
-{
-	Chunk* ChunkPtr;
-	zpl_u64 Hash;
-};
-
-struct ChunkLoaderState
-{
-	fnl_state Noise;
-
-	zpl_semaphore Signal;
-	zpl_array(ChunkLoaderData) ChunksToAdd;
-	zpl_array(ChunkLoaderData) ChunkToRemove;
-	TileMap* Tilemap;
-	Vec2 TargetPosition;
-	bool ShouldShutdown;
-	bool ShouldWork;
-};
-
-global_var ChunkLoaderState ChunkLoader;
 
 ZPL_TABLE_DEFINE(ChunkTable, chunk_, Chunk*);
 
@@ -64,16 +41,16 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	Vec2i reso = { VIEW_DISTANCE_TOTAL_CHUNKS * CHUNK_SIZE_PIXELS, CHUNK_SIZE_PIXELS };
 	tilemap->TileMapTexture = LoadRenderTextureEx(reso, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, false);
 
-	zpl_array_init_reserve(tilemap->ChunkPool, zpl_heap_allocator(), VIEW_DISTANCE_TOTAL_CHUNKS);
+	zpl_array_init_reserve(tilemap->ChunkLoader.ChunkPool, zpl_heap_allocator(), VIEW_DISTANCE_TOTAL_CHUNKS);
 
-	for (int i = 0; i < zpl_array_capacity(tilemap->ChunkPool); ++i)
+	for (int i = 0; i < zpl_array_capacity(tilemap->ChunkLoader.ChunkPool); ++i)
 	{
 		Chunk* chunk = (Chunk*)zpl_alloc(zpl_heap_allocator(), sizeof(Chunk));
 		SClear(chunk, sizeof(Chunk));
 
 		chunk->TextureDrawPosition = { (float)i * CHUNK_SIZE_PIXELS, 0 };
 
-		zpl_array_append(tilemap->ChunkPool, chunk);
+		zpl_array_append(tilemap->ChunkLoader.ChunkPool, chunk);
 	}
 
 	chunk_init(&tilemap->Chunks, zpl_heap_allocator());
@@ -81,16 +58,15 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	SLOG_INFO("Starting chunk thread...");
 
 	// Init noise
-	ChunkLoader.Noise = fnlCreateState();
-	ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
+	tilemap->ChunkLoader.Noise = fnlCreateState();
+	tilemap->ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
 
-	zpl_semaphore_init(&ChunkLoader.Signal);
-	ChunkLoader.Tilemap = tilemap;
-	zpl_array_init_reserve(ChunkLoader.ChunksToAdd, zpl_heap_allocator(), MAX_CHUNKS_TO_PROCESS);
-	zpl_array_init_reserve(ChunkLoader.ChunkToRemove, zpl_heap_allocator(), MAX_CHUNKS_TO_PROCESS);
+	zpl_semaphore_init(&tilemap->ChunkLoader.Signal);
+	zpl_array_init_reserve(tilemap->ChunkLoader.ChunksToAdd, zpl_heap_allocator(), MAX_CHUNKS_TO_PROCESS);
+	zpl_array_init_reserve(tilemap->ChunkLoader.ChunkToRemove, zpl_heap_allocator(), MAX_CHUNKS_TO_PROCESS);
 
 	zpl_thread_init_nowait(&tilemap->ChunkThread);
-	zpl_thread_start(&tilemap->ChunkThread, ChunkThreadFunc, &ChunkLoader);
+	zpl_thread_start(&tilemap->ChunkThread, ChunkThreadFunc, tilemap);
 
 	SLOG_INFO("Chunk thread started!");
 
@@ -102,14 +78,14 @@ TileMapFree(TileMap* tilemap)
 {
 	SLOG_INFO("Waiting for chunk thread to shutdown...");
 	// Waits for thread to shutdown;
-	ChunkLoader.ShouldShutdown = true;
-	zpl_semaphore_post(&ChunkLoader.Signal, 1);
+	tilemap->ChunkLoader.ShouldShutdown = true;
+	zpl_semaphore_post(&tilemap->ChunkLoader.Signal, 1);
 	while (zpl_thread_is_running(&tilemap->ChunkThread))
 	{
 		zpl_sleep_ms(1);
 	}
 	zpl_thread_destroy(&tilemap->ChunkThread);
-	zpl_semaphore_destroy(&ChunkLoader.Signal);
+	zpl_semaphore_destroy(&tilemap->ChunkLoader.Signal);
 	SLOG_INFO("Chunk thread shutdown!");
 
 	for (zpl_isize i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
@@ -120,7 +96,7 @@ TileMapFree(TileMap* tilemap)
 	}
 	chunk_destroy(&tilemap->Chunks);
 
-	zpl_array_free(tilemap->ChunkPool);
+	zpl_array_free(tilemap->ChunkLoader.ChunkPool);
 
 	UnloadRenderTexture(tilemap->TileMapTexture);
 }
@@ -128,30 +104,31 @@ TileMapFree(TileMap* tilemap)
 void 
 TileMapUpdate(GameState* gameState, TileMap* tilemap)
 {
-	ChunkLoader.TargetPosition = gameState->Camera.target;
+	ChunkLoaderState* chunkLoader = &tilemap->ChunkLoader;
+	chunkLoader->TargetPosition = gameState->Camera.target;
 
 	// Note: Chunk thread will set to false when it finishes it work,
 	// I think this is all safe. But I didn't wanted to make sure,
 	// if the chunk thread took multiple frames to process, it
 	// wouldn't be reading from it.
-	if (!ChunkLoader.ShouldWork)
+	if (!chunkLoader->ShouldWork)
 	{
-		ChunkLoader.ShouldWork = true;
+		chunkLoader->ShouldWork = true;
 		// Remove unused chunks from map
-		for (zpl_isize i = 0; i < zpl_array_count(ChunkLoader.ChunkToRemove); ++i)
+		for (zpl_isize i = 0; i < zpl_array_count(chunkLoader->ChunkToRemove); ++i)
 		{
-			chunk_remove(&tilemap->Chunks, ChunkLoader.ChunkToRemove[i].Hash);
+			chunk_remove(&tilemap->Chunks, chunkLoader->ChunkToRemove[i].Hash);
 		}
-		zpl_array_clear(ChunkLoader.ChunkToRemove);
+		zpl_array_clear(chunkLoader->ChunkToRemove);
 
 		// Remove unused chunks from map
-		for (zpl_isize i = 0; i < zpl_array_count(ChunkLoader.ChunksToAdd); ++i)
+		for (zpl_isize i = 0; i < zpl_array_count(chunkLoader->ChunksToAdd); ++i)
 		{
-			chunk_set(&tilemap->Chunks, ChunkLoader.ChunksToAdd[i].Hash, ChunkLoader.ChunksToAdd[i].ChunkPtr);
+			chunk_set(&tilemap->Chunks, chunkLoader->ChunksToAdd[i].Hash, chunkLoader->ChunksToAdd[i].ChunkPtr);
 		}
-		zpl_array_clear(ChunkLoader.ChunksToAdd);
+		zpl_array_clear(chunkLoader->ChunksToAdd);
 
-		zpl_semaphore_post(&ChunkLoader.Signal, 1);
+		zpl_semaphore_post(&chunkLoader->Signal, 1);
 	}
 	
 
@@ -216,8 +193,8 @@ ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
 	if (!IsChunkInBounds(tilemap, coord))
 		return nullptr;
 
-	Chunk* chunk = zpl_array_back(tilemap->ChunkPool);
-	zpl_array_pop(tilemap->ChunkPool);
+	Chunk* chunk = zpl_array_back(tilemap->ChunkLoader.ChunkPool);
+	zpl_array_pop(tilemap->ChunkLoader.ChunkPool);
 
 	SASSERT(chunk);
 
@@ -248,7 +225,7 @@ ChunkUnload(TileMap* tilemap, Chunk* chunk)
 
 	SLOG_DEBUG("Chunk unloaded. %s", FMT_VEC2I(chunk->Coord));
 
-	zpl_array_append(tilemap->ChunkPool, chunk);
+	zpl_array_append(tilemap->ChunkLoader.ChunkPool, chunk);
 }
 
 internal void
@@ -291,7 +268,7 @@ internal void
 ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 {
 	zpl_array(float) noiseValues;
-	zpl_array_init_reserve(noiseValues, gameState->FrameAllocator, CHUNK_AREA);
+	zpl_array_init_reserve(noiseValues, GetFrameAllocator(), CHUNK_AREA);
 
 	float startX = (float)chunk->Coord.x * CHUNK_SIZE;
 	float startY = (float)chunk->Coord.y * CHUNK_SIZE;
@@ -305,7 +282,7 @@ ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 
 			int localIdx = x + y * CHUNK_SIZE;
 
-			float height = fnlGetNoise2D(&ChunkLoader.Noise, startX + x, startY + y);
+			float height = fnlGetNoise2D(&tilemap->ChunkLoader.Noise, startX + x, startY + y);
 
 			Tile tile = {};
 			if (height >= .25f)
@@ -453,32 +430,33 @@ bool IsTileInBounds(TileMap* tilemap, Vec2i coord)
 internal zpl_isize
 ChunkThreadFunc(zpl_thread* thread)
 {
-	ChunkLoaderState* state = (ChunkLoaderState*)thread->user_data;
+	TileMap* tilemap = (TileMap*)thread->user_data;
+	ChunkLoaderState* chunkLoader = &tilemap->ChunkLoader;
 	while (true)
 	{
-		zpl_semaphore_wait(&state->Signal);
+		zpl_semaphore_wait(&chunkLoader->Signal);
 
-		if (state->ShouldShutdown)
+		if (chunkLoader->ShouldShutdown)
 			break;
 
-		Vec2 position = Vector2Multiply(state->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
+		Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
 
-		for (zpl_isize i = 0; i < zpl_array_count(state->Tilemap->Chunks.entries); ++i)
+		for (zpl_isize i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
 		{
-			if (zpl_array_count(state->ChunkToRemove) >= MAX_CHUNKS_TO_PROCESS)
+			if (zpl_array_count(chunkLoader->ChunkToRemove) >= MAX_CHUNKS_TO_PROCESS)
 				break;
 
-			zpl_u64 key = state->Tilemap->Chunks.entries[i].key;
-			Chunk* chunk = state->Tilemap->Chunks.entries[i].value;
+			zpl_u64 key = tilemap->Chunks.entries[i].key;
+			Chunk* chunk = tilemap->Chunks.entries[i].value;
 			float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
 			if (distance > VIEW_DISTANCE_SQR)
 			{
-				ChunkUnload(state->Tilemap, chunk);
+				ChunkUnload(tilemap, chunk);
 
 				ChunkLoaderData data;
 				data.ChunkPtr = chunk;
 				data.Hash = key;
-				zpl_array_append(state->ChunkToRemove, data);
+				zpl_array_append(chunkLoader->ChunkToRemove, data);
 			}
 		}
 
@@ -493,7 +471,7 @@ ChunkThreadFunc(zpl_thread* thread)
 		{
 			for (int x = start.x; x < end.x; ++x)
 			{
-				if (zpl_array_count(state->ChunksToAdd) >= MAX_CHUNKS_TO_PROCESS)
+				if (zpl_array_count(chunkLoader->ChunksToAdd) >= MAX_CHUNKS_TO_PROCESS)
 					break;
 
 				Vec2i coord = { x, y };
@@ -504,24 +482,24 @@ ChunkThreadFunc(zpl_thread* thread)
 				if (distance < VIEW_DISTANCE_SQR)
 				{
 					zpl_u64 hash = Vec2iHash(coord);
-					zpl_isize slot = chunk_slot(&state->Tilemap->Chunks, hash);
+					zpl_isize slot = chunk_slot(&tilemap->Chunks, hash);
 					if (slot == -1)
 					{
 						ChunkLoaderData data;
-						data.ChunkPtr = ChunkLoad(GetGameState(), state->Tilemap, coord);
+						data.ChunkPtr = ChunkLoad(GetGameState(), tilemap, coord);
 						data.Hash = hash;
 
 						if (data.ChunkPtr == nullptr)
 							continue;
 
-						zpl_array_append(state->ChunksToAdd, data);
+						zpl_array_append(chunkLoader->ChunksToAdd, data);
 					}
 
 				}
 			}
 		}
 
-		state->ShouldWork = false;
+		chunkLoader->ShouldWork = false;
 	}
 	return 0;
 }

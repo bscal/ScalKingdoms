@@ -251,7 +251,7 @@ void* HashMap::PutKey(uint32_t hash)
 		}
 	}
 
-	SClear(&Values[insertedIndex], Stride);
+	memset(&Values[insertedIndex], 0, Stride);
 	return &Values[insertedIndex];
 }
 

@@ -98,3 +98,5 @@ STR2INT Str2UInt(u32* out, const char* s, int base);
 int FastAtoi(const char* str);
 
 Color IntToColor(int color);
+
+zpl_list ListFindVec2i(zpl_list* list, Vec2i value);

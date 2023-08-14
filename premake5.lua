@@ -27,9 +27,9 @@ newoption
     default = "opengl33"
 }
 
-filter {}
-
 include "Game/vendor/raylib_premake5.lua"
+
+filter {}
 
 local directories = {
     "./",
@@ -83,6 +83,8 @@ project "Game"
     {
         SrcDir .. "**.cpp",
         SrcDir .. "**.h",
+        "Game/vendor/bscal-sx/*.cpp",
+        "Game/vendor/bscal-sx/*.h",
         "Game/vendor/flecs/flecs.c"
     }
 
@@ -95,13 +97,11 @@ project "Game"
     {
         "Game/src",
         "Game/vendor",
-        "D:/dev-libs/sx/include",
     }
 
     libdirs
     {
         "%{wks.location}/bin/" .. outputdir .. "/raylib/",
-        "D:/dev-libs/sx/build/Debug"
     }
 
     buildoptions
@@ -111,7 +111,6 @@ project "Game"
 
     links
     {
-        "sx"
     }
 
     dependson
@@ -143,6 +142,6 @@ project "Game"
 
     filter "system:Unix"
         defines "SCAL_PLATFORM_LINUX"
-        links { "raylib.o" }
+        links { "raylib.so" }
 
     filter {}

@@ -18,6 +18,7 @@ struct CRender
 
 struct CMove
 {
+	Vec2i Target;
 	int8_t x; // In tiles
 	int8_t y; // In tiles
 };

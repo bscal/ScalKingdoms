@@ -1,6 +1,7 @@
 #include "GameState.h"
 #include "GameEntry.h"
 
+#include "Memory.h"
 #include "Tile.h"
 #include "Sprite.h"
 #include "Components.h"
@@ -27,8 +28,10 @@ ECS_COMPONENT_DECLARE(CMove);
 int 
 GameInitialize()
 {
-	zpl_stack_memory_init(&State.FrameStack, zpl_heap_allocator(), Megabytes(4));
-	State.FrameAllocator = zpl_stack_allocator(&State.FrameStack);
+	InitMemory(Megabytes(4));
+
+	//State.PathfindingNodesOpen = sx_bheap_create(sx_alloc_malloc(), 512);
+	//State.PathfindingNodesClosed = sx_bheap_create(sx_alloc_malloc(), 512);
 
 	InitWindow(WIDTH, HEIGHT, TITLE);
 	SetTraceLogLevel(LOG_ALL);
@@ -64,6 +67,7 @@ GameInitialize()
 	ecs_add(State.World, Client.Player, CMove);
 	
 	ecs_set_ex(State.World, Client.Player, CTransform, {});
+
 	CRender render = {};
 	render.Color = WHITE;
 	render.Width = TILE_SIZE;
@@ -85,7 +89,7 @@ GameRun()
 {
 	while (!WindowShouldClose())
 	{
-		zpl_free_all(State.FrameAllocator);
+		FrameFree();
 
 		// Update
 
@@ -155,8 +159,9 @@ void InputUpdate()
 		movement.y += VEC2_RIGHT.y * DeltaTime * 160;
 		moveX = 1;
 	}
-	 
-	ecs_set_ex(State.World, Client.Player, CMove, { moveX, moveY });
+	
+	CMove move = { moveX, moveY };
+	ecs_set(State.World, Client.Player, CMove, move);
 
 	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
 	State.Camera.target = transform->Pos;

@@ -17,8 +17,6 @@ struct GameState
 {
 	AssetMgr AssetMgr;
 
-	zpl_stack_memory FrameStack;
-	zpl_allocator FrameAllocator;
 	TileMap TileMap;
 
 	Camera2D Camera;

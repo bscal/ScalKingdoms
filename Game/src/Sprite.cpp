@@ -13,7 +13,7 @@ global_var SpriteMgr SpriteManager;
 uint16_t SpriteRegister(SpriteRect rect, Vector2 origin)
 {
 	if (!SpriteManager.Sprites)
-		zpl_array_init_reserve(SpriteManager.Sprites, SPersistent, 64);
+		zpl_array_init_reserve(SpriteManager.Sprites, zpl_heap_allocator(), 64);
 
 	zpl_isize id = zpl_array_count(SpriteManager.Sprites);
 	

@@ -4,6 +4,8 @@
 
 #include "Structures/BitArray.h"
 
+#include <FastNoiseLite/FastNoiseLite.h>
+
 struct GameState;
 
 constexpr global_var int LAYER_BACKGROUND = 0;
@@ -44,15 +46,34 @@ struct Chunk
 	Tile TileArray[CHUNK_AREA];
 };
 
+struct ChunkLoaderData
+{
+	Chunk* ChunkPtr;
+	zpl_u64 Hash;
+};
+
+struct ChunkLoaderState
+{
+	fnl_state Noise;
+
+	zpl_semaphore Signal;
+	zpl_array(Chunk*) ChunkPool;
+	zpl_array(ChunkLoaderData) ChunksToAdd;
+	zpl_array(ChunkLoaderData) ChunkToRemove;
+	Vec2 TargetPosition;
+	bool ShouldShutdown;
+	bool ShouldWork;
+};
+
 ZPL_TABLE_DECLARE(, ChunkTable, chunk_, Chunk*);
 
 struct TileMap
 {
 	RenderTexture2D TileMapTexture;
-	zpl_thread ChunkThread;
 	ChunkTable Chunks;
 	Rectangle Dimensions;
-	zpl_array(Chunk*) ChunkPool;
+	zpl_thread ChunkThread;
+	ChunkLoaderState ChunkLoader;
 };
 
 void TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions);

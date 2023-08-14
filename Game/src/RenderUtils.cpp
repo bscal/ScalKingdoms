@@ -1,5 +1,6 @@
 #include "RenderUtils.h"
 
+#include "Memory.h"
 #include "GameState.h"
 #include "Utils.h"
 
@@ -447,7 +448,7 @@ const char*
 NewRichTextColor(int color)
 {
 	char* buffer = {};
-	zpl_alloc_str_len(GetGameState()->FrameAllocator, buffer, RICH_TEXT_MAX_LENGTH + 2);
+	zpl_alloc_str_len(GetFrameAllocator(), buffer, RICH_TEXT_MAX_LENGTH + 2);
 	SASSERT(buffer);
 	SClear(buffer, RICH_TEXT_MAX_LENGTH + 2);
 

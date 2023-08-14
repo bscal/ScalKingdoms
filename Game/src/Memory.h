@@ -2,14 +2,27 @@
 
 #include "Core.h"
 
-#define SPersistent zpl_heap_allocator()
-#define STemp state->FrameAllocator
+//#define AllocAlign(allocator, size, oldSize, align) \
+//	allocator(nullptr, size, 0, align, file, func, line)
+//#define ReallocAlign(allocator, ptr, newSize, oldSize, align) \
+//	allocator(ptr, newSize, oldSize, align, file, func, line)
+//#define FreeAlign(allocator, ptr, align) \
+//	allocator(ptr, 0, 0, align, file, func, line)
 
-#define SAlloc(allocator, size) zpl_alloc(allocator, size)
-#define SFree(allocator, ptr) zpl_free(allocator, ptr)
+//typedef void* (*Allocator)(void* ptr, size_t newSize, size_t oldSize, u32 align, const char* file, const char* func, u32 line);
 
-#define SAllocTemp(size) SAlloc(GetGameState()->FrameAllocator, size)
-#define SAllocHeap(size) SAlloc(zpl_heap_allocator(), size)
+void* FrameMalloc(size_t newSize, u32 align);
+void* FrameRealloc(void* ptr, size_t newSize, size_t oldSize, u32 align);
+
+#define AllocTempAlign(size, align) \
+	FrameMalloc(size, align)
+#define ReallocTempAlign(allocator, ptr, newSize, oldSize, align) \
+	FrameRealloc(ptr, newSize, oldSize, align)
+
+void InitMemory(size_t frameSize);
+void FrameFree();
+
+zpl_allocator GetFrameAllocator();
 
 #define SClear(ptr, size) zpl_memset(ptr, 0, size)
 #define SCopy(dst, src, sz) zpl_memcopy(dst, src, sz)

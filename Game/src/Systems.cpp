@@ -43,6 +43,9 @@ void MoveSystem(ecs_iter_t* it)
 		{
 			Vec2i directionVec = { (int)moves[i].x, (int)moves[i].y };
 
+			moves[i].x = 0;
+			moves[i].y = 0;
+
 			float movespeed = 160.0f * it->delta_time;
 
 			Vec2 pos;
@@ -83,3 +86,5 @@ void MoveSystem(ecs_iter_t* it)
 		}
 	}
 }
+
+
