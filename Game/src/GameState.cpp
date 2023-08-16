@@ -7,6 +7,7 @@
 #include "Components.h"
 #include "Systems.h"
 
+
 #include <raylib/src/raymath.h>
 
 global_var struct GameState State;
@@ -28,7 +29,7 @@ ECS_COMPONENT_DECLARE(CMove);
 int 
 GameInitialize()
 {
-	InitMemory(Megabytes(4));
+	zpl_arena_init_from_allocator(&State.GameMemory, zpl_heap_allocator(), Megabytes(8));
 
 	//State.PathfindingNodesOpen = sx_bheap_create(sx_alloc_malloc(), 512);
 	//State.PathfindingNodesClosed = sx_bheap_create(sx_alloc_malloc(), 512);
@@ -74,8 +75,10 @@ GameInitialize()
 	render.Height = TILE_SIZE;
 	ecs_set(State.World, Client.Player, CRender, render);
 
-	CMove c = {};
+	CMove c = { 1, 1 };
 	ecs_set(State.World, Client.Player, CMove, c);
+
+	PathfinderInit(&State.Pathfinder);
 
 	GameRun();
 
@@ -89,7 +92,7 @@ GameRun()
 {
 	while (!WindowShouldClose())
 	{
-		FrameFree();
+		zpl_arena_snapshot arenaSnapshot = zpl_arena_snapshot_begin(&State.GameMemory);
 
 		// Update
 
@@ -120,6 +123,8 @@ GameRun()
 		EndMode2D();
 
 		EndDrawing();
+
+		zpl_arena_snapshot_end(arenaSnapshot);
 	}
 }
 
@@ -160,8 +165,9 @@ void InputUpdate()
 		moveX = 1;
 	}
 	
-	CMove move = { moveX, moveY };
-	ecs_set(State.World, Client.Player, CMove, move);
+	CMove* move = (CMove*)ecs_get(State.World, Client.Player, CMove);
+	move->x = moveX;
+	move->y = moveY;
 
 	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
 	State.Camera.target = transform->Pos;
@@ -188,10 +194,21 @@ void InputUpdate()
 		Vec2i tile = ScreenToTile(GetMousePosition());
 		SLOG_INFO("Tile: %s", FMT_VEC2I(tile));
 
-		Tile t = {};
-		t.TileId = Tiles::WOOD_DOOR;
-		t.Flags.Set(TILE_FLAG_COLLISION, true);
-		SetTile(&State.TileMap, tile, &t, 0);
+		const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
+
+		SList<Vec2i> next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
+
+		if (next.IsAllocated())
+		{
+			for (u32 i = 0; i < next.Count; ++i)
+			{
+
+				Tile t = {};
+				t.TileId = Tiles::WOOD_DOOR;
+				t.Flags.Set(TILE_FLAG_COLLISION, true);
+				SetTile(&State.TileMap, next[i], &t, 0);
+			}
+		}
 	}
 
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
@@ -240,12 +257,20 @@ ScreenToTile(Vec2 pos)
 	return Vec2ToVec2i(worldPos);
 }
 
-GameState* GetGameState()
+GameState* 
+GetGameState()
 {
 	return &State;
 }
 
-GameClient* GetClient()
+GameClient* 
+GetClient()
 {
 	return &Client;
+}
+
+zpl_allocator
+GetGameAllocator()
+{
+	return zpl_arena_allocator(&State.GameMemory);
 }

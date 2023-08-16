@@ -267,9 +267,6 @@ ChunkBake(GameState* gameState, Chunk* chunk)
 internal void 
 ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 {
-	zpl_array(float) noiseValues;
-	zpl_array_init_reserve(noiseValues, GetFrameAllocator(), CHUNK_AREA);
-
 	float startX = (float)chunk->Coord.x * CHUNK_SIZE;
 	float startY = (float)chunk->Coord.y * CHUNK_SIZE;
 
@@ -285,19 +282,21 @@ ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 			float height = fnlGetNoise2D(&tilemap->ChunkLoader.Noise, startX + x, startY + y);
 
 			Tile tile = {};
-			if (height >= .25f)
-			{
+			if (height >= .75f)
+				tile.TileId = Tiles::FIRE_WALL;
+			else if (height >= -.1)
 				tile.TileId = Tiles::STONE;
-			}
 			else
-			{
 				tile.TileId = Tiles::BLUE_STONE;
-			}
+
+			TileInfo* tileInfo = GetTileInfo(tile.TileId);
+			tile.Flags = tileInfo->TileFlags;
 
 			Tile fgTile = {};
 
-			SetChunkTile(chunk, localIdx, &tile, 0);
-			SetChunkTile(chunk, localIdx, &fgTile, 1);
+			chunk->TileArray[localIdx] = tile;
+			SetTileRenderData(chunk, localIdx, tile.TileId, 0);
+			SetTileRenderData(chunk, localIdx, fgTile.TileId, 1);
 		}
 	}
 }
@@ -372,31 +371,31 @@ SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer)
 	if (chunk)
 	{
 		size_t idx = GetLocalTileIdx(coord);
-		SetChunkTile(chunk, idx, tile, layer);
+		chunk->TileArray[idx] = *tile;
+		SetTileRenderData(chunk, idx, tile->TileId, layer);
 	}
 }
 
-void SetChunkTile(Chunk* chunk, size_t idx, const Tile* tile, short layer)
+void 
+SetTileRenderData(Chunk* chunk, size_t idx, u16 tile, short layer)
 {
 	SASSERT(chunk);
 	SASSERT(idx < CHUNK_AREA);
-	SASSERT(tile);
 	SASSERT(layer >= 0);
 	if (chunk)
 	{
-		chunk->TileArray[idx] = *tile;
 		chunk->IsDirty = true;
 
 		switch (layer)
 		{
 		case(0):
 		{
-			chunk->TileRenderDataArray[idx].bgId = tile->TileId;
+			chunk->TileRenderDataArray[idx].bgId = tile;
 		} break;
 
 		case(1):
 		{
-			chunk->TileRenderDataArray[idx].fgId = tile->TileId;
+			chunk->TileRenderDataArray[idx].fgId = tile;
 		} break;
 
 		default:

@@ -3,8 +3,11 @@
 #include "Core.h"
 #include "TileMap.h"
 #include "Actions.h"
+#include "Pathfinder.h"
 
 #include "Structures/HashMap.h"
+
+struct Pathfinder;
 
 struct AssetMgr
 {
@@ -15,6 +18,8 @@ struct AssetMgr
 
 struct GameState
 {
+	zpl_arena GameMemory;
+
 	AssetMgr AssetMgr;
 
 	TileMap TileMap;
@@ -27,6 +32,8 @@ struct GameState
 	HashMap EntityMap;
 
 	ActionMgr ActionMgr;
+
+	Pathfinder Pathfinder;
 };
 
 struct GameClient
@@ -40,3 +47,6 @@ struct GameClient
 GameState* GetGameState();
 
 GameClient* GetClient();
+
+zpl_allocator
+GetGameAllocator();

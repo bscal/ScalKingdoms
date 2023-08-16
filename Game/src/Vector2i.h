@@ -31,8 +31,9 @@ constexpr static Vector2i Vec2i_RIGHT   = { -1, 0 };
 constexpr static Vector2i Vec2i_NEIGHTBORS[4] = { Vec2i_UP, Vec2i_LEFT, Vec2i_DOWN, Vec2i_RIGHT };
 
 constexpr static Vector2i Vec2i_NEIGHTBORS_CORNERS[8] = {
-    Vec2i_UP, { 1, -1 }, Vec2i_LEFT, { 1, 1 },
-    Vec2i_DOWN, { -1, 1 }, Vec2i_RIGHT, { -1, -1 } };
+    { -1, -1 }, Vec2i_UP , { 1, -1 },
+    Vec2i_RIGHT,          Vec2i_LEFT,
+    { -1, 1 }, Vec2i_DOWN, { 1, 1 } };
 
 long long Vec2iPackInt64(Vector2i v);
 Vector2i Vec2iUnpackInt64(long long packedI64);

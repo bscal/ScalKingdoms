@@ -26,21 +26,26 @@ void TileMgrInitialize(Texture2D* tileSetTexture)
 	blueStone.Src = CoordToRec(1, 3);
 	Tiles::BLUE_STONE = TileMgrRegisterTile(&blueStone);
 
+	TileInfo wall = {};
+	wall.Src = CoordToRec(17, 3);
+	wall.TileFlags.Set(TILE_FLAG_SOLID, true);
+	Tiles::FIRE_WALL = TileMgrRegisterTile(&wall);
+
 	TileInfo woodDoor = {};
 	woodDoor.Src = CoordToRec(3, 2);
 	RegisterTile(Tiles::WOOD_DOOR, woodDoor);
 }
 
-uint16_t TileMgrRegisterTile(const TileInfo* tileInfo)
+u16 TileMgrRegisterTile(const TileInfo* tileInfo)
 {
-	uint16_t id = (uint16_t)zpl_array_count(TileManager.TileDefinitions);
+	u16 id = (uint16_t)zpl_array_count(TileManager.TileDefinitions);
 
 	zpl_array_append(TileManager.TileDefinitions, *tileInfo);
 	
 	return id;
 }
 
-TileInfo* GetTileInfo(uint16_t id)
+TileInfo* GetTileInfo(u16 id)
 {
 	SASSERT(TileManager.TileDefinitions);
 	SASSERT(id < zpl_array_count(TileManager.TileDefinitions));

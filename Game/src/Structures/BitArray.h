@@ -2,7 +2,7 @@
 
 #include "Core.h"
 
-struct BigFlags8
+struct Flag8
 {
 	constexpr static int FLAG_COUNT = 8;
 
@@ -13,32 +13,32 @@ struct BigFlags8
 	_FORCE_INLINE_ void Toggle(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitToggle(Flags, index); }
 	_FORCE_INLINE_ void True(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitSet(Flags, index); }
 	_FORCE_INLINE_ void False(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitClear(Flags, index); }
-	_FORCE_INLINE_ void Set(uint64_t index, bool value)
+	_FORCE_INLINE_ void Set(uint8_t index, bool value)
 	{
 		SASSERT(index < FLAG_COUNT);
 		Flags = (value) ? BitSet(Flags, index) : BitClear(Flags, index);
 	}
 };
 
-struct BigFlags32
+struct Flag32
 {
 	constexpr static int FLAG_COUNT = 32;
 
-	uint8_t Flags;
+	uint32_t Flags;
 
-	_FORCE_INLINE_ bool Get(uint8_t index) const { SASSERT(index < FLAG_COUNT); return BitGet(Flags, index); }
-	_FORCE_INLINE_ bool Mask(uint8_t mask) const { return FlagTrue(Flags, mask); }
-	_FORCE_INLINE_ void Toggle(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitToggle(Flags, index); }
-	_FORCE_INLINE_ void True(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitSet(Flags, index); }
-	_FORCE_INLINE_ void False(uint8_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitClear(Flags, index); }
-	_FORCE_INLINE_ void Set(uint64_t index, bool value)
+	_FORCE_INLINE_ bool Get(uint32_t index) const { SASSERT(index < FLAG_COUNT); return BitGet(Flags, index); }
+	_FORCE_INLINE_ bool Mask(uint32_t mask) const { return FlagTrue(Flags, mask); }
+	_FORCE_INLINE_ void Toggle(uint32_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitToggle(Flags, index); }
+	_FORCE_INLINE_ void True(uint32_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitSet(Flags, index); }
+	_FORCE_INLINE_ void False(uint32_t index) { SASSERT(index < FLAG_COUNT);  Flags = BitClear(Flags, index); }
+	_FORCE_INLINE_ void Set(uint32_t index, bool value)
 	{
 		SASSERT(index < FLAG_COUNT);
 		Flags = (value) ? BitSet(Flags, index) : BitClear(Flags, index);
 	}
 };
 
-struct BitFlags64
+struct Flag64
 {
 	constexpr static int FLAG_COUNT = 64;
 

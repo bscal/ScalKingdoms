@@ -30,7 +30,7 @@ struct Tile
 {
 	ecs_entity_t Entity;
 	uint16_t TileId;
-	BigFlags8 Flags;
+	Flag8 Flags;
 };
 
 struct Chunk
@@ -100,7 +100,7 @@ TileFindResult FindTile(TileMap* tilemap, Vec2i coord);
 // Copies tile into chunks array.
 void SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer);
 
-void SetChunkTile(Chunk* chunk, size_t idx, const Tile* tile, short layer);
+void SetTileRenderData(Chunk* chunk, size_t idx, u16 tile, short layer);
 
 bool IsChunkInBounds(TileMap* tilemap, Vec2i coord);
 bool IsTileInBounds(TileMap* tilemap, Vec2i coord);

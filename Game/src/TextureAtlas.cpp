@@ -27,9 +27,9 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 	int count = 0;
 	int bufferSize = Kilobytes(10);
-	char* buffer = (char*)AllocTempAlign(bufferSize, 16);
+	char* buffer = (char*)AllocFrame(bufferSize, 16);
 	int splitBufferSize = Kilobytes(1);
-	char** split = (char**)AllocTempAlign(splitBufferSize * sizeof(char*), 16);
+	char** split = (char**)AllocFrame(splitBufferSize * sizeof(char*), 16);
 	TextSplitBuffered(atlasData, '\n', &count, buffer, bufferSize, split, splitBufferSize);
 
 	// 1st line empty
