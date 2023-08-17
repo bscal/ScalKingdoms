@@ -43,7 +43,7 @@ GameInitialize()
 
 	LoadAssets(&State);
 
-	State.EntityMap.Initialize(sizeof(ecs_entity_t), 64, DefaultAllocFunc, DefaultFreeFunc);
+	HashMapInitialize(&State.EntityMap, sizeof(ecs_entity_t), 64, ALLOCATOR_HEAP);
 
 	zpl_random_init(&State.Random);
 	Sprite* sprite = SpriteGet(Sprites::PLAYER);
@@ -202,11 +202,8 @@ void InputUpdate()
 		{
 			for (u32 i = 0; i < next.Count; ++i)
 			{
-
-				Tile t = {};
-				t.TileId = Tiles::WOOD_DOOR;
-				t.Flags.Set(TILE_FLAG_COLLISION, true);
-				SetTile(&State.TileMap, next[i], &t, 0);
+				Tile t = NewTile(Tiles::WOOD_DOOR);
+				SetTile(&State.TileMap, next[i], &t);
 			}
 		}
 	}

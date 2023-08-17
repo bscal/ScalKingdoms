@@ -8,112 +8,114 @@
 #define HashMapValueSize(hashmap) (hashmap->Capacity * hashmap->Stride)
 #define HashMapIdxValue(hashmap, idx) (hashmap->Values[hashmap->Stride * idx])
 
-void HashMap::Initialize(uint32_t stride, uint32_t capacity, HashMapAlloc allocate, HashMapFree free)
+void HashMapInitialize(HashMap* map, uint32_t stride, uint32_t capacity, Allocator alloc)
 {
 	SASSERT(stride > 0);
-	SASSERT(allocate);
-	SASSERT(free);
+	SASSERT(alloc.proc);
 
-	Stride = stride;
-	Allocate = allocate;
-	Free = free;
+	map->Stride = stride;
+	map->Alloc = alloc;
 	if (capacity > 0)
-		Reserve(capacity);
+		HashMapReserve(map, capacity);
 }
 
-void HashMap::Reserve(uint32_t capacity)
+void HashMapReserve(HashMap* map, uint32_t capacity)
 {
-	SASSERT(Allocate);
-	SASSERT(Free);
-	SASSERT(Stride > 0);
+	SASSERT(map->Alloc.proc);
+	SASSERT(map->Stride > 0);
 
 	if (capacity == 0)
 		capacity = HASHMAP_DEFAULT_CAPACITY;
 
-	if (capacity <= Capacity)
+	if (capacity <= map->Capacity)
 		return;
 
 	if (!IsPowerOf2_32(capacity))
 		capacity = AlignPowTwo32(capacity);
 
-	if (Keys)
+	if (map->Keys)
 	{
 		HashMap tmpMap = {};
-		tmpMap.Stride = Stride;
-		tmpMap.Allocate = Allocate;
-		tmpMap.Free = Free;
-		tmpMap.Reserve(capacity);
+		tmpMap.Stride = map->Stride;
+		tmpMap.Alloc = map->Alloc;
+		HashMapReserve(&tmpMap, capacity);
 
-		for (uint32_t i = 0; i < Capacity; ++i)
+		for (uint32_t i = 0; i < map->Capacity; ++i)
 		{
-			if (Keys[i].IsUsed)
+			if (map->Keys[i].IsUsed)
 			{
-				tmpMap.Put(Keys[i].Hash, &Values[i]);
+				HashMapPut(&tmpMap, map->Keys[i].Hash, &map->Values[i]);
 			}
 		}
+		
+		FreeAlign(map->Alloc, map->Keys, 16);
+		FreeAlign(map->Alloc, map->Values, 16);
 
-		Free(Keys, HashMapKeySize(this));
-		Free(Values, HashMapValueSize(this));
-
-		SASSERT(Count == tmpMap.Count);
-		*this = tmpMap;
+		SASSERT(map->Count == tmpMap.Count);
+		*map = tmpMap;
 	}
 	else
 	{
-		size_t oldKeysSize = HashMapKeySize(this);
-		size_t oldValuesSize = HashMapValueSize(this);
+		map->Capacity = capacity;
 
-		Capacity = capacity;
+		size_t newKeysSize = HashMapKeySize(map);
+		size_t newValuesSize = HashMapValueSize(map);
 
-		size_t newKeysSize = HashMapKeySize(this);
-		size_t newValuesSize = HashMapValueSize(this);
+		map->Keys = (HashBucket*)AllocAlign(map->Alloc, newKeysSize, 16);
+		map->Values = (uint8_t*)AllocAlign(map->Alloc, newValuesSize, 16);
 
-		Keys = (HashBucket*)Allocate(newKeysSize, oldKeysSize);
-		Values = (uint8_t*)Allocate(newValuesSize, oldValuesSize);
+		memset(map->Keys, 0, sizeof(newKeysSize));
 
-		memset(Keys, 0, sizeof(newKeysSize));
-
-		MaxCount = (uint32_t)((float)Capacity * HASHMAP_LOAD_FACTOR);
+		map->MaxCount = (uint32_t)((float)map->Capacity * HASHMAP_LOAD_FACTOR);
 	}
 }
 
-void HashMap::Destroy()
+void HashMapClear(HashMap* map)
 {
-	Free(Keys, HashMapKeySize(this));
-	Free(Values, HashMapValueSize(this));
-	Capacity = 0;
-	Count = 0;
+	SClear(map->Keys, HashMapKeySize(map));
+	map->Count = 0;
 }
 
-uint32_t HashMap::Put(uint32_t hash, void* value)
+void HashMapDestroy(HashMap* map)
+{
+	FreeAlign(map->Alloc, map->Keys, 16);
+	FreeAlign(map->Alloc, map->Values, 16);
+	map->Capacity = 0;
+	map->Count = 0;
+}
+
+uint32_t HashMapPut(HashMap* map, uint32_t hash, void* value)
 {
 	SASSERT(value);
 
 	if (!value)
 		return HASHMAP_NOT_FOUND;
 
-	if (Count >= MaxCount)
+	if (map->Count >= map->MaxCount)
 	{
-		Reserve(Capacity * HASHMAP_DEFAULT_RESIZE);
+		HashMapReserve(map, map->Capacity * HASHMAP_DEFAULT_RESIZE);
 	}
 
-	SASSERT(Keys);
+	SASSERT(map->Keys);
+
+	SASSERT(map->Stride > 0);
+	SASSERT(map->Stride < Kilobytes(64));
 
 	uint32_t insertedIndex = HASHMAP_NOT_FOUND;
 	uint32_t swapHash = hash;
 	uint32_t probeLength = 0;
 
-	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	uint32_t idx = HashMapKeyIndex(hash, map->Capacity);
 	while (true)
 	{
-		HashBucket* bucket = &Keys[idx];
+		HashBucket* bucket = &map->Keys[idx];
 		if (!bucket->IsUsed) // Bucket is not used
 		{
 			bucket->Hash = swapHash;
 			bucket->ProbeLength = probeLength;
 			bucket->IsUsed = 1;
-			memcpy(&Values[idx], value, Stride);
-			++Count;
+			memcpy(&map->Values[idx], value, map->Stride);
+			++map->Count;
 
 			if (insertedIndex == HASHMAP_NOT_FOUND)
 				insertedIndex = idx;
@@ -139,8 +141,8 @@ uint32_t HashMap::Put(uint32_t hash, void* value)
 				{
 					// Swaps byte by byte from current value to
 					// value parameter memory;
-					uint8_t* currentValue = &Values[idx];
-					for (uint32_t i = 0; i < Stride; ++i)
+					uint8_t* currentValue = &map->Values[idx];
+					for (uint32_t i = 0; i < map->Stride; ++i)
 					{
 						uint8_t tmp = currentValue[i];
 						currentValue[i] = ((uint8_t*)value)[i];
@@ -151,7 +153,7 @@ uint32_t HashMap::Put(uint32_t hash, void* value)
 
 			++probeLength;
 			++idx;
-			if (idx == Capacity)
+			if (idx == map->Capacity)
 				idx = 0;
 		}
 	}
@@ -159,16 +161,16 @@ uint32_t HashMap::Put(uint32_t hash, void* value)
 	return insertedIndex;
 }
 
-void* HashMap::PutKey(uint32_t hash)
+void* HashMapPutKey(HashMap* map, uint32_t hash)
 {
-	if (Count >= MaxCount)
+	if (map->Count >= map->MaxCount)
 	{
-		Reserve(Capacity * HASHMAP_DEFAULT_RESIZE);
+		HashMapReserve(map, map->Capacity * HASHMAP_DEFAULT_RESIZE);
 	}
 
-	SASSERT(Keys);
+	SASSERT(map->Keys);
 
-	void* swapMemory = _malloca(Stride);
+	void* swapMemory = _malloca(map->Stride);
 	if (!swapMemory)
 	{
 		SERR("Could not allocate swap memory on stack!");
@@ -179,10 +181,10 @@ void* HashMap::PutKey(uint32_t hash)
 	uint32_t swapHash = hash;
 	uint32_t probeLength = 0;
 
-	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	uint32_t idx = HashMapKeyIndex(hash, map->Capacity);
 	while (true)
 	{
-		HashBucket* bucket = &Keys[idx];
+		HashBucket* bucket = &map->Keys[idx];
 		if (!bucket->IsUsed) // Bucket is not used
 		{
 			bucket->Hash = swapHash;
@@ -192,9 +194,9 @@ void* HashMap::PutKey(uint32_t hash)
 			// Don't swap anything if we insert into empty bucket
 			if (swapIndex != HASHMAP_NOT_FOUND)
 			{
-				uint8_t* swapValue = &Values[swapIndex];
-				uint8_t* currentValue = &Values[idx];
-				for (uint32_t i = 0; i < Stride; ++i)
+				uint8_t* swapValue = &map->Values[swapIndex];
+				uint8_t* currentValue = &map->Values[idx];
+				for (uint32_t i = 0; i < map->Stride; ++i)
 				{
 					uint8_t tmp = currentValue[i];
 					currentValue[i] = swapValue[i];
@@ -202,7 +204,7 @@ void* HashMap::PutKey(uint32_t hash)
 				}
 			}
 
-			++Count;
+			++map->Count;
 
 			if (insertedIndex == HASHMAP_NOT_FOUND)
 				insertedIndex = idx;
@@ -231,9 +233,9 @@ void* HashMap::PutKey(uint32_t hash)
 				// swapped. 
 				if (swapIndex != HASHMAP_NOT_FOUND)
 				{
-					uint8_t* swapValue = &Values[swapIndex];
-					uint8_t* currentValue = &Values[idx];
-					for (uint32_t i = 0; i < Stride; ++i)
+					uint8_t* swapValue = &map->Values[swapIndex];
+					uint8_t* currentValue = &map->Values[idx];
+					for (uint32_t i = 0; i < map->Stride; ++i)
 					{
 						uint8_t tmp = currentValue[i];
 						currentValue[i] = swapValue[i];
@@ -246,25 +248,25 @@ void* HashMap::PutKey(uint32_t hash)
 
 			++probeLength;
 			++idx;
-			if (idx == Capacity)
+			if (idx == map->Capacity)
 				idx = 0;
 		}
 	}
 
-	memset(&Values[insertedIndex], 0, Stride);
-	return &Values[insertedIndex];
+	memset(&map->Values[insertedIndex], 0, map->Stride);
+	return &map->Values[insertedIndex];
 }
 
-uint32_t HashMap::Index(uint32_t hash)
+uint32_t HashMapIndex(HashMap* map, uint32_t hash)
 {
-	if (!Keys || Count == 0)
+	if (!map->Keys || map->Count == 0)
 		return HASHMAP_NOT_FOUND;
 
 	uint32_t probeLength = 0;
-	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	uint32_t idx = HashMapKeyIndex(hash, map->Capacity);
 	while (true)
 	{
-		HashBucket bucket = Keys[idx];
+		HashBucket bucket = map->Keys[idx];
 		if (!bucket.IsUsed || probeLength > bucket.ProbeLength)
 			return HASHMAP_NOT_FOUND;
 		else if (hash == bucket.Hash)
@@ -273,7 +275,7 @@ uint32_t HashMap::Index(uint32_t hash)
 		{
 			++probeLength;
 			++idx;
-			if (idx == Capacity)
+			if (idx == map->Capacity)
 				idx = 0;
 		}
 	}
@@ -281,15 +283,15 @@ uint32_t HashMap::Index(uint32_t hash)
 }
 
 
-bool HashMap::Remove(uint64_t hash)
+bool HashMapRemove(HashMap* map, uint64_t hash)
 {
-	if (!Keys || Count == 0)
+	if (!map->Keys || map->Count == 0)
 		return false;
 
-	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	uint32_t idx = HashMapKeyIndex(hash, map->Capacity);
 	while (true)
 	{
-		HashBucket* bucket = &Keys[idx];
+		HashBucket* bucket = &map->Keys[idx];
 		if (!bucket->IsUsed)
 		{
 			break;
@@ -302,29 +304,29 @@ bool HashMap::Remove(uint64_t hash)
 				{
 					uint32_t lastIdx = idx;
 					++idx;
-					if (idx == Capacity)
+					if (idx == map->Capacity)
 						idx = 0;
 
-					HashBucket* nextBucket = &Keys[idx];
+					HashBucket* nextBucket = &map->Keys[idx];
 					if (!nextBucket->IsUsed || nextBucket->ProbeLength == 0) // No more entires to move
 					{
-						Keys[lastIdx].ProbeLength = 0;
-						Keys[lastIdx].IsUsed = 0;
-						--Count;
+						map->Keys[lastIdx].ProbeLength = 0;
+						map->Keys[lastIdx].IsUsed = 0;
+						--map->Count;
 						return true;
 					}
 					else
 					{
-						Keys[lastIdx].Hash = nextBucket->Hash;
-						Keys[lastIdx].ProbeLength = nextBucket->ProbeLength - 1;
-						Values[lastIdx] = Values[idx];
+						map->Keys[lastIdx].Hash = nextBucket->Hash;
+						map->Keys[lastIdx].ProbeLength = nextBucket->ProbeLength - 1;
+						map->Values[lastIdx] = map->Values[idx];
 					}
 				}
 			}
 			else
 			{
 				++idx;
-				if (idx == Capacity)
+				if (idx == map->Capacity)
 					idx = 0; // continue searching till 0 or found equals key
 			}
 		}
@@ -332,14 +334,14 @@ bool HashMap::Remove(uint64_t hash)
 	return false;
 }
 
-void HashMap::ForEach(void(*Fn(uint32_t, void*, void*)), void* stackMemory)
+void HashMapForEach(HashMap* map, void(*Fn(uint32_t, void*, void*)), void* stackMemory)
 {
 	SASSERT(Fn);
-	for (uint32_t i = 0; i < Capacity; ++i)
+	for (uint32_t i = 0; i < map->Capacity; ++i)
 	{
-		if (Keys[i].IsUsed)
+		if (map->Keys[i].IsUsed)
 		{
-			Fn(Keys[i].Hash, HashMapValuesIndex(this, i, void*), stackMemory);
+			Fn(map->Keys[i].Hash, HashMapValuesIndex(map, i, void*), stackMemory);
 		}
 	}
 }

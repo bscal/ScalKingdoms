@@ -6,96 +6,96 @@
 #define HashMapSwap(V0, V1, T) T tmp = V0; V0 = V1; V1 = tmp
 #define HashMapKeySize(hashmap) (hashmap->Capacity * sizeof(HashSetBucket))
 
-void HashSet::Initialize(uint32_t capacity, Allocator allocator)
+void HashSetInitialize(HashSet* set, uint32_t capacity, Allocator allocator)
 {
 	SASSERT(ValidateAllocator(allocator));
 
-	Alloc = allocator;
+	set->Alloc = allocator;
 	if (capacity > 0)
-		Reserve(capacity);
+		HashSetReserve(set, capacity);
 }
 
-void HashSet::Reserve(uint32_t capacity)
+void HashSetReserve(HashSet* set, uint32_t capacity)
 {
-	SASSERT(ValidateAllocator(Alloc));
+	SASSERT(ValidateAllocator(set->Alloc));
 
 	if (capacity == 0)
 		capacity = HASHSET_DEFAULT_CAPACITY;
 
-	if (capacity <= Capacity)
+	if (capacity <= set->Capacity)
 		return;
 
 	if (!IsPowerOf2_32(capacity))
 		capacity = AlignPowTwo32(capacity);
 
-	if (Keys)
+	if (set->Keys)
 	{
-		HashSet tmpMap = {};
-		tmpMap.Alloc = Alloc;
-		tmpMap.Reserve(capacity);
+		HashSet tmpSet = {};
+		tmpSet.Alloc = set->Alloc;
+		HashSetReserve(&tmpSet, capacity);
 
-		for (uint32_t i = 0; i < Capacity; ++i)
+		for (uint32_t i = 0; i < set->Capacity; ++i)
 		{
-			if (Keys[i].IsUsed)
+			if (set->Keys[i].IsUsed)
 			{
-				tmpMap.Put(Keys[i].Hash);
+				HashSetPut(&tmpSet, set->Keys[i].Hash);
 			}
 		}
 
-		FreeAlign(Alloc, Keys, 16);
+		FreeAlign(set->Alloc, set->Keys, 16);
 
-		SASSERT(Count == tmpMap.Count);
-		*this = tmpMap;
+		SASSERT(set->Count == tmpSet.Count);
+		*set = tmpSet;
 	}
 	else
 	{
-		size_t oldKeysSize = HashMapKeySize(this);
+		size_t oldKeysSize = HashMapKeySize(set);
 
-		Capacity = capacity;
+		set->Capacity = capacity;
 
-		size_t newKeysSize = HashMapKeySize(this);
+		size_t newKeysSize = HashMapKeySize(set);
 
-		Keys = (HashSetBucket*)AllocAlign(Alloc, newKeysSize, 16);
+		set->Keys = (HashSetBucket*)AllocAlign(set->Alloc, newKeysSize, 16);
 
-		memset(Keys, 0, sizeof(newKeysSize));
+		memset(set->Keys, 0, sizeof(newKeysSize));
 	}
 }
 
-void HashSet::Clear()
+void HashSetClear(HashSet* set)
 {
-	Count = 0;
-	memset(Keys, 0, HashMapKeySize(this));
+	set->Count = 0;
+	memset(set->Keys, 0, HashMapKeySize(set));
 }
 
-void HashSet::Destroy()
+void HashSetDestroy(HashSet* set)
 {
-	FreeAlign(Alloc, Keys, 16);
-	Capacity = 0;
-	Count = 0;
+	FreeAlign(set->Alloc, set->Keys, 16);
+	set->Capacity = 0;
+	set->Count = 0;
 }
 
-bool HashSet::Put(uint32_t hash)
+bool HashSetPut(HashSet* set, uint32_t hash)
 {
-	if (Count >= (uint32_t)((float)Capacity * HASHSET_LOAD_FACTOR))
+	if (set->Count >= (uint32_t)((float)set->Capacity * HASHSET_LOAD_FACTOR))
 	{
-		Reserve(Capacity * HASHSET_DEFAULT_RESIZE);
+		HashSetReserve(set, set->Capacity * HASHSET_DEFAULT_RESIZE);
 	}
 
-	SASSERT(Keys);
+	SASSERT(set->Keys);
 
 	uint32_t swapHash = hash;
 	uint32_t probeLength = 0;
 
-	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	uint32_t idx = HashMapKeyIndex(hash, set->Capacity);
 	while (true)
 	{
-		HashSetBucket* bucket = &Keys[idx];
+		HashSetBucket* bucket = &set->Keys[idx];
 		if (!bucket->IsUsed) // Bucket is not used
 		{
 			bucket->Hash = swapHash;
 			bucket->ProbeLength = probeLength;
 			bucket->IsUsed = 1;
-			++Count;
+			++set->Count;
 
 			return true;
 		}
@@ -116,23 +116,23 @@ bool HashSet::Put(uint32_t hash)
 
 			++probeLength;
 			++idx;
-			if (idx == Capacity)
+			if (idx == set->Capacity)
 				idx = 0;
 		}
 	}
 	return false;
 }
 
-bool HashSet::Contains(uint32_t hash)
+bool HashSetContains(HashSet* set, uint32_t hash)
 {
-	if (!Keys || Count == 0)
+	if (!set->Keys || set->Count == 0)
 		return false;
 
 	uint32_t probeLength = 0;
-	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	uint32_t idx = HashMapKeyIndex(hash, set->Capacity);
 	while (true)
 	{
-		HashSetBucket bucket = Keys[idx];
+		HashSetBucket bucket = set->Keys[idx];
 		if (!bucket.IsUsed || probeLength > bucket.ProbeLength)
 			return false;
 		else if (hash == bucket.Hash)
@@ -141,22 +141,22 @@ bool HashSet::Contains(uint32_t hash)
 		{
 			++probeLength;
 			++idx;
-			if (idx == Capacity)
+			if (idx == set->Capacity)
 				idx = 0;
 		}
 	}
 	return false;
 }
 
-bool HashSet::Remove(uint32_t hash)
+bool HashSetRemove(HashSet* set, uint32_t hash)
 {
-	if (!Keys || Count == 0)
+	if (!set->Keys || set->Count == 0)
 		return false;
 
-	uint32_t idx = HashMapKeyIndex(hash, Capacity);
+	uint32_t idx = HashMapKeyIndex(hash, set->Capacity);
 	while (true)
 	{
-		HashSetBucket* bucket = &Keys[idx];
+		HashSetBucket* bucket = &set->Keys[idx];
 		if (!bucket->IsUsed)
 		{
 			break;
@@ -169,28 +169,28 @@ bool HashSet::Remove(uint32_t hash)
 				{
 					uint32_t lastIdx = idx;
 					++idx;
-					if (idx == Capacity)
+					if (idx == set->Capacity)
 						idx = 0;
 
-					HashSetBucket* nextBucket = &Keys[idx];
+					HashSetBucket* nextBucket = &set->Keys[idx];
 					if (!nextBucket->IsUsed || nextBucket->ProbeLength == 0) // No more entires to move
 					{
-						Keys[lastIdx].ProbeLength = 0;
-						Keys[lastIdx].IsUsed = 0;
-						--Count;
+						set->Keys[lastIdx].ProbeLength = 0;
+						set->Keys[lastIdx].IsUsed = 0;
+						--set->Count;
 						return true;
 					}
 					else
 					{
-						Keys[lastIdx].Hash = nextBucket->Hash;
-						Keys[lastIdx].ProbeLength = nextBucket->ProbeLength - 1;
+						set->Keys[lastIdx].Hash = nextBucket->Hash;
+						set->Keys[lastIdx].ProbeLength = nextBucket->ProbeLength - 1;
 					}
 				}
 			}
 			else
 			{
 				++idx;
-				if (idx == Capacity)
+				if (idx == set->Capacity)
 					idx = 0; // continue searching till 0 or found equals key
 			}
 		}

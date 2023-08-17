@@ -53,7 +53,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 	zpl_array_init_reserve(atlas.Rects, zpl_heap_allocator(), length);
 	zpl_array_resize(atlas.Rects, length);
 
-	atlas.NameToIndex.Initialize(sizeof(uint16_t), length, DefaultAllocFunc, DefaultFreeFunc);
+	HashMapInitialize(&atlas.NameToIndex, sizeof(uint16_t), length, ALLOCATOR_HEAP);
 	atlas.Texture = LoadTexture(imgPath);
 
 	char s0[16];
@@ -142,7 +142,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 void SpriteAtlasUnload(SpriteAtlas* atlas)
 {
 	zpl_array_free(atlas->Rects);
-	atlas->NameToIndex.Destroy();
+	HashMapDestroy(&atlas->NameToIndex);
 	UnloadTexture(atlas->Texture);
 }
 

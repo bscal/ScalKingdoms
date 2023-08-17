@@ -74,7 +74,7 @@ void MoveSystem(ecs_iter_t* it)
 						HashMapSet(entityMap, tileHash, it->entities[i], ecs_entity_t);
 
 						zpl_u32 oldPos = HashTile(transforms[i].TilePos);
-						entityMap->Remove(oldPos);
+						HashMapRemove(entityMap, oldPos);
 					}
 					else
 						continue;
@@ -87,4 +87,34 @@ void MoveSystem(ecs_iter_t* it)
 	}
 }
 
+struct IntervalSystem
+{
+	float Rate; // In seconds
+	float UpdateAccumulator;
+	int Index;
+};
 
+void TestSystem(ecs_iter_t* it)
+{
+	CTransform* transforms = ecs_field(it, CTransform, 1);
+	CMove* moves = ecs_field(it, CMove, 2);
+
+	IntervalSystem interval = {};
+
+	float updatesPerSecond = (float)it->count / interval.Rate;
+	float updatesPerFrame = updatesPerSecond * it->delta_time;
+
+	interval.UpdateAccumulator = fminf(interval.UpdateAccumulator + updatesPerFrame, (float)it->count);
+
+	int updateCount = (int)interval.UpdateAccumulator;
+
+	for (int i = 0; i < updateCount; ++i)
+	{
+		++interval.Index;
+		if (interval.Index >= it->count)
+			interval.Index = 0;
+
+	}
+
+	interval.UpdateAccumulator -= (float)updateCount;
+}

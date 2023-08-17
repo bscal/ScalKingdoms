@@ -247,16 +247,16 @@ ChunkBake(GameState* gameState, Chunk* chunk)
 			float posX = (float)x * TILE_SIZE + chunk->TextureDrawPosition.x;
 			float posY = (float)y * TILE_SIZE + chunk->TextureDrawPosition.y;
 
-			TileRenderData* data = &chunk->TileRenderDataArray[localIdx];
+			Tile* tile = &chunk->TileArray[localIdx];
 
-			Rectangle src = GetTileInfo(data->bgId)->Src;
+			Rectangle src = GetTileInfo(tile->BackgroundId)->Src;
 			Rectangle dst = { posX, posY, TILE_SIZE, TILE_SIZE };
 			
 			DrawTexturePro(*tileSpriteSheet, src, dst, {}, 0, WHITE);
 
-			if (data->fgId > 0)
+			if (tile->ForegroundId > 0)
 			{
-				src = GetTileInfo(data->fgId)->Src;
+				src = GetTileInfo(tile->ForegroundId)->Src;
 				DrawTexturePro(*tileSpriteSheet, src, dst, {}, 0, WHITE);
 			}
 		}
@@ -281,22 +281,23 @@ ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 
 			float height = fnlGetNoise2D(&tilemap->ChunkLoader.Noise, startX + x, startY + y);
 
-			Tile tile = {};
+			u16 bgId = 0;
 			if (height >= .75f)
-				tile.TileId = Tiles::FIRE_WALL;
+				bgId = Tiles::FIRE_WALL;
 			else if (height >= -.1)
-				tile.TileId = Tiles::STONE;
+				bgId = Tiles::STONE;
 			else
-				tile.TileId = Tiles::BLUE_STONE;
+				bgId = Tiles::BLUE_STONE;
 
-			TileInfo* tileInfo = GetTileInfo(tile.TileId);
-			tile.Flags = tileInfo->TileFlags;
+			Tile tile = {};
+			tile.BackgroundId = bgId;
+
+			TileInfo* tileInfo = GetTileInfo(bgId);
+			tile.Flags = tileInfo->DefaultTileFlags;
 
 			Tile fgTile = {};
 
 			chunk->TileArray[localIdx] = tile;
-			SetTileRenderData(chunk, localIdx, tile.TileId, 0);
-			SetTileRenderData(chunk, localIdx, fgTile.TileId, 1);
 		}
 	}
 }
@@ -363,7 +364,7 @@ FindTile(TileMap* tilemap, Vec2i coord)
 }
 
 void
-SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer)
+SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile)
 {
 	SASSERT(tilemap);
 	SASSERT(tile);
@@ -372,12 +373,12 @@ SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer)
 	{
 		size_t idx = GetLocalTileIdx(coord);
 		chunk->TileArray[idx] = *tile;
-		SetTileRenderData(chunk, idx, tile->TileId, layer);
+		chunk->IsDirty = true;
 	}
 }
 
-void 
-SetTileRenderData(Chunk* chunk, size_t idx, u16 tile, short layer)
+void
+SetTileId(Chunk* chunk, size_t idx, u16 tile, short layer)
 {
 	SASSERT(chunk);
 	SASSERT(idx < CHUNK_AREA);
@@ -390,21 +391,17 @@ SetTileRenderData(Chunk* chunk, size_t idx, u16 tile, short layer)
 		{
 		case(0):
 		{
-			chunk->TileRenderDataArray[idx].bgId = tile;
+			chunk->TileArray[idx].BackgroundId = tile;
 		} break;
 
 		case(1):
 		{
-			chunk->TileRenderDataArray[idx].fgId = tile;
+			chunk->TileArray[idx].ForegroundId = tile;
 		} break;
 
 		default:
 			SWARN("SetTile using invalid layer."); break;
 		}
-	}
-	else
-	{
-		SERR("SetTile on unloaded chunk!");
 	}
 }
 

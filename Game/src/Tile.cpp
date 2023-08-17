@@ -28,7 +28,7 @@ void TileMgrInitialize(Texture2D* tileSetTexture)
 
 	TileInfo wall = {};
 	wall.Src = CoordToRec(17, 3);
-	wall.TileFlags.Set(TILE_FLAG_SOLID, true);
+	wall.DefaultTileFlags.Set(TILE_FLAG_SOLID, true);
 	Tiles::FIRE_WALL = TileMgrRegisterTile(&wall);
 
 	TileInfo woodDoor = {};
@@ -55,6 +55,11 @@ TileInfo* GetTileInfo(u16 id)
 	return &TileManager.TileDefinitions[id];
 }
 
+TileInfo* GetTileInfoTile(Tile tile)
+{
+	return GetTileInfo(tile.BackgroundId);
+}
+
 Texture2D* GetTileSheet()
 {
 	SASSERT(TileManager.TileSetTexture->id > 0);
@@ -74,4 +79,11 @@ Rectangle CoordToRec(int x, int y, int w, int h)
 	r.width = (float)w;
 	r.height = (float)h;
 	return r;
+}
+
+Tile NewTile(u16 bgId)
+{
+	Tile tile = {};
+	tile.BackgroundId = bgId;
+	return tile;
 }

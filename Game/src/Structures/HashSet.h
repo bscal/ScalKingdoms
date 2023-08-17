@@ -21,18 +21,18 @@ struct HashSet
 	uint32_t Capacity;
 	uint32_t Count;
 	Allocator Alloc;
-
-	void Initialize(uint32_t capacity, Allocator allocator);
-
-	void Reserve(uint32_t capacity);
-
-	void Clear();
-
-	void Destroy();
-
-	bool Put(uint32_t hash);
-
-	bool Contains(uint32_t hash);
-
-	bool Remove(uint32_t hash);
 };
+
+void HashSetInitialize(HashSet* set, uint32_t capacity, Allocator allocator);
+
+void HashSetReserve(HashSet* set, uint32_t capacity);
+
+void HashSetClear(HashSet* set);
+
+void HashSetDestroy(HashSet* set);
+
+bool HashSetPut(HashSet* set, uint32_t hash);
+
+bool HashSetContains(HashSet* set, uint32_t hash);
+
+bool HashSetRemove(HashSet* set, uint32_t hash);

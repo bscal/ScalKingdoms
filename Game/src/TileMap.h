@@ -11,11 +11,6 @@ struct GameState;
 constexpr global_var int LAYER_BACKGROUND = 0;
 constexpr global_var int LAYER_FOREGROUND = 1;
 
-struct TileRenderData
-{
-	uint16_t bgId;
-	uint16_t fgId;
-};
 
 enum TileFlags : uint8_t 
 {
@@ -28,8 +23,8 @@ enum TileFlags : uint8_t
 
 struct Tile
 {
-	ecs_entity_t Entity;
-	uint16_t TileId;
+	u16 BackgroundId;
+	u16 ForegroundId;
 	Flag8 Flags;
 };
 
@@ -42,7 +37,6 @@ struct Chunk
 	bool IsDirty;				// Should Redraw chunk
 	bool IsGenerated;
 	bool IsLoaded;
-	TileRenderData TileRenderDataArray[CHUNK_AREA];
 	Tile TileArray[CHUNK_AREA];
 };
 
@@ -98,9 +92,9 @@ struct TileFindResult
 TileFindResult FindTile(TileMap* tilemap, Vec2i coord);
 
 // Copies tile into chunks array.
-void SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile, short layer);
+void SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile);
 
-void SetTileRenderData(Chunk* chunk, size_t idx, u16 tile, short layer);
+void SetTileId(Chunk* chunk, size_t idx, u16 tile, short layer);
 
 bool IsChunkInBounds(TileMap* tilemap, Vec2i coord);
 bool IsTileInBounds(TileMap* tilemap, Vec2i coord);
