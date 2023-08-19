@@ -156,10 +156,12 @@ constexpr global_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * 
 
 enum class Direction : uint8_t
 {
-	NORTH,
+	NORTH = 0,
 	EAST,
 	SOUTH,
-	WEST
+	WEST,
+	
+	MAX_TYPES,
 };
 
 constexpr global_var Vector2 VEC2_ZERO = { 0 , 0 };
@@ -183,5 +185,4 @@ TileDirectionVectorInts[] = { {0, -1}, {1, 0}, {0, 1}, {-1, 0} };
 #define FMT_BOOL(boolVar) TextFormat("%s", ((boolVar)) ? "true" : "false")
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
 
-#define HashMapAllocate(size, oldSize) zpl_alloc(zpl_heap_allocator(), size);
-#define HashMapFree(ptr, oldSize) zpl_free(zpl_heap_allocator(), ptr);
+#define HashTile(tileVec2) (zpl_fnv32a(&tileVec2, sizeof(Vec2i)))

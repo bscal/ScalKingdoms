@@ -18,9 +18,12 @@ struct CRender
 
 struct CMove
 {
-	Vec2i Target;
-	int8_t x; // In tiles
-	int8_t y; // In tiles
+	Vec2 Start;
+	Vec2 Target;
+	float Progress;
+	i16 Length;
+	i16 Index;
+	Vec2i Path[MAX_PATHFIND_LENGTH];
 };
 
 struct CBody
@@ -28,3 +31,15 @@ struct CBody
 	Vec2 Velocity;
 	Vec2 HitOffset;
 };
+
+#ifdef COMPONENT_DECLARATION
+
+ECS_COMPONENT_DECLARE(CTransform);
+ECS_COMPONENT_DECLARE(CMove);
+
+#else
+
+extern ECS_COMPONENT_DECLARE(CTransform);
+extern ECS_COMPONENT_DECLARE(CMove);
+
+#endif

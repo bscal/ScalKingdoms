@@ -4,9 +4,10 @@
 #include "Memory.h"
 #include "Tile.h"
 #include "Sprite.h"
-#include "Components.h"
 #include "Systems.h"
 
+#define COMPONENT_DECLARATION
+#include "Components.h"
 
 #include <raylib/src/raymath.h>
 
@@ -23,25 +24,22 @@ internal void UnloadAssets(GameState* gameState);
 
 internal Vec2i ScreenToTile(Vec2 pos);
 
-ECS_COMPONENT_DECLARE(CTransform);
-ECS_COMPONENT_DECLARE(CMove);
-
 int 
 GameInitialize()
 {
 	zpl_arena_init_from_allocator(&State.GameMemory, zpl_heap_allocator(), Megabytes(8));
 
-	//State.PathfindingNodesOpen = sx_bheap_create(sx_alloc_malloc(), 512);
-	//State.PathfindingNodesClosed = sx_bheap_create(sx_alloc_malloc(), 512);
-
 	InitWindow(WIDTH, HEIGHT, TITLE);
 	SetTraceLogLevel(LOG_ALL);
 	SetTargetFPS(60);
+
 
 	State.Camera.zoom = 1.0f;
 	State.Camera.offset = { (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
 
 	LoadAssets(&State);
+	
+	InitializeGUI(&State, State.AssetMgr.MainFont);
 
 	HashMapInitialize(&State.EntityMap, sizeof(ecs_entity_t), 64, ALLOCATOR_HEAP);
 
@@ -75,8 +73,12 @@ GameInitialize()
 	render.Height = TILE_SIZE;
 	ecs_set(State.World, Client.Player, CRender, render);
 
-	CMove c = { 1, 1 };
+	CMove c = {};
 	ecs_set(State.World, Client.Player, CMove, c);
+
+	Vec2i pos = Vec2i{ 0, 0 };
+	u32 hash = HashTile(pos);
+	HashMapSet(&State.EntityMap, hash, Client.Player, ecs_entity_t);
 
 	PathfinderInit(&State.Pathfinder);
 
@@ -118,7 +120,7 @@ GameRun()
 		ecs_progress(State.World, DeltaTime);
 
 		Vector2 target = State.Camera.target;
-		DrawRectangleLines((int)target.x, (int)target.y, 16, 16, MAGENTA);
+		DrawRectangleLines((int)target.x - 8, (int)target.y - 8, 16, 16, MAGENTA);
 
 		EndMode2D();
 
@@ -165,9 +167,7 @@ void InputUpdate()
 		moveX = 1;
 	}
 	
-	CMove* move = (CMove*)ecs_get(State.World, Client.Player, CMove);
-	move->x = moveX;
-	move->y = moveY;
+	//CMove* move = (CMove*)ecs_get(State.World, Client.Player, CMove);
 
 	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
 	State.Camera.target = transform->Pos;
@@ -208,6 +208,13 @@ void InputUpdate()
 		}
 	}
 
+	if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
+	{
+		Vec2i tile = ScreenToTile(GetMousePosition());
+		ecs_entity_t selectedEntity = Client.SelectedEntity;
+		MoveEntity(&State, selectedEntity, tile);
+	}
+
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
 	{
 		Vec2i tile = ScreenToTile(GetMousePosition());
@@ -216,6 +223,7 @@ void InputUpdate()
 		ecs_entity_t* entity = HashMapGet(&State.EntityMap, hash, ecs_entity_t);
 		if (entity)
 		{
+			Client.SelectedEntity = *entity;
 			const char* entityInfo = ecs_entity_str(State.World, *entity);
 			SLOG_INFO("%s", entityInfo);
 		}

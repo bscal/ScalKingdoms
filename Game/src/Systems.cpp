@@ -8,8 +8,6 @@
 
 #include <raylib/src/raymath.h>
 
-#define HashTile(vec) zpl_fnv32a(&vec, sizeof(Vec2i))
-
 void DrawEntities(ecs_iter_t* it)
 {
 	CTransform* transforms = ecs_field(it, CTransform, 1);
@@ -37,52 +35,40 @@ void MoveSystem(ecs_iter_t* it)
 	TileMap* tilemap = &GetGameState()->TileMap;
 	HashMap* entityMap = &GetGameState()->EntityMap;
 
+	float baseMS = 8.0f * it->delta_time;
+
 	for (int i = 0; i < it->count; ++i)
 	{
-		if (moves[i].x || moves[i].y)
+		if (moves[i].Index <= 0)
+			continue;
+
+		Vec2i target = moves[i].Path[moves[i].Index - 1];
+		moves[i].Target = TileToWorldCenter(target);
+
+		if (moves[i].Progress > 1.0f)
 		{
-			Vec2i directionVec = { (int)moves[i].x, (int)moves[i].y };
+			moves[i].Progress = 0.0f;
+			moves[i].Index -= 1;
+			moves[i].Start = moves[i].Target;
+			transforms[i].Pos = moves[i].Target;
+		}
+		else
+		{
+			transforms[i].Pos = Vector2Lerp(moves[i].Start, moves[i].Target, moves[i].Progress);
+			moves[i].Progress += baseMS;
+		}
+		
+		// Handle move to new tile
+		Vec2i travelTilePos = WorldToTile(transforms[i].Pos);
+		if (travelTilePos != transforms[i].TilePos)
+		{
+			u32 newHash = HashTile(travelTilePos);
+			u32 oldHash = HashTile(transforms[i].TilePos);
 
-			moves[i].x = 0;
-			moves[i].y = 0;
+			HashMapRemove(entityMap, oldHash);
+			HashMapSet(entityMap, newHash, it->entities[i], ecs_entity_t);
 
-			float movespeed = 160.0f * it->delta_time;
-
-			Vec2 pos;
-			pos.x = transforms[i].Pos.x + directionVec.x * movespeed;
-			pos.y = transforms[i].Pos.y + directionVec.y * movespeed;
-
-			Vec2i tilePos;
-			tilePos.x = (int)zpl_floor((pos.x + HALF_TILE_SIZE) * INVERSE_TILE_SIZE);
-			tilePos.y = (int)zpl_floor((pos.y + HALF_TILE_SIZE) * INVERSE_TILE_SIZE);
-
-			if (!IsTileInBounds(tilemap, tilePos))
-				continue;
-
-			Tile* tile = GetTile(tilemap, tilePos);
-			SASSERT(tile);
-
-			if (!tile->Flags.Get(TILE_FLAG_SOLID))
-			{
-
-				if (tilePos != transforms[i].TilePos)
-				{
-					zpl_u32 tileHash = HashTile(tilePos);
-					ecs_entity_t* occupiedEntity = HashMapGet(entityMap, tileHash, ecs_entity_t);
-					if (!occupiedEntity)
-					{
-						HashMapSet(entityMap, tileHash, it->entities[i], ecs_entity_t);
-
-						zpl_u32 oldPos = HashTile(transforms[i].TilePos);
-						HashMapRemove(entityMap, oldPos);
-					}
-					else
-						continue;
-				}
-
-				transforms[i].Pos = pos;
-				transforms[i].TilePos = tilePos;
-			}
+			transforms[i].TilePos = travelTilePos;
 		}
 	}
 }

@@ -27,5 +27,5 @@ Sprite* SpriteGet(uint16_t id);
 
 namespace Sprites
 {
-    inline uint16_t PLAYER = SpriteRegister({ 0, 0, 16, 16 }, {});
+    inline uint16_t PLAYER = SpriteRegister({ 0, 0, 16, 16 }, { 8, 8 });
 }

@@ -5,6 +5,9 @@
 
 #include <math.h>
 
+constexpr int MAX_SEARCH_TILES = 64 * 64;
+constexpr int PATHFINDER_TABLE_SIZE = MAX_SEARCH_TILES + (int)((float)MAX_SEARCH_TILES * HASHSET_LOAD_FACTOR);
+
 #define Hash(pos) zpl_fnv32a(&pos, sizeof(Vec2i))
 #define AllocNode() ((Node*)AllocFrame(sizeof(Node), 16));
 
@@ -34,94 +37,70 @@ CompareCost(void* cur, void* parent)
 		return 1;
 }
 
+internal Node*
+FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
+
 void
 PathfinderInit(Pathfinder* pathfinder)
 {
-	constexpr int HASH_SIZE = MAX_SEARCH_TILES + (int)((float)MAX_SEARCH_TILES * HASHSET_LOAD_FACTOR);
 	pathfinder->Open = BHeapCreate(ALLOCATOR_HEAP, CompareCost, MAX_SEARCH_TILES);
-	HashMapInitialize(&pathfinder->OpenSet, sizeof(int), HASH_SIZE, ALLOCATOR_HEAP);
-	HashSetInitialize(&pathfinder->ClosedSet, HASH_SIZE, ALLOCATOR_HEAP);
-}
-
-Vec2i
-PathFindNext(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
-{
-	BHeapClear(pathfinder->Open);
-	HashMapClear(&pathfinder->OpenSet);
-	HashSetClear(&pathfinder->ClosedSet);
-
-	Node* node = AllocNode();
-	node->Pos = start;
-	node->Parent = nullptr;
-	node->HCost = 0;
-	node->GCost = ManhattanDistance(start, end);
-	node->FCost = node->GCost;
-
-	BHeapPushMin(pathfinder->Open, node, node);
-	u32 firstHash = Hash(node->Pos);
-	HashMapSet(&pathfinder->OpenSet, firstHash, node->FCost, int);
-
-	while (pathfinder->Open->Count > 0)
-	{
-		BHeapItem item = BHeapPopMin(pathfinder->Open);
-
-		Node* node = (Node*)item.User;
-
-		u32 hash = Hash(node->Pos);
-		HashMapRemove(&pathfinder->OpenSet, hash);
-		HashSetPut(&pathfinder->ClosedSet, hash);
-
-		if (node->Pos == end)
-		{
-			Vec2i res = node->Pos;
-			Node* prev = node->Parent;
-			while (prev)
-			{
-				res = prev->Pos;
-				prev = prev->Parent;
-			}
-			return res;
-		}
-		else
-		{
-			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
-			{
-				Vec2i next = node->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
-				u32 nextHash = Hash(node->Pos);
-				if (HashSetContains(&pathfinder->ClosedSet, nextHash))
-					continue;
-
-				Tile* tile = GetTile(tilemap, next);
-				if (tile->Flags.Get(TILE_FLAG_SOLID))
-					continue;
-				else
-				{
-					int* nextCost = HashMapGet(&pathfinder->OpenSet, nextHash, int);
-					int distance = ManhattanDistance(next, end);
-					if (distance < *nextCost || !nextCost)
-					{
-						Node* nextNode = AllocNode();
-						nextNode->Pos = next;
-						nextNode->Parent = node;
-						nextNode->HCost = ManhattanDistance(next, start);
-						nextNode->GCost = distance;
-						nextNode->FCost = nextNode->HCost + nextNode->GCost;
-
-						if (!nextCost)
-						{
-							BHeapPushMin(pathfinder->Open, nextNode, nextNode);
-							HashMapSet(&pathfinder->OpenSet, nextHash, nextNode->FCost, int);
-						}
-					}
-				}
-			}
-		}
-	}
-	return start;
+	HashMapInitialize(&pathfinder->OpenSet, sizeof(int), PATHFINDER_TABLE_SIZE, ALLOCATOR_HEAP);
+	HashSetInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, ALLOCATOR_HEAP);
 }
 
 SList<Vec2i>
 PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
+{
+	Node* node = FindPath(pathfinder, tilemap, start, end);
+	if (node)
+	{
+		SList<Vec2i> positions = {};
+		positions.Alloc = ALLOCATOR_FRAME;
+
+		positions.Reserve(10);
+
+		positions.Push(&node->Pos);
+		Node* prev = node->Parent;
+		while (prev)
+		{
+			positions.Push(&prev->Pos);
+			prev = prev->Parent;
+		}
+		SLOG_DEBUG("Checked %d tiles", pathfinder->ClosedSet.Count);
+		return positions;
+	}
+	else
+	{
+		return {};
+	}
+}
+
+int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
+{
+	Node* node = FindPath(pathfinder, tilemap, start, end);
+	if (node)
+	{
+		int count = 0;
+		inFillArray[count++] = node->Pos;
+
+		Node* prev = node->Parent;
+		while (prev && count < MAX_PATHFIND_LENGTH)
+		{
+			inFillArray[count++] = prev->Pos;
+			prev = prev->Parent;
+		}
+		SLOG_DEBUG("Checked %d tiles, length %d tiles", pathfinder->ClosedSet.Count, count);
+		return count;
+	}
+	else
+	{
+		inFillArray[0] = end;
+		return 0;
+	}
+}
+
+internal Node*
+FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 {
 	BHeapClear(pathfinder->Open);
 	HashMapClear(&pathfinder->OpenSet);
@@ -148,32 +127,20 @@ PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 		HashMapRemove(&pathfinder->OpenSet, hash);
 		HashSetPut(&pathfinder->ClosedSet, hash);
 
-		if (pathfinder->ClosedSet.Count >= MAX_SEARCH_TILES)
+		if (node->Pos == end)
 		{
-			SLOG_DEBUG("Could not find path");
-			return {};
-		}
-		else if (node->Pos == end)
-		{
-			SList<Vec2i> positions = {};
-			positions.Alloc = ALLOCATOR_FRAME;
-
-			positions.Reserve(10);
-
-			positions.Push(&node->Pos);
-			Node* prev = node->Parent;
-			while (prev)
-			{
-				positions.Push(&prev->Pos);
-				prev = prev->Parent;
-			}
-			SLOG_DEBUG("Checked %d tiles", pathfinder->ClosedSet.Count);
-			return positions;
+			return node;
 		}
 		else
 		{
 			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
 			{
+				if (pathfinder->Open->Count >= MAX_SEARCH_TILES)
+				{
+					SLOG_DEBUG("Could not find path");
+					return nullptr;
+				}
+
 				Vec2i next = node->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
 
 				u32 nextHash = Hash(next);
@@ -197,12 +164,6 @@ PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 						nextNode->HCost = ManhattanDistance(end, next);
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
 
-						if (pathfinder->Open->Count >= MAX_SEARCH_TILES)
-						{
-							SLOG_DEBUG("Could not find path");
-							return {};
-						}
-
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
 						if (!nextCost)
 						{
@@ -217,7 +178,5 @@ PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 			}
 		}
 	}
-	return {};
+	return nullptr;
 }
-
-
