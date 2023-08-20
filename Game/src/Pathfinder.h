@@ -7,6 +7,8 @@
 #include "Structures/HashSet.h"
 #include "Structures/SList.h"
 
+constexpr size_t MAX_PATHFIND_LENGTH = CHUNK_SIZE * 5;
+
 struct Pathfinder
 {
 	BHeap* Open;

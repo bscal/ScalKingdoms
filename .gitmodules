@@ -1,3 +1,6 @@
 [submodule "Game/vendor/raylib"]
 	path = Game/vendor/raylib
 	url = git@github.com:bscal/raylib.git
+[submodule "Game/vendor/Nuklear"]
+	path = Game/vendor/Nuklear
+	url = git@github.com:bscal/Nuklear.git

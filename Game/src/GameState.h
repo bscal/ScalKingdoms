@@ -13,8 +13,6 @@
 //extern ECS_COMPONENT_DECLARE(CTransform);
 //extern ECS_COMPONENT_DECLARE(CMove);
 
-constexpr size_t MAX_PATHFIND_LENGTH = CHUNK_SIZE * 2;
-
 struct Pathfinder;
 
 struct AssetMgr
@@ -29,6 +27,8 @@ struct AssetMgr
 struct GameState
 {
 	zpl_arena GameMemory;
+
+	RenderTexture2D ScreenTexture;
 
 	AssetMgr AssetMgr;
 

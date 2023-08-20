@@ -30,9 +30,9 @@ struct Tile
 
 struct Chunk
 {
+	RenderTexture2D RenderTexture;
 	Vec2i Coord;
 	Rectangle BoundingBox;
-	Vec2 TextureDrawPosition;	// Start coords in the chunk texture
 	Vec2 CenterCoord;
 	bool IsDirty;				// Should Redraw chunk
 	bool IsGenerated;
@@ -63,7 +63,6 @@ ZPL_TABLE_DECLARE(, ChunkTable, chunk_, Chunk*);
 
 struct TileMap
 {
-	RenderTexture2D TileMapTexture;
 	ChunkTable Chunks;
 	Rectangle Dimensions;
 	zpl_thread ChunkThread;

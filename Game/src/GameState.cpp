@@ -24,6 +24,8 @@ internal void UnloadAssets(GameState* gameState);
 
 internal Vec2i ScreenToTile(Vec2 pos);
 
+ECS_SYSTEM_DECLARE(DrawEntities);
+
 int 
 GameInitialize()
 {
@@ -33,13 +35,15 @@ GameInitialize()
 	SetTraceLogLevel(LOG_ALL);
 	SetTargetFPS(60);
 
-
 	State.Camera.zoom = 1.0f;
 	State.Camera.offset = { (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
 
+	State.ScreenTexture = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
+
 	LoadAssets(&State);
 	
-	InitializeGUI(&State, State.AssetMgr.MainFont);
+	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
+	SASSERT(guiInitialized);
 
 	HashMapInitialize(&State.EntityMap, sizeof(ecs_entity_t), 64, ALLOCATOR_HEAP);
 
@@ -48,7 +52,7 @@ GameInitialize()
 
 	TileMgrInitialize(&State.AssetMgr.TileSpriteSheet);
 
-	TileMapInit(&State, &State.TileMap, { 0, 0, 4, 4 });
+	TileMapInit(&State, &State.TileMap, { -8, -8, 8, 8 });
 
 	// Entities
 	State.World = ecs_init();
@@ -57,24 +61,18 @@ GameInitialize()
 	ECS_COMPONENT(State.World, CRender);
 	ECS_COMPONENT_DEFINE(State.World, CMove);
 
-	ECS_SYSTEM(State.World, DrawEntities, EcsOnUpdate, CTransform, CRender);
+	ECS_SYSTEM_DEFINE(State.World, DrawEntities, 0, CTransform, CRender);
 	ECS_SYSTEM(State.World, MoveSystem, EcsOnUpdate, CTransform, CMove);
 
 	Client.Player = ecs_new_id(State.World);
-	ecs_add(State.World, Client.Player, CTransform);
-	ecs_add(State.World, Client.Player, CRender);
+	ecs_set_ex(State.World, Client.Player, CTransform, {});
 	ecs_add(State.World, Client.Player, CMove);
 	
-	ecs_set_ex(State.World, Client.Player, CTransform, {});
-
 	CRender render = {};
 	render.Color = WHITE;
 	render.Width = TILE_SIZE;
 	render.Height = TILE_SIZE;
 	ecs_set(State.World, Client.Player, CRender, render);
-
-	CMove c = {};
-	ecs_set(State.World, Client.Player, CMove, c);
 
 	Vec2i pos = Vec2i{ 0, 0 };
 	u32 hash = HashTile(pos);
@@ -83,6 +81,8 @@ GameInitialize()
 	PathfinderInit(&State.Pathfinder);
 
 	GameRun();
+
+	ecs_fini(State.World);
 
 	GameShutdown();
 
@@ -100,7 +100,11 @@ GameRun()
 
 		InputUpdate();
 
+		UpdateGUI(&State);
+
 		GameUpdate();
+
+		ecs_progress(State.World, DeltaTime);
 
 		// Draw
 
@@ -111,18 +115,29 @@ GameRun()
 		screenRect.width = (float)GetScreenWidth() / State.Camera.zoom;
 		screenRect.height = (float)GetScreenHeight() / State.Camera.zoom;
 
-		BeginDrawing();
+		BeginTextureMode(State.ScreenTexture);
 		ClearBackground(BLACK);
 		BeginMode2D(State.Camera);
 
 		TileMapDraw(&State.TileMap, screenRect);
 
-		ecs_progress(State.World, DeltaTime);
+		ecs_run(State.World, ecs_id(DrawEntities), DeltaTime, NULL /* param */);
 
 		Vector2 target = State.Camera.target;
-		DrawRectangleLines((int)target.x - 8, (int)target.y - 8, 16, 16, MAGENTA);
+		DrawRectangleLines((int)(target.x - HALF_TILE_SIZE), (int)(target.y - HALF_TILE_SIZE), 16, 16, MAGENTA);
 
 		EndMode2D();
+		EndTextureMode();
+
+		BeginDrawing();
+		ClearBackground(BLACK);
+
+		DrawTexturePro(State.ScreenTexture.texture
+			, { 0, 0, (float)GetScreenWidth(), -(float)GetScreenHeight() }
+			, { 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() }
+			, {}, 0, WHITE);
+
+		DrawGUI(&State);
 
 		EndDrawing();
 
@@ -219,7 +234,7 @@ void InputUpdate()
 	{
 		Vec2i tile = ScreenToTile(GetMousePosition());
 
-		u32 hash = zpl_fnv32a(&tile, sizeof(Vec2i));
+		u32 hash = HashTile(tile);
 		ecs_entity_t* entity = HashMapGet(&State.EntityMap, hash, ecs_entity_t);
 		if (entity)
 		{
@@ -233,6 +248,8 @@ void InputUpdate()
 void
 GameShutdown()
 {
+	UnloadRenderTexture(State.ScreenTexture);
+
 	TileMapFree(&State.TileMap);
 
 	UnloadAssets(&State);
@@ -243,8 +260,10 @@ GameShutdown()
 internal void 
 LoadAssets(GameState* gameState)
 {
-	gameState->AssetMgr.TileSpriteSheet = LoadTexture("Game/assets/16x16.bmp");
-	gameState->AssetMgr.EntitySpriteSheet = LoadTexture("Game/assets/SpriteSheet.png");
+	#define ASSET_DIR "Game/assets/"
+	gameState->AssetMgr.TileSpriteSheet = LoadTexture(ASSET_DIR "16x16.bmp");
+	gameState->AssetMgr.EntitySpriteSheet = LoadTexture(ASSET_DIR "SpriteSheet.png");
+	gameState->AssetMgr.MainFont = LoadFont(ASSET_DIR "Silver.ttf");
 }
 
 internal void 
@@ -252,6 +271,7 @@ UnloadAssets(GameState* gameState)
 {
 	UnloadTexture(gameState->AssetMgr.TileSpriteSheet);
 	UnloadTexture(gameState->AssetMgr.EntitySpriteSheet);
+	//UnloadFont(gameState->AssetMgr.MainFont);
 }
 
 internal Vec2i 
