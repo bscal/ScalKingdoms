@@ -32,14 +32,23 @@ struct CBody
 	Vec2 HitOffset;
 };
 
+struct CHealth
+{
+	u16 Blood;
+	u16 MaxBlood;
+	Flag8 Flags;
+};
+
 #ifdef COMPONENT_DECLARATION
 
 ECS_COMPONENT_DECLARE(CTransform);
+ECS_COMPONENT_DECLARE(CRender);
 ECS_COMPONENT_DECLARE(CMove);
 
 #else
 
 extern ECS_COMPONENT_DECLARE(CTransform);
+extern ECS_COMPONENT_DECLARE(CRender);
 extern ECS_COMPONENT_DECLARE(CMove);
 
 #endif

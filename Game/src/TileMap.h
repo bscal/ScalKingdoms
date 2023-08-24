@@ -8,17 +8,15 @@
 
 struct GameState;
 
-constexpr global_var int LAYER_BACKGROUND = 0;
-constexpr global_var int LAYER_FOREGROUND = 1;
-
+constexpr global_var int LAYER_BACKGROUND	= 0;
+constexpr global_var int LAYER_FOREGROUND	= 1;
+constexpr global_var int LAYER_WALL			= 2;
 
 enum TileFlags : uint8_t 
 {
 	TILE_FLAG_COLLISION	= Bit(0),
-	TILE_FLAG_SOLID		= Bit(1),
-	TILE_FLAG_LIQUID	= Bit(2),
-	TILE_FLAG_SOFT		= Bit(3),
-	TILE_FLAG_IS_HIDDEN = Bit(4),
+	TILE_FLAG_LIQUID	= Bit(1),
+	TILE_FLAG_IS_HIDDEN = Bit(2),
 };
 
 struct Tile
@@ -31,8 +29,8 @@ struct Tile
 struct Chunk
 {
 	RenderTexture2D RenderTexture;
-	Vec2i Coord;
 	Rectangle BoundingBox;
+	Vec2i Coord;
 	Vec2 CenterCoord;
 	bool IsDirty;				// Should Redraw chunk
 	bool IsGenerated;

@@ -148,7 +148,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 					continue;
 
 				Tile* tile = GetTile(tilemap, next);
-				if (!tile || tile->Flags.Get(TILE_FLAG_SOLID))
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
 					continue;
 				else
 				{

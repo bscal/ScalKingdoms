@@ -28,7 +28,7 @@ void TileMgrInitialize(Texture2D* tileSetTexture)
 
 	TileInfo wall = {};
 	wall.Src = CoordToRec(17, 3);
-	wall.DefaultTileFlags.Set(TILE_FLAG_SOLID, true);
+	wall.DefaultTileFlags.Set(TILE_FLAG_COLLISION, true);
 	Tiles::FIRE_WALL = TileMgrRegisterTile(&wall);
 
 	TileInfo woodDoor = {};

@@ -4,6 +4,10 @@
 
 struct GameState;
 
+ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile);
+
+void DestroyCreature(GameState* gamestate, ecs_entity_t entity);
+
 void MoveEntity(GameState* state, ecs_entity_t id, Vec2i tile);
 
 _FORCE_INLINE_ Vec2i WorldToTile(Vec2 pos)

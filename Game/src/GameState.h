@@ -10,6 +10,8 @@
 
 #include "Structures/HashMap.h"
 
+#include <luajit/src/lua.hpp>
+
 //extern ECS_COMPONENT_DECLARE(CTransform);
 //extern ECS_COMPONENT_DECLARE(CMove);
 
@@ -27,6 +29,8 @@ struct AssetMgr
 struct GameState
 {
 	zpl_arena GameMemory;
+
+	zpl_jobs_system Jobs;
 
 	RenderTexture2D ScreenTexture;
 
@@ -54,10 +58,12 @@ struct GameClient
 	ecs_entity_t SelectedEntity;
 };
 
+extern struct GameClient Client;
+
 #define DeltaTime GetFrameTime()
 
 GameState* GetGameState();
 
-GameClient* GetClient();
+//GameClient* GetClient();
 
 zpl_allocator GetGameAllocator();

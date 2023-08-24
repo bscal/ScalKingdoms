@@ -283,7 +283,7 @@ uint32_t HashMapIndex(HashMap* map, uint32_t hash)
 }
 
 
-bool HashMapRemove(HashMap* map, uint64_t hash)
+bool HashMapRemove(HashMap* map, uint32_t hash)
 {
 	if (!map->Keys || map->Count == 0)
 		return false;

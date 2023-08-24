@@ -30,6 +30,14 @@ int
 GameInitialize()
 {
 	zpl_arena_init_from_allocator(&State.GameMemory, zpl_heap_allocator(), Megabytes(8));
+	
+	zpl_affinity affinity;
+	zpl_affinity_init(&affinity);
+
+	int threadCount = (affinity.thread_count > 4) ? 4 : 2;
+	zpl_jobs_init(&State.Jobs, zpl_heap_allocator(), threadCount);
+	SLOG_INFO("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
+		, threadCount, affinity.thread_count, affinity.core_count);
 
 	InitWindow(WIDTH, HEIGHT, TITLE);
 	SetTraceLogLevel(LOG_ALL);
@@ -58,25 +66,13 @@ GameInitialize()
 	State.World = ecs_init();
 
 	ECS_COMPONENT_DEFINE(State.World, CTransform);
-	ECS_COMPONENT(State.World, CRender);
+	ECS_COMPONENT_DEFINE(State.World, CRender);
 	ECS_COMPONENT_DEFINE(State.World, CMove);
 
 	ECS_SYSTEM_DEFINE(State.World, DrawEntities, 0, CTransform, CRender);
 	ECS_SYSTEM(State.World, MoveSystem, EcsOnUpdate, CTransform, CMove);
 
-	Client.Player = ecs_new_id(State.World);
-	ecs_set_ex(State.World, Client.Player, CTransform, {});
-	ecs_add(State.World, Client.Player, CMove);
-	
-	CRender render = {};
-	render.Color = WHITE;
-	render.Width = TILE_SIZE;
-	render.Height = TILE_SIZE;
-	ecs_set(State.World, Client.Player, CRender, render);
-
-	Vec2i pos = Vec2i{ 0, 0 };
-	u32 hash = HashTile(pos);
-	HashMapSet(&State.EntityMap, hash, Client.Player, ecs_entity_t);
+	Client.Player = SpawnCreature(&State, 0, { 0, 0 });
 
 	PathfinderInit(&State.Pathfinder);
 
@@ -153,37 +149,27 @@ void GameUpdate()
 void InputUpdate()
 {
 	Vector2 movement = VEC2_ZERO;
-	int8_t moveX = 0;
-	int8_t moveY = 0;
-
 	if (IsKeyDown(KEY_W))
 	{
 		movement.x += VEC2_UP.x * DeltaTime * 160;
 		movement.y += VEC2_UP.y * DeltaTime * 160;
-		moveY = -1;
 	}
 	else if (IsKeyDown(KEY_S))
 	{
 		movement.x += VEC2_DOWN.x * DeltaTime * 160;
 		movement.y += VEC2_DOWN.y * DeltaTime * 160;
-		moveY = 1;
 	}
-
 	if (IsKeyDown(KEY_A))
 	{
 		movement.x += VEC2_LEFT.x * DeltaTime * 160;
 		movement.y += VEC2_LEFT.y * DeltaTime * 160;
-		moveX = -1;
 	}
 	else if (IsKeyDown(KEY_D))
 	{
 		movement.x += VEC2_RIGHT.x * DeltaTime * 160;
 		movement.y += VEC2_RIGHT.y * DeltaTime * 160;
-		moveX = 1;
 	}
 	
-	//CMove* move = (CMove*)ecs_get(State.World, Client.Player, CMove);
-
 	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
 	State.Camera.target = transform->Pos;
 

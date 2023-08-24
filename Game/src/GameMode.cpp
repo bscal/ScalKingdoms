@@ -4,6 +4,46 @@
 #include "Components.h"
 #include "Pathfinder.h"
 
+ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
+{
+	ecs_world_t* world = gamestate->World;
+
+	ecs_entity_t entity = ecs_new_id(world);
+
+	CTransform transform = {};
+	transform.Pos = TileToWorldCenter(tile);
+	transform.TilePos = tile;
+	ecs_set(world, entity, CTransform, transform);
+	
+	ecs_set_ex(world, entity, CMove, {});
+
+	CRender render = {};
+	render.Color = WHITE;
+	render.Width = TILE_SIZE;
+	render.Height = TILE_SIZE;
+	ecs_set(world, entity, CRender, render);
+
+	Vec2i pos = Vec2i{ 0, 0 };
+	u32 hash = HashTile(pos);
+	HashMapSet(&gamestate->EntityMap, hash, entity, ecs_entity_t);
+
+	return entity;
+}
+
+void DestroyCreature(GameState* gamestate, ecs_entity_t entity)
+{
+	if (ecs_is_valid(gamestate->World, entity))
+	{
+		const CTransform* transform = ecs_get(gamestate->World, entity, CTransform);
+		SASSERT(transform);
+
+		u32 hash = HashTile(transform->TilePos);
+		HashMapRemove(&gamestate->EntityMap, hash);
+
+		ecs_delete(gamestate->World, entity);
+	}
+}
+
 void MoveEntity(GameState* state, ecs_entity_t id, Vec2i tile)
 {
 	if (ecs_is_valid(state->World, id))

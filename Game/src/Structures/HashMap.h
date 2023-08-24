@@ -49,7 +49,7 @@ void* HashMapPutKey(HashMap* map, uint32_t hash);
 
 uint32_t HashMapIndex(HashMap* map, uint32_t hash);
 
-bool HashMapRemove(HashMap* map, uint64_t hash);
+bool HashMapRemove(HashMap* map, uint32_t hash);
 
 void HashMapForEach(HashMap* map, void(*Fn(uint32_t, void*, void*)), void* stackMemory);
 
