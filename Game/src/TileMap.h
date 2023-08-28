@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-
+#include "Regions.h"
 #include "Structures/BitArray.h"
 
 #include <FastNoiseLite/FastNoiseLite.h>
@@ -62,6 +62,8 @@ ZPL_TABLE_DECLARE(, ChunkTable, chunk_, Chunk*);
 struct TileMap
 {
 	ChunkTable Chunks;
+	Vec2i LastChunkCoord;
+	Chunk* LastChunk;
 	Rectangle Dimensions;
 	zpl_thread ChunkThread;
 	ChunkLoaderState ChunkLoader;

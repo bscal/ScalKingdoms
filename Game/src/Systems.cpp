@@ -66,7 +66,7 @@ void MoveSystem(ecs_iter_t* it)
 			u32 oldHash = HashTile(transforms[i].TilePos);
 
 			HashMapRemove(entityMap, oldHash);
-			HashMapSet(entityMap, newHash, it->entities[i], ecs_entity_t);
+			HashMapSet(entityMap, newHash, &it->entities[i]);
 
 			transforms[i].TilePos = travelTilePos;
 		}

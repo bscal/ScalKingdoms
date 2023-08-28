@@ -31,7 +31,7 @@ void HashSetClear(HashSet* set);
 
 void HashSetDestroy(HashSet* set);
 
-bool HashSetPut(HashSet* set, uint32_t hash);
+bool HashSetSet(HashSet* set, uint32_t hash);
 
 bool HashSetContains(HashSet* set, uint32_t hash);
 

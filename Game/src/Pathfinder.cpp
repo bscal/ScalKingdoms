@@ -66,7 +66,6 @@ PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 			positions.Push(&prev->Pos);
 			prev = prev->Parent;
 		}
-		SLOG_DEBUG("Checked %d tiles", pathfinder->ClosedSet.Count);
 		return positions;
 	}
 	else
@@ -89,7 +88,13 @@ int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilem
 			inFillArray[count++] = prev->Pos;
 			prev = prev->Parent;
 		}
-		SLOG_DEBUG("Checked %d tiles, length %d tiles", pathfinder->ClosedSet.Count, count);
+		if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING))
+		{
+			zpl_array_clear(Client.PathfinderPath);
+			for (int i = 0; i < count; ++i)
+				zpl_array_append(Client.PathfinderPath, inFillArray[i]);
+			SLOG_DEBUG("Checked %d tiles, length %d tiles", pathfinder->ClosedSet.Count, count);
+		}
 		return count;
 	}
 	else
@@ -105,6 +110,10 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	BHeapClear(pathfinder->Open);
 	HashMapClear(&pathfinder->OpenSet);
 	HashSetClear(&pathfinder->ClosedSet);
+	if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING) && Client.PathfinderVisited)
+	{
+		zpl_array_clear(Client.PathfinderVisited);
+	}
 
 	Node* node = AllocNode();
 	node->Pos = start;
@@ -115,17 +124,21 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 
 	BHeapPushMin(pathfinder->Open, node, node);
 	u32 firstHash = Hash(node->Pos);
-	HashMapSet(&pathfinder->OpenSet, firstHash, node->FCost, int);
+	HashMapSet(&pathfinder->OpenSet, firstHash, &node->FCost);
 
 	while (pathfinder->Open->Count > 0)
 	{
 		BHeapItem item = BHeapPopMin(pathfinder->Open);
 
 		Node* node = (Node*)item.User;
+		if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING))
+		{
+			zpl_array_append(Client.PathfinderVisited, node->Pos);
+		}
 
 		u32 hash = Hash(node->Pos);
 		HashMapRemove(&pathfinder->OpenSet, hash);
-		HashSetPut(&pathfinder->ClosedSet, hash);
+		HashSetSet(&pathfinder->ClosedSet, hash);
 
 		if (node->Pos == end)
 		{
@@ -167,7 +180,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
 						if (!nextCost)
 						{
-							HashMapSet(&pathfinder->OpenSet, nextHash, nextNode->GCost, int);
+							HashMapSet(&pathfinder->OpenSet, nextHash, &nextNode->GCost);
 						}
 						else
 						{

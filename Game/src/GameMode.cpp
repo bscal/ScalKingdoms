@@ -25,7 +25,7 @@ ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 
 	Vec2i pos = Vec2i{ 0, 0 };
 	u32 hash = HashTile(pos);
-	HashMapSet(&gamestate->EntityMap, hash, entity, ecs_entity_t);
+	HashMapSet(&gamestate->EntityMap, hash, &entity);
 
 	return entity;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 struct Vector2;
 
 struct Vector2i
@@ -27,19 +29,26 @@ constexpr static Vector2i Vec2i_UP      = { 0, -1 };
 constexpr static Vector2i Vec2i_DOWN    = { 0, 1 };
 constexpr static Vector2i Vec2i_LEFT    = { 1, 0 };
 constexpr static Vector2i Vec2i_RIGHT   = { -1, 0 };
+constexpr static Vector2i Vec2i_NW      = { 0, -1 };
+constexpr static Vector2i Vec2i_NE      = { 0, 1 };
+constexpr static Vector2i Vec2i_SW      = { 1, 0 };
+constexpr static Vector2i Vec2i_SE      = { -1, 0 };
+
+constexpr static Vector2i Vec2i_MAX     = { INT32_MAX, INT32_MAX };
+constexpr static Vector2i Vec2i_NULL    = Vec2i_MAX;
 
 constexpr static Vector2i Vec2i_NEIGHTBORS[4] = { Vec2i_UP, Vec2i_LEFT, Vec2i_DOWN, Vec2i_RIGHT };
+constexpr static Vector2i Vec2i_CORNERS[4] = { Vec2i_NW, Vec2i_NE, Vec2i_SW, Vec2i_SE };
 
 constexpr static Vector2i Vec2i_NEIGHTBORS_CORNERS[8] = {
-    { -1, -1 }, Vec2i_UP , { 1, -1 },
+    Vec2i_NW,   Vec2i_UP ,  Vec2i_NE,
     Vec2i_RIGHT,          Vec2i_LEFT,
-    { -1, 1 }, Vec2i_DOWN, { 1, 1 } };
+    Vec2i_SW,   Vec2i_DOWN, Vec2i_SE };
 
 long long Vec2iPackInt64(Vector2i v);
 Vector2i Vec2iUnpackInt64(long long packedI64);
 Vector2 Vec2iToVec2(Vector2i v);
-// Floored
-Vector2i Vec2ToVec2i(Vector2 v);
+Vector2i Vec2ToVec2i(Vector2 v); // Floored
 
 static inline bool operator==(Vector2i left, Vector2i right)
 {

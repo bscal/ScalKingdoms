@@ -8,14 +8,21 @@
 constexpr static uint32_t HASHMAP_NOT_FOUND = UINT32_MAX;
 constexpr static uint32_t HASHMAP_DEFAULT_CAPACITY = 2;
 constexpr static uint32_t HASHMAP_DEFAULT_RESIZE = 2;
-constexpr static float HASHMAP_LOAD_FACTOR = 0.80f;
+constexpr static float HASHMAP_LOAD_FACTOR = 0.85f;
 
 typedef void* (*HashMapAlloc)(size_t, size_t);
-typedef void(*HashMapFree)(void*, size_t);
+typedef void  (*HashMapFree)(void*, size_t);
 
 #define HashMapGet(hashmap, hash, T) ((T*)HashMapGetPtr(hashmap, hash))
-#define HashMapSet(hashmap, hash, value, T) { T tmp = value; HashMapPut(hashmap, hash, &tmp); }
-#define HashMapValuesIndex(hashmap, idx, T) ((T)(hashmap)->Values[idx * (hashmap)->Stride])
+#define HashMapValuesOffset(hashmap, idx) ((hashmap).Values[idx * (hashmap).Stride])
+#define HashMapValuesIndex(hashmap, idx, T) ((T*)HashMapValuesOffset(hashmap, idx))
+#define HashMapReplace(hashmap, hash, value) \
+		{ \
+		SASSERT(value); \
+		uint32_t idx = HashMapSet(hashmap, hash, value); \
+		if (idx != HASHMAP_NOT_FOUND) \
+			SCopy(HashMapValuesOffset(hashmap, idx), value, hashmap.Stride); \
+		} \
 
 struct HashBucket
 {
@@ -43,9 +50,9 @@ void HashMapClear(HashMap* map);
 
 void HashMapDestroy(HashMap* map);
 
-uint32_t HashMapPut(HashMap* map, uint32_t hash, void* value);
+uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value);
 
-void* HashMapPutKey(HashMap* map, uint32_t hash);
+void* HashMapSetNew(HashMap* map, uint32_t hash);
 
 uint32_t HashMapIndex(HashMap* map, uint32_t hash);
 

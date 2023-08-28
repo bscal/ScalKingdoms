@@ -78,7 +78,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 		line += 7;
 
 		zpl_u32 hash = HashString(name, strlen(name));
-		HashMapSet(&atlas.NameToIndex, hash, entryCounter, u16);
+		HashMapSet(&atlas.NameToIndex, hash, &entryCounter);
 
 		int err;
 

@@ -36,6 +36,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 		return;
 	}
 
+	tilemap->LastChunkCoord = Vec2i{ INT32_MAX, INT32_MAX };
 	tilemap->Dimensions = dimensions;
 
 	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = 6 * 6;
@@ -217,13 +218,13 @@ ChunkUnload(TileMap* tilemap, Chunk* chunk)
 internal void
 ChunkUpdate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 {
-
 }
 
 internal void
 ChunkBake(GameState* gameState, Chunk* chunk)
 {
 	BeginTextureMode(chunk->RenderTexture);
+
 	Texture2D* tileSpriteSheet = GetTileSheet();
 	for (int y = 0; y < CHUNK_SIZE; ++y)
 	{
@@ -248,6 +249,7 @@ ChunkBake(GameState* gameState, Chunk* chunk)
 			}
 		}
 	}
+
 	chunk->IsDirty = false;
 	EndTextureMode();
 }
@@ -313,10 +315,15 @@ Chunk*
 GetChunk(TileMap* tilemap, Vec2i tile)
 {
 	Vec2i chunkCoord = TileToChunk(tile);
+	if (chunkCoord == tilemap->LastChunkCoord)
+		return tilemap->LastChunk;
+
 	size_t hash = Vec2iHash(chunkCoord);
 	Chunk** chunkPtr = chunk_get(&tilemap->Chunks, hash);
 	if (chunkPtr)
 	{
+		tilemap->LastChunkCoord = chunkCoord;
+		tilemap->LastChunk = *chunkPtr;
 		return *chunkPtr;
 	}
 	else

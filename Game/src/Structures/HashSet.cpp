@@ -38,7 +38,7 @@ void HashSetReserve(HashSet* set, uint32_t capacity)
 		{
 			if (set->Keys[i].IsUsed)
 			{
-				HashSetPut(&tmpSet, set->Keys[i].Hash);
+				HashSetSet(&tmpSet, set->Keys[i].Hash);
 			}
 		}
 
@@ -74,7 +74,7 @@ void HashSetDestroy(HashSet* set)
 	set->Count = 0;
 }
 
-bool HashSetPut(HashSet* set, uint32_t hash)
+bool HashSetSet(HashSet* set, uint32_t hash)
 {
 	if (set->Count >= (uint32_t)((float)set->Capacity * HASHSET_LOAD_FACTOR))
 	{

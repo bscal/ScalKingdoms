@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Memory.h"
 
-#define SLIST_NO_FOUND UINT32_MAX
+constexpr global_var uint32_t SLIST_NO_FOUND = UINT32_MAX;
 
 enum class SListResizeType
 {
@@ -40,20 +40,24 @@ struct SList
 	bool RemoveAtFast(uint32_t index);
 	void Set(uint32_t index, const T* data);
 
-	_FORCE_INLINE_ T* PeekAt(uint32_t index) const;
-	_FORCE_INLINE_ T* Last() const;
-
-	SList<T>& Assign(T* inList, size_t listCount);
-
+	void Copy(T* arr, uint32_t count);
 	bool Contains(const T* value) const;
 	uint32_t Find(const T* value) const;
 	void Clear();
 
-	_FORCE_INLINE_ T& operator[](size_t idx) { SASSERT(idx < Count); return Memory[idx]; }
-	_FORCE_INLINE_ const T& operator[](size_t idx) const { SASSERT(idx < Count); return Memory[idx]; }
+	_FORCE_INLINE_ T* At(size_t idx)
+	{
+		SASSERT(idx < Count);
+		SASSERT(IsAllocated());
+		return &Memory[idx];
+	}
 
-	_FORCE_INLINE_ T* begin() { return Memory; }
-	_FORCE_INLINE_ T* end() { return Memory + Count; }
+	_FORCE_INLINE_ T AtCopy(size_t idx)
+	{
+		SASSERT(idx < Count);
+		SASSERT(IsAllocated());
+		return Memory[idx];
+	}
 
 	_FORCE_INLINE_ size_t MemUsed() const { return Capacity * sizeof(T); }
 	_FORCE_INLINE_ bool IsAllocated() const { return (Memory); }
@@ -61,6 +65,12 @@ struct SList
 	_FORCE_INLINE_ uint32_t LastIndex() const
 	{
 		return (Count == 0) ? 0 : (Count - 1);
+	}
+
+	_FORCE_INLINE_ T* Last() const
+	{
+		SASSERT(Memory);
+		return &Memory[LastIndex()];
 	}
 };
 
@@ -307,35 +317,13 @@ void SList<T>::Set(uint32_t index, const T* data)
 }
 
 template<typename T>
-T* SList<T>::PeekAt(uint32_t index) const
+void SList<T>::Copy(T* arr, uint32_t count)
 {
-	SASSERT(Memory);
-	SASSERT(index < Count);
-	SASSERT(index < Capacity);
-	SASSERT(Count <= Capacity);
-	return &Memory[index];
-}
+	SASSERT(arr);
+	SASSERT(count > 0);
 
-template<typename T>
-T* SList<T>::Last() const
-{
-	SASSERT(Memory);
-	return &Memory[LastIndex()];
-}
-
-template<typename T>
-SList<T>& SList<T>::Assign(T* inList, size_t listCount)
-{
-	SASSERT(inList);
-	SASSERT(listCount > 0);
-	SASSERT(!IsAllocated());
-	SASSERT(Count == 0);
-	SASSERT(listCount < UINT32_MAX)
-	EnsureSize((uint32_t)listCount);
-	SMemCopy(Memory, inList, listCount * sizeof(T));
-	Count = (uint32_t)listCount;
-
-	return *this;
+	EnsureSize(count);
+	memcpy(Memory, arr, count * sizeof(T));
 }
 
 template<typename T>

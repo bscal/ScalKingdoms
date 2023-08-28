@@ -12,10 +12,12 @@
 #include <raylib/src/raymath.h>
 
 global_var struct GameState State;
-global_var struct GameClient Client;
+
+struct GameClient Client;
 
 internal void GameRun();
 internal void GameUpdate();
+internal void GameLateUpdate();
 internal void GameShutdown();
 internal void InputUpdate();
 
@@ -30,7 +32,7 @@ int
 GameInitialize()
 {
 	zpl_arena_init_from_allocator(&State.GameMemory, zpl_heap_allocator(), Megabytes(8));
-	
+
 	zpl_affinity affinity;
 	zpl_affinity_init(&affinity);
 
@@ -49,7 +51,7 @@ GameInitialize()
 	State.ScreenTexture = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
 
 	LoadAssets(&State);
-	
+
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
 	SASSERT(guiInitialized);
 
@@ -75,6 +77,14 @@ GameInitialize()
 	Client.Player = SpawnCreature(&State, 0, { 0, 0 });
 
 	PathfinderInit(&State.Pathfinder);
+
+	Client.IsDebugMode = true;
+	Client.TileMapDebugFlag.True(TILE_MAP_DEBUG_FLAG_PATHFINDING);
+	zpl_array_init(Client.PathfinderPath, zpl_heap_allocator());
+	zpl_array_init(Client.PathfinderVisited, zpl_heap_allocator());
+
+	if (Client.IsDebugMode)
+		SLOG_INFO("[ Game ] Running in DEBUG mode!");
 
 	GameRun();
 
@@ -117,10 +127,9 @@ GameRun()
 
 		TileMapDraw(&State.TileMap, screenRect);
 
-		ecs_run(State.World, ecs_id(DrawEntities), DeltaTime, NULL /* param */);
+		ecs_run(State.World, ecs_id(DrawEntities), DeltaTime, NULL);
 
-		Vector2 target = State.Camera.target;
-		DrawRectangleLines((int)(target.x - HALF_TILE_SIZE), (int)(target.y - HALF_TILE_SIZE), 16, 16, MAGENTA);
+		GameLateUpdate();
 
 		EndMode2D();
 		EndTextureMode();
@@ -144,6 +153,33 @@ GameRun()
 void GameUpdate()
 {
 	TileMapUpdate(&State, &State.TileMap);
+}
+
+void GameLateUpdate()
+{
+	Vector2 target = State.Camera.target;
+	DrawRectangleLines((int)(target.x - HALF_TILE_SIZE), (int)(target.y - HALF_TILE_SIZE), 16, 16, MAGENTA);
+
+	if (Client.TileMapDebugFlag.Flags > 0)
+	{
+		if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING) && Client.PathfinderVisited)
+		{
+			Color closed = Color{ RED.r, RED.g, RED.b, 155 };
+			for (int i = 0; i < zpl_array_count(Client.PathfinderVisited); ++i)
+			{
+				int x = Client.PathfinderVisited[i].x * TILE_SIZE;
+				int y = Client.PathfinderVisited[i].y * TILE_SIZE;
+				DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, closed);
+			}
+			Color path = Color{ BLUE.r, BLUE.g, BLUE.b, 155 };
+			for (int i = 0; i < zpl_array_count(Client.PathfinderPath); ++i)
+			{
+				int x = Client.PathfinderPath[i].x * TILE_SIZE;
+				int y = Client.PathfinderPath[i].y * TILE_SIZE;
+				DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, path);
+			}
+		}
+	}
 }
 
 void InputUpdate()
@@ -204,7 +240,7 @@ void InputUpdate()
 			for (u32 i = 0; i < next.Count; ++i)
 			{
 				Tile t = NewTile(Tiles::WOOD_DOOR);
-				SetTile(&State.TileMap, next[i], &t);
+				SetTile(&State.TileMap, next.AtCopy(i), &t);
 			}
 		}
 	}

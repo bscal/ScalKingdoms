@@ -8,6 +8,7 @@
 #include "Pathfinder.h"
 #include "GUI.h"
 
+#include "Structures/SList.h"
 #include "Structures/HashMap.h"
 
 #include <luajit/src/lua.hpp>
@@ -52,10 +53,23 @@ struct GameState
 	Pathfinder Pathfinder;
 };
 
+enum TileMapDebugFlags
+{
+	TILE_MAP_DEBUG_FLAG_PATHFINDING = Bit(0)
+};
+
 struct GameClient
 {
 	ecs_entity_t Player;
 	ecs_entity_t SelectedEntity;
+
+	Flag32 TileMapDebugFlag;
+
+	// Extra debug values
+	zpl_array(Vec2i) PathfinderVisited;
+	zpl_array(Vec2i) PathfinderPath;
+
+	bool IsDebugMode;
 };
 
 extern struct GameClient Client;
@@ -63,7 +77,5 @@ extern struct GameClient Client;
 #define DeltaTime GetFrameTime()
 
 GameState* GetGameState();
-
-//GameClient* GetClient();
 
 zpl_allocator GetGameAllocator();
