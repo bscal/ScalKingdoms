@@ -37,9 +37,6 @@ CompareCost(void* cur, void* parent)
 		return 1;
 }
 
-internal Node*
-FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
-
 void
 PathfinderInit(Pathfinder* pathfinder)
 {
@@ -104,7 +101,7 @@ int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilem
 	}
 }
 
-internal Node*
+Node*
 FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 {
 	BHeapClear(pathfinder->Open);

@@ -1,0 +1,5 @@
+-xc++
+-I
+Game/src
+-I
+Game/vendor

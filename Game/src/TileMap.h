@@ -76,6 +76,8 @@ void TileMapDraw(TileMap* tilemap, Rectangle screenRect);
 
 Vec2i TileToChunk(Vec2i tile);
 
+Vec2i ChunkToTile(Vec2i chunk);
+
 size_t GetLocalTileIdx(Vec2i tile);
 
 Chunk* GetChunk(TileMap* tilemap, Vec2i tile);

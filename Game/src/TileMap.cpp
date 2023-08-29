@@ -301,6 +301,14 @@ TileToChunk(Vec2i tile)
 	return chunkCoord;
 }
 
+Vec2i ChunkToTile(Vec2i chunk)
+{
+	Vec2i res;
+	res.x = chunk.x * TILE_SIZE;
+	res.y = chunk.y * TILE_SIZE;
+	return res;
+}
+
 size_t
 GetLocalTileIdx(Vec2i tile)
 {

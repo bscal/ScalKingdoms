@@ -30,3 +30,5 @@ void PathfinderInit(Pathfinder* pathfinder);
 SList<Vec2i> PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
 
 int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
+
+Node* FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);

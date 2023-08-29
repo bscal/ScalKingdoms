@@ -4,6 +4,10 @@
 
 #include "Structures/ArrayList.h"
 #include "Structures/HashMap.h"
+#include "Structures/HashSet.h"
+#include "Structures/BHeap.h"
+
+#include <klib/kbtree.h>
 
 struct TileMap;
 struct Chunk;
@@ -20,23 +24,46 @@ struct Region
 
 struct RegionPaths
 {
-	Vec2i ChunkStart;
-	Vec2i ChunkEnd;
-	ArrayList(Vec2i) Tiles;
+	Vec2i Nodes[4];
+	Vec2i NeightborChunks[4];
+	int ChunkCost;
 };
 
-void LoadRegionPaths(RegionPaths* regionPath, TileMap* tilemap, Chunk* chunk);
+struct RegionNode
+{
+	Vec2i Pos;
+	RegionNode* Parent;
+	int MoveDirection;
+	int FCost;
+	int HCost;
+	int GCost;
+};
+
+
+//#define RegionCompare(a, b) (CompareCost(a, b))
+
+//KBTREE_INIT(regions, RegionNode, RegionCompare);
+
+struct RegionState
+{
+	HashMap RegionMap;
+	BHeap* Open;
+	HashMap OpenMap;
+	//kbtree_t(regions) OpenSet;
+	HashSet ClosedSet;
+};
+
+void RegionStateInit(RegionState* regionState);
+
+void LoadRegionPaths(RegionState* regionState, RegionPaths* regionPath, TileMap* tilemap, Chunk* chunk);
 
 void UnloadRegionPaths();
 
-zpl_array(Vec2i) FindRegionPath();
+void FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i end, zpl_array(int) arr);
 
-//
+Vec2i RegionGetNode(RegionState* regionState, RegionPaths* region, int direction);
 
-void LoadRegion(Region* region, TileMap* tilemap, Chunk* chunk);
+void RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, zpl_array(Vec2i) arr);
 
-void UnloadRegion(Region* region);
+RegionPaths* GetRegion(RegionState* regionState, Vec2i tilePos);
 
-Region* GetRegion(TileMap* tilemap, Vec2i tile);
-
-ecs_entity_t FindEntity(TileMap* tilemap, Vec2i start, ecs_id_t type);
