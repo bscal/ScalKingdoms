@@ -11,9 +11,6 @@ constexpr static uint32_t HASHMAP_DEFAULT_CAPACITY = 2;
 constexpr static uint32_t HASHMAP_DEFAULT_RESIZE = 2;
 constexpr static float HASHMAP_LOAD_FACTOR = 0.85f;
 
-typedef void* (*HashMapAlloc)(size_t, size_t);
-typedef void  (*HashMapFree)(void*, size_t);
-
 #define HashMapGet(hashmap, hash, T) ((T*)HashMapGetPtr(hashmap, hash))
 #define HashMapValuesIndex(hashmap, idx) (&((uint8_t*)(hashmap->Values))[hashmap->Stride * idx])
 

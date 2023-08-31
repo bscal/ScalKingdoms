@@ -1,3 +1,5 @@
+#pragma warning(disable : 4189)
+
 #include "TextureAtlas.h"
 
 #include "Memory.h"
@@ -35,7 +37,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 	// 1st line empty
 	int line = 1;
 	const char* imgName = split[line++];
-	const char* size = split[line++];
+	const char* dimensions = split[line++];
 	const char* format = split[line++];
 	const char* filter = split[line++];
 	const char* repear = split[line++];

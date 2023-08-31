@@ -72,7 +72,7 @@ DrawSprite(Texture2D* texture, Rectangle source, Rectangle dest, Vec2 origin, Co
     Vector2 bottomLeft;
     Vector2 bottomRight;
 
-    constexpr float rotation = 0;
+    float rotation = 0;
     // Only calculate rotation if needed
     if (rotation == 0.0f)
     {
@@ -192,7 +192,7 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	// Read line data
 	lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
 	searchPoint = strstr(buffer, "lineHeight");
-	sscanf(searchPoint, "lineHeight=%i base=%i scaleW=%i scaleH=%i", &fontSize, &base, &imWidth, &imHeight);
+	sscanf_s(searchPoint, "lineHeight=%i base=%i scaleW=%i scaleH=%i", &fontSize, &base, &imWidth, &imHeight);
 	fileTextPtr += (lineBytes + 1);
 
 	TRACELOGD("FONT: [%s] Loaded font info:", fileName);
@@ -201,14 +201,14 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 
 	lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
 	searchPoint = strstr(buffer, "file");
-	sscanf(searchPoint, "file=\"%128[^\"]\"", imFileName);
+	sscanf_s(searchPoint, "file=\"%s[^\"]\"", imFileName, 128);
 	fileTextPtr += (lineBytes + 1);
 
 	TRACELOGD("    > Texture filename: %s", imFileName);
 
 	lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
 	searchPoint = strstr(buffer, "count");
-	sscanf(searchPoint, "count=%i", &glyphCount);
+	sscanf_s(searchPoint, "count=%i", &glyphCount);
 	fileTextPtr += (lineBytes + 1);
 
 	TRACELOGD("    > Chars count: %i", glyphCount);
@@ -249,7 +249,7 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	for (int i = 0; i < glyphCount; i++)
 	{
 		lineBytes = GetLine(fileTextPtr, buffer, MAX_BUFFER_SIZE);
-		sscanf(buffer, "char id=%i x=%i y=%i width=%i height=%i xoffset=%i yoffset=%i xadvance=%i",
+		sscanf_s(buffer, "char id=%i x=%i y=%i width=%i height=%i xoffset=%i yoffset=%i xadvance=%i",
 			&charId, &charX, &charY, &charWidth, &charHeight, &charOffsetX, &charOffsetY, &charAdvanceX);
 		fileTextPtr += (lineBytes + 1);
 
@@ -290,7 +290,8 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 
 	if (font->texture.id == 0)
 	{
-		font = &GetFontDefault();
+		SWARN("Font texture.id == 0");
+		font = &GetGameState()->AssetMgr.MainFont;
 	}
 
 	int size = TextLength(text);    // Total size in bytes of the text, scanned by codepoints in loop
@@ -354,7 +355,7 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 			case(RICHTEXT_IMG):
 			{
 				SASSERT(params == 4);
-				int id = FastAtoi(split[1]);
+				//int id = FastAtoi(split[1]);
 				int w = FastAtoi(split[2]);
 				int h = FastAtoi(split[3]);
 

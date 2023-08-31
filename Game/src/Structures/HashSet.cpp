@@ -49,8 +49,6 @@ void HashSetReserve(HashSet* set, uint32_t capacity)
 	}
 	else
 	{
-		size_t oldKeysSize = HashMapKeySize(set);
-
 		set->Capacity = capacity;
 
 		size_t newKeysSize = HashMapKeySize(set);

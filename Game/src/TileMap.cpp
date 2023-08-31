@@ -405,12 +405,12 @@ GetChunkByCoordNoCache(TileMap* tilemap, Vec2i chunkCoord)
 }
 
 Tile*
-GetTile(TileMap* tilemap, Vec2i tile)
+GetTile(TileMap* tilemap, Vec2i tileCoord)
 {
-	Chunk* chunk = GetChunk(tilemap, tile);
+	Chunk* chunk = GetChunk(tilemap, tileCoord);
 	if (chunk)
 	{
-		size_t idx = GetLocalTileIdx(tile);
+		size_t idx = GetLocalTileIdx(tileCoord);
 		Tile* tile = &chunk->TileArray[idx];
 		SASSERT(tile);
 		return tile;

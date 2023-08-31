@@ -90,7 +90,7 @@ project "Game"
 
     defines
     {
-        "SCAL_BUILD_DLL",
+        "SCAL_BUILD_DLL"
     }
 
     includedirs
@@ -102,6 +102,7 @@ project "Game"
     libdirs
     {
         "%{wks.location}/bin/" .. outputdir .. "/raylib/",
+        "Game/vendor/luajit/src"
     }
 
     buildoptions
@@ -111,6 +112,9 @@ project "Game"
 
     links
     {
+        "raylib",
+        "lua51",
+        "luajit",
     }
 
     dependson
@@ -122,7 +126,7 @@ project "Game"
         buildoptions
         { 
             "-Wc++17-compat", "-Weverything", "-Wno-c++98-compat-pedantic",
-            "-Wno-old-style-cast", "-Wno-extra-semi-stmt"
+            "-Wno-old-style-cast", "-Wno-extra-semi-stmt", "-fno-rtti", "-fno-exceptions"
         }
 
     filter "configurations:Debug"
@@ -138,10 +142,15 @@ project "Game"
     filter "system:Windows"
         defines "SCAL_PLATFORM_WINDOWS"
         systemversion "latest"
-        links { "raylib.lib" }
+        buildoptions
+        {
+            "-W4", "-WX", "-wd4100", "-wd4201", "-wd4127",
+            "-Oi", "-GR", "-GR-", "-EHs-c-", "-D_HAS_EXCEPTIONS=0"
+        }
+        --links { "raylib.lib" }
 
     filter "system:Unix"
         defines "SCAL_PLATFORM_LINUX"
-        links { "raylib.so" }
+        --links { "raylib.so" }
 
     filter {}

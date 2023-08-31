@@ -26,24 +26,12 @@ RegionCompareCost(void* cur, void* parent)
 }
 
 internal int
-TileDistance(Vec2i v0, Vec2i v1)
+CalculateDistance(Vec2i v0, Vec2i v1)
 {
 	constexpr int MOVE_COST = 10;
 	constexpr int DIAGONAL_COST = 14;
 	int x = abs(v0.x - v1.x);
 	int y = abs(v0.y - v1.y);
-	int res = MOVE_COST * (x + y) + (DIAGONAL_COST - 2 * MOVE_COST) * (int)fminf((float)x, (float)y);
-	return res;
-}
-
-internal int 
-RegionDistance(Vec2i v0, Vec2i v1)
-{
-	constexpr int MOVE_COST = 10;
-	constexpr int DIAGONAL_COST = 14;
-	int x = abs(v0.x - v1.x);
-	int y = abs(v0.y - v1.y);
-	//int res = MOVE_COST * (x + y);
 	int res = MOVE_COST * (x + y) + (DIAGONAL_COST - 2 * MOVE_COST) * (int)fminf((float)x, (float)y);
 	return res;
 }
@@ -172,7 +160,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 	node->Pos = start;
 	node->Parent = nullptr;
 	node->GCost = 0;
-	node->HCost = RegionDistance(start, end);
+	node->HCost = CalculateDistance(start, end);
 	node->FCost = node->GCost + node->HCost;
 
 	BHeapPushMin(regionState->Open, node, node);
@@ -183,32 +171,32 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 	{
 		BHeapItem item = BHeapPopMin(regionState->Open);
 
-		RegionNode* node = (RegionNode*)item.User;
+		RegionNode* curNode = (RegionNode*)item.User;
 
-		u32 hash = Hash(node->Pos);
+		u32 hash = Hash(curNode->Pos);
 		HashMapRemove(&regionState->OpenMap, hash);
 		HashSetSet(&regionState->ClosedSet, hash);
 
-		if (node->Pos == end)
+		if (curNode->Pos == end)
 		{
 			if (Client.DebugShowRegionPaths)
-			{
-				SLOG_DEBUG("[ Debug::Pathfinding ] %d region path length, %d total regions", regionSet->Count, regionState->ClosedSet.Count);
 				ArrayListClear(Client.DebugRegionsPath);
-			}
 
 			HashSetClear(regionSet);
 
-			RegionNode* prev = node;
+			RegionNode* prev = curNode;
 			while (prev)
 			{
+				if (Client.DebugShowRegionPaths)
+					ArrayListPush(zpl_heap_allocator(), Client.DebugRegionsPath, prev->Pos);
+
 				u32 prevHash = HashTile(prev->Pos);
 				HashSetSet(regionSet, prevHash);
-				ArrayListPush(zpl_heap_allocator(), Client.DebugRegionsPath, prev->Pos);
 				prev = prev->Parent;
 			}
 
-
+			if (Client.DebugShowRegionPaths)
+				SLOG_DEBUG("[ Debug::Pathfinding ] %d region path length, %d total regions", regionSet->Count, regionState->ClosedSet.Count);
 
 			return;
 		}
@@ -223,7 +211,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 					return;
 				}
 
-				Vec2i next = node->Pos + Vec2i_NEIGHTBORS[i];
+				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS[i];
 
 				u32 nextHash = Hash(next);
 				if (HashSetContains(&regionState->ClosedSet, nextHash))
@@ -235,14 +223,14 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 				else
 				{
 					int* nextCost = HashMapGet(&regionState->OpenMap, nextHash, int);
-					int cost = node->GCost + RegionDistance(node->Pos, next);
+					int cost = curNode->GCost + CalculateDistance(curNode->Pos, next);
 					if (!nextCost || cost < *nextCost)
 					{
 						RegionNode* nextNode = AllocNode(RegionNode);
 						nextNode->Pos = next;
-						nextNode->Parent = node;
+						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
-						nextNode->HCost = RegionDistance(end, next);
+						nextNode->HCost = CalculateDistance(end, next);
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
 
 						BHeapPushMin(regionState->Open, nextNode, nextNode);
@@ -275,7 +263,7 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 	node->Pos = start;
 	node->Parent = nullptr;
 	node->GCost = 0;
-	node->HCost = TileDistance(start, end);
+	node->HCost = CalculateDistance(start, end);
 	node->FCost = node->GCost + node->HCost;
 
 	BHeapPushMin(pathfinder->Open, node, node);
@@ -286,37 +274,31 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 	{
 		BHeapItem item = BHeapPopMin(pathfinder->Open);
 
-		Node* node = (Node*)item.User;
+		Node* curNode = (Node*)item.User;
 
-		u32 hash = Hash(node->Pos);
+		u32 hash = Hash(curNode->Pos);
 		HashMapRemove(&pathfinder->OpenSet, hash);
 		HashSetSet(&pathfinder->ClosedSet, hash);
 
-		if (node->Pos == end)
+		if (curNode->Pos == end)
 		{
+			int count = 0;
 			zpl_array_clear(moveComponent->TilePath);
-			if (node)
+
+			Node* prev = curNode;
+			while (prev)
 			{
-				int count = 0;
-
-				zpl_array_append(moveComponent->TilePath, node->Pos);
+				zpl_array_append(moveComponent->TilePath, prev->Pos);
+				prev = prev->Parent;
 				++count;
-
-				Node* prev = node->Parent;
-				while (prev)
-				{
-					zpl_array_append(moveComponent->TilePath, prev->Pos);
-					prev = prev->Parent;
-					++count;
-				}
-				SLOG_DEBUG("[ Debug::Pathfinding ] %d path length, %d total tiles", count, GetGameState()->Pathfinder.ClosedSet.Count);
 			}
+			SLOG_DEBUG("[ Debug::Pathfinding ] %d path length, %d total tiles", count, GetGameState()->Pathfinder.ClosedSet.Count);
 		}
 		else
 		{
 			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
 			{
-				Vec2i next = node->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
+				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
 
 				RegionPaths* nextRegion = GetRegion(regionState, next);
 				u32 nextRegionhash = Hash(nextRegion->Pos);
@@ -334,14 +316,14 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 				{
 					int* nextCost = HashMapGet(&pathfinder->OpenSet, nextHash, int);
 					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
-					int cost = node->GCost + TileDistance(node->Pos, next) + tileCost;
+					int cost = curNode->GCost + CalculateDistance(curNode->Pos, next) + tileCost;
 					if (!nextCost || cost < *nextCost)
 					{
 						Node* nextNode = AllocNode(Node);
 						nextNode->Pos = next;
-						nextNode->Parent = node;
+						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
-						nextNode->HCost = TileDistance(end, next);
+						nextNode->HCost = CalculateDistance(end, next);
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
 
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);

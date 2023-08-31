@@ -8503,9 +8503,12 @@ int ecs_value_move_ctor(
     ecs_set_id(world, entity, ecs_id(component), sizeof(component), &(component)__VA_ARGS__)
 
 // bscal
-#define ecs_set_ex(world, entity, component, ...)\
+#define ecs_set_ex(world, entity, component, value)\
+    ecs_set_id(world, entity, ecs_id(component), sizeof(component), &value); \
+
+#define ecs_set_zeroed(world, entity, component)\
     { \
-        component tmp = __VA_ARGS__;    \
+        component tmp = { 0 };    \
         ecs_set_id(world, entity, ecs_id(component), sizeof(component), &tmp); \
     }
 

@@ -58,7 +58,6 @@ GameInitialize()
 	HashMapInitialize(&State.EntityMap, sizeof(ecs_entity_t), 64, ALLOCATOR_HEAP);
 
 	zpl_random_init(&State.Random);
-	Sprite* sprite = SpriteGet(Sprites::PLAYER);
 
 	TileMgrInitialize(&State.AssetMgr.TileSpriteSheet);
 
@@ -265,8 +264,6 @@ void InputUpdate()
 	{
 		Vec2i tile = ScreenToTile(GetMousePosition());
 		SLOG_INFO("Tile: %s", FMT_VEC2I(tile));
-
-		const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
 
 		SList<Vec2i> next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
 

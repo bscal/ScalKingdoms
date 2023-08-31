@@ -24,6 +24,9 @@
  * tables have references to it.
  */
 
+// ADDED: bscal
+#pragma warning(disable : 4706 4702 4701)
+
 #include "flecs.h"
 /**
  * @file private_api.h

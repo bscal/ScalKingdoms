@@ -46,6 +46,7 @@ SAlloc(Allocator allocator, void* ptr, size_t newSize, size_t oldSize, u32 align
 	{
 		res = zpl_alloc_align(allocator, newSize, align);
 	}
+
 	SASSERT(res);
 	return res;
 }

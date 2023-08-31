@@ -14,7 +14,7 @@ ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 	CTransform transform = {};
 	transform.Pos = TileToWorldCenter(tile);
 	transform.TilePos = tile;
-	ecs_set(world, entity, CTransform, transform);
+	ecs_set_ex(world, entity, CTransform, transform);
 	
 	ecs_add(world, entity, CMove);
 	
@@ -22,7 +22,7 @@ ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 	render.Color = WHITE;
 	render.Width = TILE_SIZE;
 	render.Height = TILE_SIZE;
-	ecs_set(world, entity, CRender, render);
+	ecs_set_ex(world, entity, CRender, render);
 
 	Vec2i pos = Vec2i{ 0, 0 };
 	u32 hash = HashTile(pos);

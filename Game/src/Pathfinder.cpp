@@ -116,15 +116,15 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	{
 		BHeapItem item = BHeapPopMin(pathfinder->Open);
 
-		Node* node = (Node*)item.User;
+		Node* curNode = (Node*)item.User;
 
 		u32 hash = Hash(node->Pos);
 		HashMapRemove(&pathfinder->OpenSet, hash);
 		HashSetSet(&pathfinder->ClosedSet, hash);
 
-		if (node->Pos == end)
+		if (curNode->Pos == end)
 		{
-			return node;
+			return curNode;
 		}
 		else
 		{
@@ -136,7 +136,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 					return nullptr;
 				}
 
-				Vec2i next = node->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
+				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
 
 				u32 nextHash = Hash(next);
 				if (HashSetContains(&pathfinder->ClosedSet, nextHash))
@@ -149,12 +149,12 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 				{
 					int* nextCost = HashMapGet(&pathfinder->OpenSet, nextHash, int);
 					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
-					int cost = node->GCost + ManhattanDistance(node->Pos, next) + tileCost;
+					int cost = curNode->GCost + ManhattanDistance(curNode->Pos, next) + tileCost;
 					if (!nextCost || cost < *nextCost)
 					{
 						Node* nextNode = AllocNode();
 						nextNode->Pos = next;
-						nextNode->Parent = node;
+						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
 						nextNode->HCost = ManhattanDistance(end, next);
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;

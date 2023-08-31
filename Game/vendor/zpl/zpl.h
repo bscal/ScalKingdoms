@@ -11561,7 +11561,7 @@ License:
 
                      case 's': len = zpl__print_string(text, remaining, &info, va_arg(va, char *)); break;
 
-                     case 'r': len = zpl__print_repeated_char(text, remaining, &info, va_arg(va, int)); break;
+                     case 'r': len = zpl__print_repeated_char(text, remaining, &info, cast(char) va_arg(va, int)); break;
 
                      case 'p':
                          info.base = 16;
@@ -12117,7 +12117,7 @@ License:
                  int c;
                  zpl_usize i=0;
                  while ((c = getc(handle)) != EOF && i++ < buffer_len) {
-                     *buffer++ = c;
+                     *buffer++ = cast(char)c;
                  }
 
          #        if defined(ZPL_SYSTEM_WINDOWS)
@@ -13932,7 +13932,7 @@ License:
          psi.dwXCountChars = si.bufx;
          psi.dwYCountChars = si.bufy;
          psi.dwFillAttribute = si.fill_attr;
-         psi.wShowWindow = si.show_window;
+         psi.wShowWindow = cast(WORD)si.show_window;
 
          wchar_t *w_cli = zpl__alloc_utf8_to_ucs2(a, cli, NULL);
          wchar_t *w_workdir = zpl__alloc_utf8_to_ucs2(a, si.workdir, NULL);
@@ -18350,7 +18350,7 @@ License:
                  if (*e == 0) {
                      ZPL_CSV_ASSERT("unmatched quoted string");
                      err = ZPL_CSV_ERROR_UNEXPECTED_END_OF_INPUT;
-                     return err;
+                     return cast(zpl_u8)err;
                  }
                  *e = 0;
                  p = cast(char *)zpl_str_trim(e+1, true);
@@ -18420,7 +18420,7 @@ License:
                  else if (total_colc != colc) {
                      ZPL_CSV_ASSERT("mismatched rows");
                      err = ZPL_CSV_ERROR_MISMATCHED_ROWS;
-                     return err;
+                     return cast(zpl_u8)err;
                  }
                  colc = 0;
                  if (d != 0) p++;
@@ -18430,7 +18430,7 @@ License:
          if (zpl_array_count(root->nodes) == 0) {
              ZPL_CSV_ASSERT("unexpected end of input. stream is empty.");
              err = ZPL_CSV_ERROR_UNEXPECTED_END_OF_INPUT;
-             return err;
+             return cast(zpl_u8)err;
          }
 
          /* consider first row as a header. */
@@ -18443,7 +18443,7 @@ License:
              }
          }
 
-         return err;
+         return cast(zpl_u8)err;
      }
      void zpl_csv_free(zpl_csv_object *obj) {
          zpl_adt_destroy_branch(obj);

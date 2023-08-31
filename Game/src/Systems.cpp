@@ -54,9 +54,7 @@ void MoveSystem(ecs_iter_t* it)
 	CTransform* transforms = ecs_field(it, CTransform, 1);
 	CMove* moves = ecs_field(it, CMove, 2);
 
-	TileMap* tilemap = &GetGameState()->TileMap;
 	HashMap* entityMap = &GetGameState()->EntityMap;
-	RegionState* regionState = &GetGameState()->RegionState;
 
 	float baseMS = 8.0f * it->delta_time;
 
@@ -107,8 +105,8 @@ struct IntervalSystem
 
 void TestSystem(ecs_iter_t* it)
 {
-	CTransform* transforms = ecs_field(it, CTransform, 1);
-	CMove* moves = ecs_field(it, CMove, 2);
+	//CTransform* transforms = ecs_field(it, CTransform, 1);
+	//CMove* moves = ecs_field(it, CMove, 2);
 
 	IntervalSystem interval = {};
 

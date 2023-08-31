@@ -31,8 +31,8 @@ SearchForNextAction(ecs_entity_t entity, ActionMgr* actionMgr, CEntityPriorityMa
 
 void SystemUpdateActions(ecs_iter_t* it)
 {
-	CTransform* transforms = ecs_field(it, CTransform, 1);
-	CMove* moves = ecs_field(it, CMove, 2);
+	//CTransform* transforms = ecs_field(it, CTransform, 1);
+	//CMove* moves = ecs_field(it, CMove, 2);
 	CEntityPriorityMap* priorities = ecs_field(it, CEntityPriorityMap, 3);
 	CEntityAction* actions = ecs_field(it, CEntityAction, 4);
 
