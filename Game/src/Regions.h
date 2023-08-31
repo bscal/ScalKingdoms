@@ -11,8 +11,10 @@
 
 struct TileMap;
 struct Chunk;
+struct CMove;
 
-constexpr global_var int REGION_SIZE = 16;
+constexpr global_var int DIVISIONS = 4;
+constexpr global_var int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
 
 struct Region
 {
@@ -24,16 +26,14 @@ struct Region
 
 struct RegionPaths
 {
-	Vec2i Nodes[4];
-	Vec2i NeightborChunks[4];
-	int ChunkCost;
+	Vec2i Pos;
+	bool Sides[4];
 };
 
 struct RegionNode
 {
 	Vec2i Pos;
 	RegionNode* Parent;
-	int MoveDirection;
 	int FCost;
 	int HCost;
 	int GCost;
@@ -55,15 +55,13 @@ struct RegionState
 
 void RegionStateInit(RegionState* regionState);
 
-void LoadRegionPaths(RegionState* regionState, RegionPaths* regionPath, TileMap* tilemap, Chunk* chunk);
+void LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk);
 
 void UnloadRegionPaths();
 
-void FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i end, zpl_array(int) arr);
+void FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i end, HashSet* regionSet);
 
-Vec2i RegionGetNode(RegionState* regionState, RegionPaths* region, int direction);
-
-void RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, zpl_array(Vec2i) arr);
+void RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* moveComponent);
 
 RegionPaths* GetRegion(RegionState* regionState, Vec2i tilePos);
 

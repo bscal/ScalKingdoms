@@ -74,7 +74,10 @@ UpdateGUI(GameState* gameState)
 	if (nk_begin(ctx, "Game", { 2, 2, 256, 64 }, NK_WINDOW_NO_SCROLLBAR))
 	{
 		nk_layout_row_dynamic(ctx, 32, 1);
-		nk_label(ctx, "Testing! HELLO???", 1);
+
+		const char* frameTime = TextFormat("Frametime: %.5f s", Client.FrameTime * 1000);
+
+		nk_label(ctx, frameTime, 1);
 	}
 	nk_end(ctx);
 }

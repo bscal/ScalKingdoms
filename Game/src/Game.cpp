@@ -1,8 +1,9 @@
-#include "GameMode.h"
+#include "Game.h"
 
 #include "GameState.h"
 #include "Components.h"
 #include "Pathfinder.h"
+#include "Regions.h"
 
 ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 {
@@ -15,8 +16,8 @@ ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 	transform.TilePos = tile;
 	ecs_set(world, entity, CTransform, transform);
 	
-	ecs_set_ex(world, entity, CMove, {});
-
+	ecs_add(world, entity, CMove);
+	
 	CRender render = {};
 	render.Color = WHITE;
 	render.Width = TILE_SIZE;
@@ -57,8 +58,8 @@ void MoveEntity(GameState* state, ecs_entity_t id, Vec2i tile)
 			move->Start = transform->Pos;
 			move->Target = {};
 			move->Progress = 0;
-			move->Length = (i16)PathFindArrayFill(move->Path, &state->Pathfinder, &state->TileMap, transform->TilePos, tile);
-			move->Index = move->Length;
+			FindRegionPath(&state->RegionState, &state->TileMap, transform->TilePos, tile, &move->Regions);
+			RegionFindLocalPath(&state->RegionState, transform->TilePos, tile, move);
 			ecs_modified(state->World, id, CMove);
 		}
 	}

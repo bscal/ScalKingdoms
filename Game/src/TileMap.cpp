@@ -16,13 +16,21 @@ constexpr global_var int MAX_CHUNKS_TO_PROCESS = 12;
 
 ZPL_TABLE_DEFINE(ChunkTable, chunk_, Chunk*);
 
-internal Chunk* ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord);
-internal void ChunkUnload(TileMap* tilemap, Chunk* chunk);
-internal void ChunkUpdate(GameState* gameState, TileMap* tilemap, Chunk* chunk);
-internal void ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk);
-internal void ChunkBake(GameState* gameState, Chunk* chunk);
-
 internal zpl_isize ChunkThreadFunc(zpl_thread* thread);
+
+// Internal thread safe chunk management functions
+internal Chunk* InternalChunkLoad(TileMap* tilemap, Vec2i coord);
+internal void InternalChunkUnload(TileMap* tilemap, Chunk* chunk);
+internal void InternalChunkGenerate(TileMap* tilemap, Chunk* chunk);
+
+// Main thread chunk function
+internal void ChunkTick(GameState* gameState, Chunk* chunk); // Every tick
+
+// Main thread chunk events
+internal void OnChunkLoad(GameState* gameState, Chunk* chunk);
+internal void OnChunkUnload(GameState* gameState, Chunk* chunk);
+internal void OnChunkBake(GameState* gameState, Chunk* chunk); // When baked
+internal void OnChunkUpdate(GameState* gameState, Chunk* chunk); // When a chunk update is triggered.
 
 void
 TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
@@ -92,7 +100,7 @@ TileMapFree(TileMap* tilemap)
 	for (int i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
 	{
 		Chunk* chunk = tilemap->Chunks.entries[i].value;
-		ChunkUnload(tilemap, chunk);
+		InternalChunkUnload(tilemap, chunk);
 	}
 	chunk_destroy(&tilemap->Chunks);
 
@@ -121,14 +129,16 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 		// Remove unused chunks from map
 		for (zpl_isize i = 0; i < zpl_array_count(chunkLoader->ChunkToRemove); ++i)
 		{
+			OnChunkUnload(gameState, chunkLoader->ChunkToRemove[i].ChunkPtr);
 			chunk_remove(&tilemap->Chunks, chunkLoader->ChunkToRemove[i].Hash);
 		}
 		zpl_array_clear(chunkLoader->ChunkToRemove);
 
-		// Remove unused chunks from map
+		// Add unused chunks from map
 		for (zpl_isize i = 0; i < zpl_array_count(chunkLoader->ChunksToAdd); ++i)
 		{
 			chunk_set(&tilemap->Chunks, chunkLoader->ChunksToAdd[i].Hash, chunkLoader->ChunksToAdd[i].ChunkPtr);
+			OnChunkLoad(gameState, chunkLoader->ChunksToAdd[i].ChunkPtr);
 		}
 		zpl_array_clear(chunkLoader->ChunksToAdd);
 
@@ -141,14 +151,17 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 	{
 		Chunk* chunk = tilemap->Chunks.entries[i].value;
 
-		if (chunk->IsDirty)
+		if (chunk->BakeState != ChunkUpdateState::None)
 		{
-			ChunkBake(gameState, chunk);
+			OnChunkBake(gameState, chunk);
 		}
-		else
+
+		if (chunk->UpdateState != ChunkUpdateState::None)
 		{
-			ChunkUpdate(gameState, tilemap, chunk);
+			OnChunkUpdate(gameState, chunk);
 		}
+
+		ChunkTick(gameState, chunk);
 	}
 }
 
@@ -173,7 +186,7 @@ TileMapDraw(TileMap* tilemap, Rectangle screenRect)
 }
 
 internal Chunk*
-ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
+InternalChunkLoad(TileMap* tilemap, Vec2i coord)
 {
 	if (!IsChunkInBounds(tilemap, coord))
 		return nullptr;
@@ -192,10 +205,11 @@ ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
 	chunk->BoundingBox.height = CHUNK_SIZE_PIXELS;
 	chunk->CenterCoord.x = (float)coord.x * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
 	chunk->CenterCoord.y = (float)coord.y * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
-	chunk->IsDirty = true;
+	chunk->BakeState = ChunkUpdateState::Self;
+	chunk->UpdateState = ChunkUpdateState::SelfAndNeighbors;
 	chunk->IsLoaded = true;
 
-	ChunkGenerate(gameState, tilemap, chunk);
+	InternalChunkGenerate(tilemap, chunk);
 
 	SLOG_DEBUG("Chunk loaded. %s", FMT_VEC2I(chunk->Coord));
 
@@ -203,7 +217,7 @@ ChunkLoad(GameState* gameState, TileMap* tilemap, Vec2i coord)
 }
 
 internal void
-ChunkUnload(TileMap* tilemap, Chunk* chunk)
+InternalChunkUnload(TileMap* tilemap, Chunk* chunk)
 {
 	SASSERT(tilemap);
 	SASSERT(chunk);
@@ -215,17 +229,58 @@ ChunkUnload(TileMap* tilemap, Chunk* chunk)
 	zpl_array_append(tilemap->ChunkLoader.ChunkPool, chunk);
 }
 
-internal void
-ChunkUpdate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
+internal void 
+ChunkTick(GameState* gameState, Chunk* chunk)
+{
+	if (chunk->BakeState != ChunkUpdateState::None || chunk->UpdateState != ChunkUpdateState::None)
+	{
+		bool bakeNeighbors = chunk->BakeState == ChunkUpdateState::SelfAndNeighbors;
+		bool updateNeighbors = chunk->UpdateState == ChunkUpdateState::SelfAndNeighbors;
+		if (bakeNeighbors || updateNeighbors)
+		{
+			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+			{
+				Vec2i neighbor = chunk->Coord + Vec2i_NEIGHTBORS[i];
+				Chunk* neighborChunk = GetChunkByCoordNoCache(&gameState->TileMap, neighbor);
+				if (!neighborChunk)
+					continue;
+				
+				if (bakeNeighbors && neighborChunk->BakeState == ChunkUpdateState::None)
+					neighborChunk->BakeState = ChunkUpdateState::Self;
+				
+				if (updateNeighbors && neighborChunk->UpdateState == ChunkUpdateState::None)
+					neighborChunk->UpdateState = ChunkUpdateState::Self;
+			}
+		}
+
+		chunk->BakeState = ChunkUpdateState::None;
+		chunk->UpdateState = ChunkUpdateState::None;
+	}
+}
+
+internal void 
+OnChunkLoad(GameState* gameState, Chunk* chunk)
 {
 }
 
-internal void
-ChunkBake(GameState* gameState, Chunk* chunk)
+internal void 
+OnChunkUnload(GameState* gameState, Chunk* chunk)
 {
-	BeginTextureMode(chunk->RenderTexture);
 
+}
+
+internal void 
+OnChunkUpdate(GameState* gameState, Chunk* chunk)
+{
+	LoadRegionPaths(&gameState->RegionState, &gameState->TileMap, chunk);
+}
+
+internal void
+OnChunkBake(GameState* gameState, Chunk* chunk)
+{
 	Texture2D* tileSpriteSheet = GetTileSheet();
+
+	BeginTextureMode(chunk->RenderTexture);
 	for (int y = 0; y < CHUNK_SIZE; ++y)
 	{
 		for (int x = 0; x < CHUNK_SIZE; ++x)
@@ -249,13 +304,11 @@ ChunkBake(GameState* gameState, Chunk* chunk)
 			}
 		}
 	}
-
-	chunk->IsDirty = false;
 	EndTextureMode();
 }
 
 internal void 
-ChunkGenerate(GameState* gameState, TileMap* tilemap, Chunk* chunk)
+InternalChunkGenerate(TileMap* tilemap, Chunk* chunk)
 {
 	float startX = (float)chunk->Coord.x * CHUNK_SIZE;
 	float startY = (float)chunk->Coord.y * CHUNK_SIZE;
@@ -304,8 +357,8 @@ TileToChunk(Vec2i tile)
 Vec2i ChunkToTile(Vec2i chunk)
 {
 	Vec2i res;
-	res.x = chunk.x * TILE_SIZE;
-	res.y = chunk.y * TILE_SIZE;
+	res.x = chunk.x * CHUNK_SIZE;
+	res.y = chunk.y * CHUNK_SIZE;
 	return res;
 }
 
@@ -338,6 +391,17 @@ GetChunk(TileMap* tilemap, Vec2i tile)
 	{
 		return nullptr;
 	}
+}
+
+Chunk* 
+GetChunkByCoordNoCache(TileMap* tilemap, Vec2i chunkCoord)
+{
+	size_t hash = Vec2iHash(chunkCoord);
+	Chunk** chunkPtr = chunk_get(&tilemap->Chunks, hash);
+	if (chunkPtr)
+		return *chunkPtr;
+	else
+		return nullptr;
 }
 
 Tile*
@@ -376,7 +440,7 @@ SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile)
 	{
 		size_t idx = GetLocalTileIdx(coord);
 		chunk->TileArray[idx] = *tile;
-		chunk->IsDirty = true;
+		chunk->BakeState = ChunkUpdateState::Self;
 	}
 }
 
@@ -388,7 +452,7 @@ SetTileId(Chunk* chunk, size_t idx, u16 tile, short layer)
 	SASSERT(layer >= 0);
 	if (chunk)
 	{
-		chunk->IsDirty = true;
+		chunk->BakeState = ChunkUpdateState::Self;
 
 		switch (layer)
 		{
@@ -450,7 +514,7 @@ ChunkThreadFunc(zpl_thread* thread)
 			float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
 			if (distance > VIEW_DISTANCE_SQR)
 			{
-				ChunkUnload(tilemap, chunk);
+				InternalChunkUnload(tilemap, chunk);
 
 				ChunkLoaderData data;
 				data.ChunkPtr = chunk;
@@ -485,7 +549,7 @@ ChunkThreadFunc(zpl_thread* thread)
 					if (slot == -1)
 					{
 						ChunkLoaderData data;
-						data.ChunkPtr = ChunkLoad(GetGameState(), tilemap, coord);
+						data.ChunkPtr = InternalChunkLoad(tilemap, coord);
 						data.Hash = hash;
 
 						if (data.ChunkPtr == nullptr)

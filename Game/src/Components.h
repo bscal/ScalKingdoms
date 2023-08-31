@@ -2,6 +2,9 @@
 
 #include "Core.h"
 
+#include "Structures/BitArray.h"
+#include "Structures/HashSet.h"
+
 struct CTransform
 {
 	Vec2 Pos;
@@ -18,12 +21,11 @@ struct CRender
 
 struct CMove
 {
+	HashSet Regions;
+	zpl_array(Vec2i) TilePath;
 	Vec2 Start;
 	Vec2 Target;
 	float Progress;
-	i16 Length;
-	i16 Index;
-	Vec2i Path[MAX_PATHFIND_LENGTH];
 };
 
 struct CBody

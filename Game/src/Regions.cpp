@@ -6,7 +6,9 @@
 #include "Tile.h"
 #include "Pathfinder.h"
 
-#define MAX_REGION_LENGTH 64
+constexpr global_var int MAX_REGION_SEARCH = 128;
+constexpr global_var int MAX_LOCAL_SEARCH = 256;
+
 #define Hash(pos) zpl_fnv32a(&pos, sizeof(Vec2i))
 #define AllocNode(T) ((T*)AllocFrame(sizeof(T), 16));
 
@@ -23,213 +25,234 @@ RegionCompareCost(void* cur, void* parent)
 		return 1;
 }
 
-internal int 
-ManhattanDistance(Vec2i v0, Vec2i v1)
+internal int
+TileDistance(Vec2i v0, Vec2i v1)
 {
 	constexpr int MOVE_COST = 10;
 	constexpr int DIAGONAL_COST = 14;
 	int x = abs(v0.x - v1.x);
 	int y = abs(v0.y - v1.y);
-	int res = MOVE_COST * (x + y);
+	int res = MOVE_COST * (x + y) + (DIAGONAL_COST - 2 * MOVE_COST) * (int)fminf((float)x, (float)y);
+	return res;
+}
+
+internal int 
+RegionDistance(Vec2i v0, Vec2i v1)
+{
+	constexpr int MOVE_COST = 10;
+	constexpr int DIAGONAL_COST = 14;
+	int x = abs(v0.x - v1.x);
+	int y = abs(v0.y - v1.y);
+	//int res = MOVE_COST * (x + y);
+	int res = MOVE_COST * (x + y) + (DIAGONAL_COST - 2 * MOVE_COST) * (int)fminf((float)x, (float)y);
 	return res;
 }
 
 void RegionStateInit(RegionState* regionState)
 {
-	BHeapCreate(zpl_heap_allocator(), RegionCompareCost, MAX_REGION_LENGTH);
-	HashMapInitialize(&regionState->RegionMap, sizeof(RegionPaths), 8 * 8, zpl_heap_allocator());
-	HashMapInitialize(&regionState->OpenMap, sizeof(RegionNode*), MAX_REGION_LENGTH, zpl_heap_allocator());
-	HashSetInitialize(&regionState->ClosedSet, MAX_REGION_LENGTH, zpl_heap_allocator());
+	regionState->Open = BHeapCreate(zpl_heap_allocator(), RegionCompareCost, MAX_REGION_SEARCH);
+	HashMapInitialize(&regionState->RegionMap, sizeof(RegionPaths), MAX_REGION_SEARCH, zpl_heap_allocator());
+	HashMapInitialize(&regionState->OpenMap, sizeof(RegionNode*), MAX_REGION_SEARCH, zpl_heap_allocator());
+	HashSetInitialize(&regionState->ClosedSet, MAX_REGION_SEARCH, zpl_heap_allocator());
 }
 
 void 
-LoadRegionPaths(RegionState* regionState, RegionPaths* regionPath, TileMap* tilemap, Chunk* chunk)
+LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk)
 {
-	SASSERT(regionPath);
+	SASSERT(regionState);
 	SASSERT(tilemap);
 	SASSERT(chunk);
-
-	regionPath->Nodes[0] = Vec2i_NULL;
-	regionPath->Nodes[1] = Vec2i_NULL;
-	regionPath->Nodes[2] = Vec2i_NULL;
-	regionPath->Nodes[3] = Vec2i_NULL;
-
+	
 	Vec2i chunkWorld = ChunkToTile(chunk->Coord);
 
-	for (int i = 0; i < REGION_SIZE; ++i)
+	SLOG_INFO("Loading regions for %s", FMT_VEC2I(chunk->Coord));
+
+	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
 	{
-		Vec2i tile = chunkWorld + Vec2i{ i, 0 };
-		Vec2i borderTile = tile + Vec2i_UP;
+		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
+		{
+			RegionPaths region = {};
 
-		Tile* thisTile = GetTile(tilemap, tile);
-		if (thisTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
+			Vec2i pos = chunkWorld + Vec2i{ xDiv * REGION_SIZE, yDiv * REGION_SIZE };
+			region.Pos = { pos.x / REGION_SIZE, pos.y / REGION_SIZE };
 
-		Tile* otherTile = GetTile(tilemap, tile);
-		if (otherTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ i, 0 };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[0];
 
-		regionPath->Nodes[0] = tile;
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				region.Sides[0] = true;
+				break;
+			}
+
+
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ REGION_SIZE - 1, i };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[1];
+
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				region.Sides[1] = true;
+				break;
+			}
+
+
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ i, REGION_SIZE - 1 };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[2];
+
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				region.Sides[2] = true;
+				break;
+			}
+
+
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ 0, i };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[3];
+
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+
+				region.Sides[3] = true;
+				break;
+			}
+
+			u32 hash = HashTile(region.Pos);
+			HashMapSetEx(&regionState->RegionMap, hash, &region, true);
+		}
 	}
-
-	for (int i = 0; i < REGION_SIZE; ++i)
-	{
-		Vec2i tile = chunkWorld + Vec2i{ REGION_SIZE, i };
-		Vec2i borderTile = tile + Vec2i_RIGHT;
-
-		Tile* thisTile = GetTile(tilemap, tile);
-		if (thisTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
-
-		Tile* otherTile = GetTile(tilemap, tile);
-		if (otherTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
-
-		regionPath->Nodes[1] = tile;
-	}
-
-	for (int i = 0; i < REGION_SIZE; ++i)
-	{
-		Vec2i tile = chunkWorld + Vec2i{ i, REGION_SIZE };
-		Vec2i borderTile = tile + Vec2i_DOWN;
-
-		Tile* thisTile = GetTile(tilemap, tile);
-		if (thisTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
-
-		Tile* otherTile = GetTile(tilemap, tile);
-		if (otherTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
-
-		regionPath->Nodes[2] = tile;
-	}
-
-	for (int i = 0; i < REGION_SIZE; ++i)
-	{
-		Vec2i tile = chunkWorld + Vec2i{ 0, REGION_SIZE };
-		Vec2i borderTile = tile + Vec2i_LEFT;
-
-		Tile* thisTile = GetTile(tilemap, tile);
-		if (thisTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
-
-		Tile* otherTile = GetTile(tilemap, tile);
-		if (otherTile->Flags.Get(TILE_FLAG_COLLISION))
-			continue;
-
-		regionPath->Nodes[3] = tile;
-	}
-
-	regionPath->NeightborChunks[0] = chunk->Coord + Vec2i_UP;
-	regionPath->NeightborChunks[1] = chunk->Coord + Vec2i_RIGHT;
-	regionPath->NeightborChunks[2] = chunk->Coord + Vec2i_DOWN;
-	regionPath->NeightborChunks[3] = chunk->Coord + Vec2i_LEFT;
-
-	u32 hash = HashTile(chunk->Coord);
-	HashMapSet(&regionState->RegionMap, hash, regionPath);
 }
 
 void
-FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i end, zpl_array(int) arr)
+FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2i endTile, HashSet* regionSet)
 {
-	zpl_array_clear(arr);
+	Vec2i start;
+	start.x = (int)floorf((float)startTile.x / (float)REGION_SIZE);
+	start.y = (int)floorf((float)startTile.y / (float)REGION_SIZE);
 
-	RegionPaths* startRegion = GetRegion(regionState, start);
-	RegionPaths* endRegion = GetRegion(regionState, end);
+	Vec2i end;
+	end.x = (int)floorf((float)endTile.x / (float)REGION_SIZE);
+	end.y = (int)floorf((float)endTile.y / (float)REGION_SIZE);
 
-	if (startRegion == endRegion)
+	BHeapClear(regionState->Open);
+	HashMapClear(&regionState->OpenMap);
+	HashSetClear(&regionState->ClosedSet);
+
+	RegionNode* node = AllocNode(RegionNode);
+	node->Pos = start;
+	node->Parent = nullptr;
+	node->GCost = 0;
+	node->HCost = RegionDistance(start, end);
+	node->FCost = node->GCost + node->HCost;
+
+	BHeapPushMin(regionState->Open, node, node);
+	u32 firstHash = Hash(node->Pos);
+	HashMapSet(&regionState->OpenMap, firstHash, &node->FCost);
+
+	while (regionState->Open->Count > 0)
 	{
-		return;
-	}
-	else
-	{
-		BHeapClear(regionState->Open);
-		HashMapClear(&regionState->OpenMap);
-		HashSetClear(&regionState->ClosedSet);
+		BHeapItem item = BHeapPopMin(regionState->Open);
 
-		RegionNode* node = AllocNode(RegionNode);
-		node->Pos = start;
-		node->Parent = nullptr;
-		node->GCost = 0;
-		node->HCost = ManhattanDistance(start, end);
-		node->FCost = node->GCost + node->HCost;
+		RegionNode* node = (RegionNode*)item.User;
 
-		BHeapPushMin(regionState->Open, node, node);
-		u32 firstHash = Hash(node->Pos);
-		HashMapSet(&regionState->OpenMap, firstHash, &node->FCost);
+		u32 hash = Hash(node->Pos);
+		HashMapRemove(&regionState->OpenMap, hash);
+		HashSetSet(&regionState->ClosedSet, hash);
 
-		while (regionState->Open->Count > 0)
+		if (node->Pos == end)
 		{
-			BHeapItem item = BHeapPopMin(regionState->Open);
-
-			RegionNode* node = (RegionNode*)item.User;
-			RegionPaths* curRegion = GetRegion(regionState, node->Pos);
-
-			u32 hash = Hash(node->Pos);
-			HashMapRemove(&regionState->OpenMap, hash);
-			HashSetSet(&regionState->ClosedSet, hash);
-
-			if (node->Pos == end)
+			if (Client.DebugShowRegionPaths)
 			{
-				int count = 0;
-				zpl_array_clear(arr);
-				
-				++count;
-				zpl_array_append(arr, node->MoveDirection);
-
-				RegionNode* prev = node->Parent;
-				while (prev)
-				{
-					++count;
-					zpl_array_append(arr, prev->MoveDirection);
-					prev = prev->Parent;
-				}
+				SLOG_DEBUG("[ Debug::Pathfinding ] %d region path length, %d total regions", regionSet->Count, regionState->ClosedSet.Count);
+				ArrayListClear(Client.DebugRegionsPath);
 			}
-			else
+
+			HashSetClear(regionSet);
+
+			RegionNode* prev = node;
+			while (prev)
 			{
-				for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+				u32 prevHash = HashTile(prev->Pos);
+				HashSetSet(regionSet, prevHash);
+				ArrayListPush(zpl_heap_allocator(), Client.DebugRegionsPath, prev->Pos);
+				prev = prev->Parent;
+			}
+
+
+
+			return;
+		}
+		else
+		{
+			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+			{
+				if (regionState->Open->Count >= MAX_LOCAL_SEARCH)
 				{
-					if (regionState->Open->Count >= MAX_REGION_LENGTH)
+					SASSERT(false);
+					SLOG_DEBUG("Could not find path");
+					return;
+				}
+
+				Vec2i next = node->Pos + Vec2i_NEIGHTBORS[i];
+
+				u32 nextHash = Hash(next);
+				if (HashSetContains(&regionState->ClosedSet, nextHash))
+					continue;
+
+				RegionPaths* nextRegion = HashMapGet(&regionState->RegionMap, nextHash, RegionPaths);
+				if (!nextRegion || !nextRegion->Sides[i])
+					continue;
+				else
+				{
+					int* nextCost = HashMapGet(&regionState->OpenMap, nextHash, int);
+					int cost = node->GCost + RegionDistance(node->Pos, next);
+					if (!nextCost || cost < *nextCost)
 					{
-						SLOG_DEBUG("Could not find path");
-						return;
-					}
+						RegionNode* nextNode = AllocNode(RegionNode);
+						nextNode->Pos = next;
+						nextNode->Parent = node;
+						nextNode->GCost = cost;
+						nextNode->HCost = RegionDistance(end, next);
+						nextNode->FCost = nextNode->GCost + nextNode->HCost;
 
-					Vec2i next = node->Pos + Vec2i_NEIGHTBORS[i];
-
-					if (curRegion->Nodes[i] == Vec2i_NULL)
-						continue;
-
-					u32 nextHash = Hash(next);
-					if (HashSetContains(&regionState->ClosedSet, nextHash))
-						continue;
-
-					RegionPaths* nextRegion = GetRegion(regionState, next);
-					if (!nextRegion)
-						continue;
-					else
-					{
-						int* nextCost = HashMapGet(&regionState->OpenMap, nextHash, int);
-						int cost = node->GCost + ManhattanDistance(node->Pos, next) + nextRegion->ChunkCost;
-						if (!nextCost || cost < *nextCost)
+						BHeapPushMin(regionState->Open, nextNode, nextNode);
+						if (!nextCost)
 						{
-							RegionNode* nextNode = AllocNode(RegionNode);
-							nextNode->Pos = next;
-							nextNode->Parent = node;
-							nextNode->GCost = cost;
-							nextNode->HCost = ManhattanDistance(end, next);
-							nextNode->FCost = nextNode->GCost + nextNode->HCost;
-							nextNode->MoveDirection = i;
-
-							BHeapPushMin(regionState->Open, nextNode, nextNode);
-							if (!nextCost)
-							{
-								HashMapSet(&regionState->OpenMap, nextHash, &nextNode->GCost);
-							}
-							else
-							{
-								*nextCost = nextNode->GCost;
-							}
+							HashMapSet(&regionState->OpenMap, nextHash, &nextNode->GCost);
+						}
+						else
+						{
+							*nextCost = nextNode->GCost;
 						}
 					}
 				}
@@ -238,43 +261,101 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i en
 	}
 }
 
-Vec2i 
-RegionGetNode(RegionState* regionState, Vec2i regionPos, int direction)
-{
-	RegionPaths* nextRegion = GetRegion(regionState, regionPos + Vec2i_NEIGHTBORS[direction]);
-	
-	constexpr static int INVERSE_DIRECTIONS[] = { 3, 2, 1, 0 };
-	Vec2i node = nextRegion->Nodes[INVERSE_DIRECTIONS[direction]];
-	return node;
-}
-
 void 
-RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, zpl_array(Vec2i) arr)
+RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* moveComponent)
 {
-	Node* node = FindPath(&GetGameState()->Pathfinder, &GetGameState()->TileMap, start, end);
+	Pathfinder* pathfinder = &GetGameState()->Pathfinder;
+	TileMap* tilemap = &GetGameState()->TileMap;
 
-	zpl_array_clear(arr);
-	
-	if (node)
+	BHeapClear(pathfinder->Open);
+	HashMapClear(&pathfinder->OpenSet);
+	HashSetClear(&pathfinder->ClosedSet);
+
+	Node* node = AllocNode(Node);
+	node->Pos = start;
+	node->Parent = nullptr;
+	node->GCost = 0;
+	node->HCost = TileDistance(start, end);
+	node->FCost = node->GCost + node->HCost;
+
+	BHeapPushMin(pathfinder->Open, node, node);
+	u32 firstHash = Hash(node->Pos);
+	HashMapSet(&pathfinder->OpenSet, firstHash, &node->FCost);
+
+	while (pathfinder->Open->Count > 0)
 	{
-		int count = 0;
-		
-		zpl_array_append(arr, node->Pos);
-		++count;
+		BHeapItem item = BHeapPopMin(pathfinder->Open);
 
-		Node* prev = node->Parent;
-		while (prev && count < 256)
+		Node* node = (Node*)item.User;
+
+		u32 hash = Hash(node->Pos);
+		HashMapRemove(&pathfinder->OpenSet, hash);
+		HashSetSet(&pathfinder->ClosedSet, hash);
+
+		if (node->Pos == end)
 		{
-			zpl_array_append(arr, prev->Pos);
-			prev = prev->Parent;
-			++count;
+			zpl_array_clear(moveComponent->TilePath);
+			if (node)
+			{
+				int count = 0;
+
+				zpl_array_append(moveComponent->TilePath, node->Pos);
+				++count;
+
+				Node* prev = node->Parent;
+				while (prev)
+				{
+					zpl_array_append(moveComponent->TilePath, prev->Pos);
+					prev = prev->Parent;
+					++count;
+				}
+				SLOG_DEBUG("[ Debug::Pathfinding ] %d path length, %d total tiles", count, GetGameState()->Pathfinder.ClosedSet.Count);
+			}
 		}
-		if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING))
+		else
 		{
-			//zpl_array_clear(Client.PathfinderPath);
-			//for (int i = 0; i < count; ++i)
-				//zpl_array_append(Client.PathfinderPath, inFillArray[i]);
-			SLOG_DEBUG("Checked %d tiles, length %d tiles", GetGameState()->Pathfinder.ClosedSet.Count, count);
+			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
+			{
+				Vec2i next = node->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
+
+				RegionPaths* nextRegion = GetRegion(regionState, next);
+				u32 nextRegionhash = Hash(nextRegion->Pos);
+				if (!HashSetContains(&moveComponent->Regions, nextRegionhash))
+					continue;
+
+				u32 nextHash = Hash(next);
+				if (HashSetContains(&pathfinder->ClosedSet, nextHash))
+					continue;
+
+				Tile* tile = GetTile(tilemap, next);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+				else
+				{
+					int* nextCost = HashMapGet(&pathfinder->OpenSet, nextHash, int);
+					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
+					int cost = node->GCost + TileDistance(node->Pos, next) + tileCost;
+					if (!nextCost || cost < *nextCost)
+					{
+						Node* nextNode = AllocNode(Node);
+						nextNode->Pos = next;
+						nextNode->Parent = node;
+						nextNode->GCost = cost;
+						nextNode->HCost = TileDistance(end, next);
+						nextNode->FCost = nextNode->GCost + nextNode->HCost;
+
+						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
+						if (!nextCost)
+						{
+							HashMapSet(&pathfinder->OpenSet, nextHash, &nextNode->GCost);
+						}
+						else
+						{
+							*nextCost = nextNode->GCost;
+						}
+					}
+				}
+			}
 		}
 	}
 }
@@ -282,9 +363,10 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, zpl_array(
 RegionPaths* 
 GetRegion(RegionState* regionState, Vec2i tilePos)
 {
-	int regionX = tilePos.x / REGION_SIZE;
-	int regionY = tilePos.y / REGION_SIZE;
+	int regionX = (int)floorf((float)tilePos.x / (float)REGION_SIZE);
+	int regionY = (int)floorf((float)tilePos.y / (float)REGION_SIZE);
 	Vec2i coord = Vec2i{ regionX, regionY };
-	return HashMapGet(&regionState->RegionMap, HashTile(coord), RegionPaths);
-
+	return HashMapGet(&regionState->RegionMap, Hash(coord), RegionPaths);
 }
+
+

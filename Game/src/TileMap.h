@@ -5,6 +5,7 @@
 #include "Structures/BitArray.h"
 
 #include <FastNoiseLite/FastNoiseLite.h>
+#include <stdint.h>
 
 struct GameState;
 
@@ -26,15 +27,23 @@ struct Tile
 	Flag8 Flags;
 };
 
+enum class ChunkUpdateState : u8
+{
+	None				= 0,
+	Self 				= Bit(0),
+	SelfAndNeighbors 	= Bit(1),
+};
+
 struct Chunk
 {
 	RenderTexture2D RenderTexture;
 	Rectangle BoundingBox;
 	Vec2i Coord;
 	Vec2 CenterCoord;
-	bool IsDirty;				// Should Redraw chunk
+	ChunkUpdateState BakeState;
+	ChunkUpdateState UpdateState;
 	bool IsGenerated;
-	bool IsLoaded;
+	bool IsLoaded; // TODO do we just remove this?
 	Tile TileArray[CHUNK_AREA];
 };
 
@@ -81,6 +90,7 @@ Vec2i ChunkToTile(Vec2i chunk);
 size_t GetLocalTileIdx(Vec2i tile);
 
 Chunk* GetChunk(TileMap* tilemap, Vec2i tile);
+Chunk* GetChunkByCoordNoCache(TileMap* tilemap, Vec2i chunkCoord);
 
 Tile* GetTile(TileMap* tilemap, Vec2i tile);
 

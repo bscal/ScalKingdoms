@@ -1,22 +1,19 @@
 #pragma once
 
-#include "GameMode.h"
+#include "Game.h"
 
 #include "Core.h"
 #include "TileMap.h"
+#include "Regions.h"
 #include "Actions.h"
 #include "Pathfinder.h"
 #include "GUI.h"
 
 #include "Structures/SList.h"
+#include "Structures/ArrayList.h"
 #include "Structures/HashMap.h"
 
 #include <luajit/src/lua.hpp>
-
-//extern ECS_COMPONENT_DECLARE(CTransform);
-//extern ECS_COMPONENT_DECLARE(CMove);
-
-struct Pathfinder;
 
 struct AssetMgr
 {
@@ -30,7 +27,6 @@ struct AssetMgr
 struct GameState
 {
 	zpl_arena GameMemory;
-
 	zpl_jobs_system Jobs;
 
 	RenderTexture2D ScreenTexture;
@@ -51,11 +47,7 @@ struct GameState
 	ActionMgr ActionMgr;
 
 	Pathfinder Pathfinder;
-};
-
-enum TileMapDebugFlags
-{
-	TILE_MAP_DEBUG_FLAG_PATHFINDING = Bit(0)
+	RegionState RegionState;
 };
 
 struct GameClient
@@ -63,13 +55,23 @@ struct GameClient
 	ecs_entity_t Player;
 	ecs_entity_t SelectedEntity;
 
-	Flag32 TileMapDebugFlag;
+	double FrameTime;
 
 	// Extra debug values
 	zpl_array(Vec2i) PathfinderVisited;
 	zpl_array(Vec2i) PathfinderPath;
+	ArrayList(Vec2i) DebugRegionsPath;
 
 	bool IsDebugMode;
+
+	union
+	{
+		bool DebugOptions[1];
+		struct
+		{
+			bool DebugShowRegionPaths;
+		};
+	};
 };
 
 extern struct GameClient Client;

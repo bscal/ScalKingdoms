@@ -6,7 +6,6 @@
 #define HashMapSwap(V0, V1, T) T tmp = V0; V0 = V1; V1 = tmp
 #define HashMapKeySize(hashmap) (hashmap->Capacity * sizeof(HashBucket))
 #define HashMapValueSize(hashmap) (hashmap->Capacity * hashmap->Stride)
-#define HashMapIdxValue(hashmap, idx) (hashmap->Values[hashmap->Stride * idx])
 
 void HashMapInitialize(HashMap* map, uint32_t stride, uint32_t capacity, Allocator alloc)
 {
@@ -44,7 +43,7 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 		{
 			if (map->Keys[i].IsUsed)
 			{
-				HashMapSet(&tmpMap, map->Keys[i].Hash, &map->Values[i]);
+				HashMapSet(&tmpMap, map->Keys[i].Hash, HashMapValuesIndex(map, i));
 			}
 		}
 		
@@ -86,6 +85,11 @@ void HashMapDestroy(HashMap* map)
 
 uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value)
 {
+	return HashMapSetEx(map, hash, value, false);
+}
+
+uint32_t HashMapSetEx(HashMap* map, uint32_t hash, const void* value, bool replace)
+{
 	if (map->Count >= map->MaxCount)
 	{
 		HashMapReserve(map, map->Capacity * HASHMAP_DEFAULT_RESIZE);
@@ -110,6 +114,8 @@ uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value)
 
 	if (value)
 		memcpy(swapMemory, value, map->Stride);
+	else
+	 	memset(swapMemory, 0, map->Stride);
 
 	uint32_t insertedIndex = HASHMAP_NOT_FOUND;
 	uint32_t swapHash = hash;
@@ -124,7 +130,7 @@ uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value)
 			bucket->Hash = swapHash;
 			bucket->ProbeLength = probeLength;
 			bucket->IsUsed = 1;
-			memcpy(&map->Values[idx], swapMemory, map->Stride);
+			memcpy(HashMapValuesIndex(map, idx), swapMemory, map->Stride);
 			++map->Count;
 
 			if (insertedIndex == HASHMAP_NOT_FOUND)
@@ -134,12 +140,15 @@ uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value)
 		}
 		else
 		{
-			if (bucket->Hash == hash)
-				break;
+			if (replace && bucket->Hash == hash)
+			{
+				SCopy(HashMapValuesIndex(map, idx), value, map->Stride);
+				return idx;
+			}
 
 			if (probeLength > bucket->ProbeLength)
 			{
-				if (insertedIndex == UINT32_MAX)
+				if (insertedIndex == HASHMAP_NOT_FOUND)
 					insertedIndex = idx;
 
 				{
@@ -151,7 +160,7 @@ uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value)
 				{
 					// Swaps byte by byte from current value to
 					// value parameter memory;
-					uint8_t* currentValue = &map->Values[idx];
+					uint8_t* currentValue = HashMapValuesIndex(map, idx);
 					for (uint32_t i = 0; i < map->Stride; ++i)
 					{
 						uint8_t tmp = currentValue[i];
@@ -175,7 +184,7 @@ void* HashMapSetNew(HashMap* map, uint32_t hash)
 {
 	uint32_t idx = HashMapSet(map, hash, nullptr);
 	if (idx != HASHMAP_NOT_FOUND)
-		return &HashMapIdxValue(map, idx);
+		return HashMapValuesIndex(map, idx);
 	else
 		return nullptr;
 }
@@ -242,7 +251,7 @@ bool HashMapRemove(HashMap* map, uint32_t hash)
 					{
 						map->Keys[lastIdx].Hash = nextBucket->Hash;
 						map->Keys[lastIdx].ProbeLength = nextBucket->ProbeLength - 1;
-						map->Values[lastIdx] = map->Values[idx];
+						*HashMapValuesIndex(map, lastIdx) = *HashMapValuesIndex(map, idx);
 					}
 				}
 			}
@@ -257,14 +266,14 @@ bool HashMapRemove(HashMap* map, uint32_t hash)
 	return false;
 }
 
-void HashMapForEach(HashMap* map, void(*Fn(uint32_t, void*, void*)), void* stackMemory)
+void HashMapForEach(HashMap* map, void(*Fn)(uint32_t, void*, void*), void* stackMemory)
 {
 	SASSERT(Fn);
 	for (uint32_t i = 0; i < map->Capacity; ++i)
 	{
 		if (map->Keys[i].IsUsed)
 		{
-			Fn(map->Keys[i].Hash, HashMapValuesIndex(*map, i, void*), stackMemory);
+			Fn(map->Keys[i].Hash, (void*)HashMapValuesIndex(map, i), stackMemory);
 		}
 	}
 }

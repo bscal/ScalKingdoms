@@ -26,6 +26,7 @@ struct SList
 	void Resize(); // Resizes the array, if size = 0, then size will be 1
 
 	void Push(const T* valueSrc); // Checks resize, inserts and end of array
+	void PushWithAlloc(Allocator allocator, const T* valueSrc);
 	T* PushNew(); // Checks resize, default constructs next element, and returns pointer
 	void PushAt(uint32_t index, const T* valueSrc);
 	void PushAtFast(uint32_t index, const T* valueSrc); // Checks resize, inserts at index, moving old index to end
@@ -134,6 +135,20 @@ void SList<T>::Push(const T* valueSrc)
 {
 	SASSERT(valueSrc);
 	SASSERT(Count <= Capacity);
+	if (Count == Capacity)
+	{
+		Resize();
+	}
+	Memory[Count] = *valueSrc;
+	++Count;
+}
+
+template<typename T>
+void SList<T>::PushWithAlloc(Allocator allocator, const T* valueSrc)
+{
+	SASSERT(valueSrc);
+	SASSERT(Count <= Capacity);
+	Alloc = allocator;
 	if (Count == Capacity)
 	{
 		Resize();

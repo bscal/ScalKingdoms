@@ -85,13 +85,6 @@ int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilem
 			inFillArray[count++] = prev->Pos;
 			prev = prev->Parent;
 		}
-		if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING))
-		{
-			zpl_array_clear(Client.PathfinderPath);
-			for (int i = 0; i < count; ++i)
-				zpl_array_append(Client.PathfinderPath, inFillArray[i]);
-			SLOG_DEBUG("Checked %d tiles, length %d tiles", pathfinder->ClosedSet.Count, count);
-		}
 		return count;
 	}
 	else
@@ -107,10 +100,6 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	BHeapClear(pathfinder->Open);
 	HashMapClear(&pathfinder->OpenSet);
 	HashSetClear(&pathfinder->ClosedSet);
-	if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING) && Client.PathfinderVisited)
-	{
-		zpl_array_clear(Client.PathfinderVisited);
-	}
 
 	Node* node = AllocNode();
 	node->Pos = start;
@@ -128,10 +117,6 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 		BHeapItem item = BHeapPopMin(pathfinder->Open);
 
 		Node* node = (Node*)item.User;
-		if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING))
-		{
-			zpl_array_append(Client.PathfinderVisited, node->Pos);
-		}
 
 		u32 hash = Hash(node->Pos);
 		HashMapRemove(&pathfinder->OpenSet, hash);
