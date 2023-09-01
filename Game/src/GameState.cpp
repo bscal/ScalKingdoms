@@ -38,7 +38,7 @@ GameInitialize()
 
 	int threadCount = (affinity.thread_count > 4) ? 4 : 2;
 	zpl_jobs_init(&State.Jobs, zpl_heap_allocator(), threadCount);
-	SLOG_INFO("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
+	SInfoLog("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
 		, threadCount, affinity.thread_count, affinity.core_count);
 
 	InitWindow(WIDTH, HEIGHT, TITLE);
@@ -55,7 +55,7 @@ GameInitialize()
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
 	SASSERT(guiInitialized);
 
-	HashMapInitialize(&State.EntityMap, sizeof(ecs_entity_t), 64, ALLOCATOR_HEAP);
+	HashMapInitialize(&State.EntityMap, sizeof(ecs_entity_t), 64, Allocator::Arena);
 
 	zpl_random_init(&State.Random);
 
@@ -87,7 +87,7 @@ GameInitialize()
 	zpl_array_init(Client.PathfinderVisited, zpl_heap_allocator());
 
 	if (Client.IsDebugMode)
-		SLOG_INFO("[ Game ] Running in DEBUG mode!");
+		SInfoLog("[ Game ] Running in DEBUG mode!");
 
 	GameRun();
 
@@ -150,6 +150,7 @@ GameRun()
 		DrawGUI(&State);
 
 		Client.FrameTime = GetTime() - start;
+
 
 		EndDrawing();
 
@@ -263,7 +264,7 @@ void InputUpdate()
 	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 	{
 		Vec2i tile = ScreenToTile(GetMousePosition());
-		SLOG_INFO("Tile: %s", FMT_VEC2I(tile));
+		SInfoLog("Tile: %s", FMT_VEC2I(tile));
 
 		SList<Vec2i> next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
 
@@ -294,7 +295,7 @@ void InputUpdate()
 		{
 			Client.SelectedEntity = *entity;
 			const char* entityInfo = ecs_entity_str(State.World, *entity);
-			SLOG_INFO("%s", entityInfo);
+			SInfoLog("%s", entityInfo);
 		}
 	}
 }

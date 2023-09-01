@@ -58,14 +58,14 @@
 #define ArrayList(T) T*
 
 #define ArrayListFree(_alloc, a) ((a) ? FreeAlign(_alloc, ArrayListRaw(a), 16) : 0)
-#define ArrayListPush(_alloc, a, value) (ArrayListInternalMaybeGrow(_alloc, a, 1), (a)[ArrayListInternalCount(a)++] = (value))
-#define ArrayListCount(a) ((a) ? ArrayListInternalCount(a) : 0)
-#define ArrayListAdd(_alloc, a, num) (ArrayListInternalMaybeGrow(_alloc, a, num), ArrayListInternalCount(a) += (num), &(a)[ArrayListCount(a) - (num)])
+#define ArrayListPush(_alloc, a, value) (ArrayListMaybeGrow_Internal(_alloc, a, 1), (a)[ArrayListCount_Internal(a)++] = (value))
+#define ArrayListCount(a) ((a) ? ArrayListCount_Internal(a) : 0)
+#define ArrayListAdd(_alloc, a, num) (ArrayListMaybeGrow_Internal(_alloc, a, num), ArrayListCount_Internal(a) += (num), &(a)[ArrayListCount(a) - (num)])
 #define ArrayListLast(a) ((a)[ArrayListCount(a) - 1])
-#define ArrayListPop(a, idx)  do { (a)[idx] = ArrayListLast(a);  --ArrayListInternalCount(a); } while (0)
-#define ArrayListPopLast(a)  do { --ArrayListInternalCount(a); } while (0)
-#define ArrayListPopLastN(a, num) do { ArrayListInternalCount(a) -= (num); } while (0)
-#define ArrayListClear(a) ((a) ? (ArrayListInternalCount(a) = 0) : 0)
+#define ArrayListPop(a, idx)  do { (a)[idx] = ArrayListLast(a);  --ArrayListCount_Internal(a); } while (0)
+#define ArrayListPopLast(a)  do { --ArrayListCount_Internal(a); } while (0)
+#define ArrayListPopLastN(a, num) do { ArrayListCount_Internal(a) -= (num); } while (0)
+#define ArrayListClear(a) ((a) ? (ArrayListCount_Internal(a) = 0) : 0)
 #define ArrayListReserve(_alloc, a, num) (ArrayListAdd(_alloc, a, num), ArrayListClear(a))
 #define ArrayListPushAtIndex(_alloc, a, v, _index) \
     do {                                            \
@@ -78,25 +78,25 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Internal
 #define ArrayListRaw(a) ((int*)(a)-2)
-#define ArrayListInternalCapacity(a) ArrayListRaw(a)[0]
-#define ArrayListInternalCount(a) ArrayListRaw(a)[1]
+#define ArrayListCapacity_Internal(a) ArrayListRaw(a)[0]
+#define ArrayListCount_Internal(a) ArrayListRaw(a)[1]
 
-#define ArrayListInternalNeedGrow(a, n) ((a) == 0 || ArrayListInternalCount(a) + (n) >= ArrayListInternalCapacity(a))
-#define ArrayListInternalMaybeGrow(_alloc, a, n) (ArrayListInternalNeedGrow(a, (n)) ? ArrayListInternalGrow(_alloc, a, n) : 0)
-#define ArrayListInternalGrow(_alloc, a, n)  (*((void**)&(a)) = ArrayListGrow((a), (n), sizeof(*(a)), (_alloc), __FILE__, __FUNCTION__, __LINE__))
+#define ArrayListNeedGrow_Internal(a, n) ((a) == 0 || ArrayListCount_Internal(a) + (n) >= ArrayListCapacity_Internal(a))
+#define ArrayListMaybeGrow_Internal(_alloc, a, n) (ArrayListNeedGrow_Internal(a, (n)) ? ArrayListGrow_Internal(_alloc, a, n) : 0)
+#define ArrayListGrow_Internal(_alloc, a, n)  (*((void**)&(a)) = ArrayListGrow((a), (n), sizeof(*(a)), (_alloc), __FILE__, __FUNCTION__, __LINE__))
 
 inline void* 
 ArrayListGrow(void* arr, int increment, int itemsize, Allocator alloc,
     const char* file, const char* func, int line)
 {
-    int oldCapacity = arr ? ArrayListInternalCapacity(arr) : 0;
+    int oldCapacity = arr ? ArrayListCapacity_Internal(arr) : 0;
     int newCapacity = (oldCapacity < ARRAY_LIST_DEFAULT_SIZE) ? oldCapacity << 1 : ARRAY_LIST_DEFAULT_SIZE;
     int minNeeded = ArrayListCount(arr) + increment;
     int capacity = newCapacity > minNeeded ? newCapacity : minNeeded;
 
     size_t oldSize = (size_t)itemsize * (size_t)oldCapacity + (sizeof(int) * 2);
     size_t size = (size_t)itemsize * (size_t)capacity + (sizeof(int) * 2);
-    int* p = (int*)ReallocAlign(alloc, arr ? ArrayListRaw(arr) : 0, size, oldSize, 16);
+    int* p = (int*)GameRealloc(alloc, arr ? ArrayListRaw(arr) : 0, size, oldSize);
 
     if (p)
     {
@@ -107,7 +107,7 @@ ArrayListGrow(void* arr, int increment, int itemsize, Allocator alloc,
     }
     else
     {
-        SERR("Out of memory!");
+        SError("Out of memory!");
         return nullptr;
     }
 }

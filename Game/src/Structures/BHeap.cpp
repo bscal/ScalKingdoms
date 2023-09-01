@@ -55,7 +55,7 @@ static void sx__bheap_heapify_max(BHeap* bh, int index)
 BHeap* BHeapCreate(Allocator alloc, CompareFunc compareFunc, int capacity)
 {
     size_t total_sz = sizeof(BHeap) + sizeof(BHeapItem) * capacity;
-    BHeap* bh = (BHeap*)AllocAlign(alloc, total_sz, 16);
+    BHeap* bh = (BHeap*)GameMalloc(alloc, total_sz);
 
     SASSERT(bh);
 
@@ -71,7 +71,7 @@ void BHeapDestroy(BHeap* bh, Allocator alloc)
 {
     SASSERT(bh);
 
-    FreeAlign(alloc, bh, 16);
+    GameFree(alloc, bh);
 }
 
 

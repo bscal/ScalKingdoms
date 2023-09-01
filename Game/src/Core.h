@@ -37,7 +37,7 @@ typedef Vector2i Vec2i;
 typedef Vector2 Vec2;
 
 #define internal static
-#define local_var static
+#define local_persistent static
 #define global_var static
 
 #if defined(__clang__) || defined(__GNUC__)
@@ -99,33 +99,32 @@ typedef Vector2 Vec2;
 #define Swap(x, y, T) (T temp = x; x = y; y = temp)
 
 #if SCAL_DEBUG
-
 	#if _MSC_VER
 		#define DEBUG_BREAK(void) __debugbreak()
 	#else
 		#define DEBUG_BREAK(void) __builtin_trap()
 	#endif
-
 	#define SASSERT(expr) if (!(expr)) { TraceLog(LOG_ERROR, "Assertion Failure: %s\nMessage: % s\n  File : % s, Line : % d\n", #expr, "", __FILE__, __LINE__); DEBUG_BREAK(void); } 
 	#define SASSERT_MSG(expr, msg) if (!(expr)) { TraceLog(LOG_ERROR, "Assertion Failure: %s\nMessage: % s\n  File : % s, Line : % d\n", #expr, msg, __FILE__, __LINE__); DEBUG_BREAK(void); }
-
-
+	#define STraceLog(msg, ...) TraceLog(LOG_TRACE, msg, __VA__ARGS__)
+	#define SDebugLog(msg, ...) TraceLog(LOG_DEBUG, msg, __VA_ARGS__)
 #else
 	#define DEBUG_BREAK(void)
 	#define SASSERT(expr)
 	#define SASSERT_MSG(expr, msg)
+	#define STraceLog(msg, ...)
+	#define SDebugLog(msg, ...)
 #endif
 
-#define SLOG_INFO(msg, ... ) TraceLog(LOG_INFO, msg, __VA_ARGS__)
-#define SLOG_DEBUG(msg, ...) TraceLog(LOG_DEBUG, msg, __VA_ARGS__)
+#define SInfoLog(msg, ... ) TraceLog(LOG_INFO, msg, __VA_ARGS__)
 
-#define SWARN(msg, ... ) TraceLog(LOG_WARNING, msg, __VA_ARGS__)
+#define SWarn(msg, ... ) TraceLog(LOG_WARNING, msg, __VA_ARGS__)
 
-#define SERR(msg, ...) \
+#define SError(msg, ...) \
 	TraceLog(LOG_ERROR, msg, __VA_ARGS__); \
 	DEBUG_BREAK(void) \
 
-#define SFATAL(msg, ...) \
+#define SFatal(msg, ...) \
 	TraceLog(LOG_ERROR, msg, __VA_ARGS__); \
 	TraceLog(LOG_FATAL, "Fatal error detected, program crashed! File: %s, Line: %s", __FILE__, __LINE__); \
 	DEBUG_BREAK(void) \
@@ -172,12 +171,6 @@ constexpr global_var Vector2 VEC2_LEFT = { -1 , 0 };
 constexpr global_var float
 TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 
-constexpr global_var Vector2
-TileDirectionVectors[] = {{0, -TILE_SIZE}, {TILE_SIZE, 0}, {0, TILE_SIZE}, {-TILE_SIZE, 0}};
-
-constexpr global_var Vector2i
-TileDirectionVectorInts[] = { {0, -1}, {1, 0}, {0, 1}, {-1, 0} };
-
 #define FMT_VEC2(v) TextFormat("Vector2(x: %.3f, y: %.3f)", v.x, v.y)
 #define FMT_VEC2I(v) TextFormat("Vector2i(x: %d, y: %d)", v.x, v.y)
 #define FMT_RECT(rect) TextFormat("Rectangle(x: %.3f, y: %.3f, w: %.3f, h: %.3f)", rect.x, rect.y, rect.width, rect.height)
@@ -185,3 +178,45 @@ TileDirectionVectorInts[] = { {0, -1}, {1, 0}, {0, 1}, {-1, 0} };
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
 
 #define HashTile(tileVec2) (zpl_fnv32a(&tileVec2, sizeof(Vec2i)))
+
+inline int ScalTestCounter;
+inline int ScalTestPasses;
+
+#define ScalTest int ScalTest_
+
+#define ScalTestRun(func) \
+	++ScalTestCounter; \
+	ScalTestPasses += func()
+
+#define TimerStart(name) Timer(name)
+#define TimerStartFunc() TimerStart(__FUNCTION__)
+
+struct Timer
+{
+	double Start;
+	double End;
+	const char* Name;
+
+	Timer()
+	{
+		End = 0;
+		Start = zpl_time_rel();
+		Name = nullptr;
+	}
+
+	Timer(const char* name)
+	{
+		End = 0;
+		Start = zpl_time_rel();
+		Name = name;
+	}
+
+	~Timer()
+	{
+		End = zpl_time_rel() - Start;
+		if (Name)
+			SDebugLog("[ Timer ] Timer %s took %d seconds");
+		else
+			SDebugLog("[ Timer ] Timer took %d seconds", End);
+	}
+};

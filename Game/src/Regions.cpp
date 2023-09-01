@@ -10,7 +10,7 @@ constexpr global_var int MAX_REGION_SEARCH = 128;
 constexpr global_var int MAX_LOCAL_SEARCH = 256;
 
 #define Hash(pos) zpl_fnv32a(&pos, sizeof(Vec2i))
-#define AllocNode(T) ((T*)AllocFrame(sizeof(T), 16));
+#define AllocNode(T) ((T*)GameMalloc(Allocator::Frame, sizeof(T)));
 
 internal inline int
 RegionCompareCost(void* cur, void* parent)
@@ -38,10 +38,10 @@ CalculateDistance(Vec2i v0, Vec2i v1)
 
 void RegionStateInit(RegionState* regionState)
 {
-	regionState->Open = BHeapCreate(zpl_heap_allocator(), RegionCompareCost, MAX_REGION_SEARCH);
-	HashMapInitialize(&regionState->RegionMap, sizeof(RegionPaths), MAX_REGION_SEARCH, zpl_heap_allocator());
-	HashMapInitialize(&regionState->OpenMap, sizeof(RegionNode*), MAX_REGION_SEARCH, zpl_heap_allocator());
-	HashSetInitialize(&regionState->ClosedSet, MAX_REGION_SEARCH, zpl_heap_allocator());
+	regionState->Open = BHeapCreate(Allocator::Malloc, RegionCompareCost, MAX_REGION_SEARCH);
+	HashMapInitialize(&regionState->RegionMap, sizeof(RegionPaths), MAX_REGION_SEARCH, Allocator::Malloc);
+	HashMapInitialize(&regionState->OpenMap, sizeof(RegionNode*), MAX_REGION_SEARCH, Allocator::Malloc);
+	HashSetInitialize(&regionState->ClosedSet, MAX_REGION_SEARCH, Allocator::Malloc);
 }
 
 void 
@@ -53,7 +53,7 @@ LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk)
 	
 	Vec2i chunkWorld = ChunkToTile(chunk->Coord);
 
-	SLOG_INFO("Loading regions for %s", FMT_VEC2I(chunk->Coord));
+	SInfoLog("Loading regions for %s", FMT_VEC2I(chunk->Coord));
 
 	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
 	{
@@ -188,7 +188,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 			while (prev)
 			{
 				if (Client.DebugShowRegionPaths)
-					ArrayListPush(zpl_heap_allocator(), Client.DebugRegionsPath, prev->Pos);
+					ArrayListPush(Allocator::Arena, Client.DebugRegionsPath, prev->Pos);
 
 				u32 prevHash = HashTile(prev->Pos);
 				HashSetSet(regionSet, prevHash);
@@ -196,7 +196,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 			}
 
 			if (Client.DebugShowRegionPaths)
-				SLOG_DEBUG("[ Debug::Pathfinding ] %d region path length, %d total regions", regionSet->Count, regionState->ClosedSet.Count);
+				SDebugLog("[ Debug::Pathfinding ] %d region path length, %d total regions", regionSet->Count, regionState->ClosedSet.Count);
 
 			return;
 		}
@@ -207,7 +207,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 				if (regionState->Open->Count >= MAX_LOCAL_SEARCH)
 				{
 					SASSERT(false);
-					SLOG_DEBUG("Could not find path");
+					SDebugLog("Could not find path");
 					return;
 				}
 
@@ -292,7 +292,7 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 				prev = prev->Parent;
 				++count;
 			}
-			SLOG_DEBUG("[ Debug::Pathfinding ] %d path length, %d total tiles", count, GetGameState()->Pathfinder.ClosedSet.Count);
+			SDebugLog("[ Debug::Pathfinding ] %d path length, %d total tiles", count, GetGameState()->Pathfinder.ClosedSet.Count);
 		}
 		else
 		{

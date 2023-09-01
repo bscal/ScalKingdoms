@@ -19,7 +19,7 @@ uint16_t SpriteRegister(SpriteRect rect, Vector2 origin)
 	
 	if (id > UINT16_MAX)
 	{
-		SERR("Registering to many sprites!");
+		SError("Registering to many sprites!");
 		return 0;
 	}
 

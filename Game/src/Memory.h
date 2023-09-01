@@ -2,60 +2,178 @@
 
 #include "Core.h"
 
-typedef zpl_allocator Allocator;
+enum class Allocator : int
+{
+	Arena = 0,
+	Frame,
+	Malloc,
 
-#define ALLOCATOR_HEAP zpl_heap_allocator()
-#define ALLOCATOR_FRAME GetGameAllocator()
+	MaxAllocators
+};
 
-#define AllocAlign(allocator, size, align) \
-	SAlloc(allocator, nullptr, size, 0, align, __FILE__, __FUNCTION__, __LINE__)
-#define ReallocAlign(allocator, ptr, newSize, oldSize, align) \
-	SAlloc(allocator, ptr, newSize, oldSize, align, __FILE__, __FUNCTION__, __LINE__)
-#define FreeAlign(allocator, ptr, align) \
-	SAlloc(allocator, ptr, 0, 0, align, __FILE__, __FUNCTION__, __LINE__)
-#define AllocHeap(size, align) \
-	AllocAlign(ALLOCATOR_HEAP, size, align)
-#define ReallocHeap(ptr, newSize, oldSize, align) \
-	ReallocAlign(ALLOCATOR_HEAP, ptr, newSize, oldSize, align)
-#define FreeHeap(ptr, align) \
-	FreeAlign(ALLOCATOR_HEAP, ptr, align)
-#define AllocFrame(size, align) \
-	AllocAlign(ALLOCATOR_FRAME, size, align)
-#define ReallocFrame(ptr, newSize, oldSize, align) \
-	ReallocAlign(ALLOCATOR_FRAME, ptr, newSize, oldSize, align)
-#define FreeFrame(ptr, align) \
-	FreeAlign(ALLOCATOR_FRAME, ptr, align)
+enum AllocatorAction
+{
+	ALLOCATOR_TYPE_MALLOC = 0,
+	ALLOCATOR_TYPE_REALLOC,
+	ALLOCATOR_TYPE_FREE,
 
-_FORCE_INLINE_ void* 
-SAlloc(Allocator allocator, void* ptr, size_t newSize, size_t oldSize, u32 align,
+	ALLOCATOR_TYPE_COUNT
+};
+
+typedef void* (*AllocatorFunction)(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
+	const char* file, const char* func, u32 line);
+
+extern zpl_allocator GetGameAllocator();
+
+#define ZplAllocatorArena zpl_heap_allocator()
+#define	ZplAllocatorFrame GetGameAllocator()
+#define ZplAllocatorMalloc zpl_heap_allocator()
+
+inline bool
+IsAllocatorValid(Allocator allocator)
+{
+	return ((int)allocator >= 0 && (int)allocator < (int)Allocator::MaxAllocators);
+}
+
+inline void*
+GameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
 	const char* file, const char* func, u32 line)
 {
-	SASSERT(allocator.proc);
-	void* res = nullptr;
-	if (ptr)
+	void* res;
+
+	switch (allocatorType)
 	{
-		if (newSize > 0)
-			res = zpl_resize_align(allocator, ptr, oldSize, newSize, align);
-		else
-		{
-			zpl_free(allocator, ptr);
-			return res;
-		}
-	}
-	else if (newSize > 0)
+	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = zpl_alloc_align(allocator, newSize, align);
+		res = zpl_alloc_align(zpl_heap_allocator(), newSize, align);
+	} break;
+
+	case (ALLOCATOR_TYPE_REALLOC):
+	{
+		res = zpl_resize_align(zpl_heap_allocator(), ptr, oldSize, newSize, align);
+	} break;
+
+	case (ALLOCATOR_TYPE_FREE):
+	{
+		zpl_free(zpl_heap_allocator(), ptr);
+		res = nullptr;
+	} break;
+
+	default:
+		SError("Invalid allocator type");
+		res = nullptr;
 	}
 
-	SASSERT(res);
+#if SCAL_DEBUG
+	if (allocatorType != ALLOCATOR_TYPE_FREE)
+		SASSERT( res);
+#endif
+
 	return res;
 }
 
-_FORCE_INLINE_ bool
-ValidateAllocator(Allocator allocator)
+inline void*
+FrameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
+	const char* file, const char* func, u32 line)
 {
-	return (allocator.proc);
+	void* res;
+
+	switch (allocatorType)
+	{
+	case (ALLOCATOR_TYPE_MALLOC):
+	{
+		res = zpl_alloc_align(GetGameAllocator(), newSize, align);
+	} break;
+
+	case (ALLOCATOR_TYPE_REALLOC):
+	{
+		res = zpl_resize_align(GetGameAllocator(), ptr, oldSize, newSize, align);
+	} break;
+
+	case (ALLOCATOR_TYPE_FREE):
+	{
+		// Frame allocator frees at end of frame
+		res = nullptr;
+	} break;
+
+	default:
+		SError("Invalid allocator type");
+		res = nullptr;
+	}
+
+#if SCAL_DEBUG
+	if (allocatorType != ALLOCATOR_TYPE_FREE)
+		SASSERT(res);
+#endif
+
+	return res;
 }
+
+inline void*
+MallocAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
+	const char* file, const char* func, u32 line)
+{
+	void* res;
+
+	switch (allocatorType)
+	{
+	case (ALLOCATOR_TYPE_MALLOC):
+	{
+		res = zpl_alloc_align(zpl_heap_allocator(), newSize, align);
+	} break;
+
+	case (ALLOCATOR_TYPE_REALLOC):
+	{
+		res = zpl_resize_align(zpl_heap_allocator(), ptr, oldSize, newSize, align);
+	} break;
+
+	case (ALLOCATOR_TYPE_FREE):
+	{
+		zpl_free(zpl_heap_allocator(), ptr);
+		res = nullptr;
+	} break;
+
+	default:
+		SError("Invalid allocator type");
+		res = nullptr;
+	}
+
+#if SCAL_DEBUG
+	if (allocatorType != ALLOCATOR_TYPE_FREE)
+		SASSERT(res);
+#endif
+
+	return res;
+}
+
+constexpr global_var AllocatorFunction Allocators[] =
+{
+	GameAllocator_Internal,
+	FrameAllocator_Internal,
+	MallocAllocator_Internal
+};
+static_assert(ArrayLength(Allocators) == (int)Allocator::MaxAllocators,
+	"AllocatorFunction array is not length of Allocators::MaxAllocators");
+
+#if SCAL_DEBUG
+inline AllocatorFunction DebugIndexAllocator(int allocatorIdx)
+{
+	SASSERT(allocatorIdx >= 0 && allocatorIdx < (int)Allocator::MaxAllocators);
+	return Allocators[allocatorIdx];
+}
+#define IndexAllocators(allocatorIdx) DebugIndexAllocator(allocatorIdx)
+#else
+#define IndexAllocators(allocatorIdx) Allocators[allocatorIdx]
+#endif
+
+#define GameMalloc(allocator, size) \
+	IndexAllocators((int)allocator)(ALLOCATOR_TYPE_MALLOC, nullptr, size, 0, 16, __FILE__, __FUNCTION__, __LINE__)
+
+#define GameRealloc(allocator, ptr, size, oldSize) \
+	IndexAllocators((int)allocator)(ALLOCATOR_TYPE_REALLOC, ptr, size, oldSize, 16, __FILE__, __FUNCTION__, __LINE__)
+
+#define GameFree(allocator, ptr) \
+	IndexAllocators((int)allocator)(ALLOCATOR_TYPE_FREE, ptr, 0, 0, 16, __FILE__, __FUNCTION__, __LINE__)
 
 #define SClear(ptr, size) zpl_memset(ptr, 0, size)
 #define SCopy(dst, src, sz) zpl_memcopy(dst, src, sz)

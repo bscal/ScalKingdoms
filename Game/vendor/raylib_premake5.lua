@@ -66,7 +66,7 @@ project "raylib"
 
     postbuildcommands
     {
-        ("{COPYFILE} %{wks.location}bin/" .. outputdir .. "/%{prj.name}/raylib.dll "
+       ("{COPYFILE} %{wks.location}bin/" .. outputdir .. "/%{prj.name}/raylib.dll "
             .. "%{wks.location}bin/" .. outputdir .. "/%{prj.name}/../Engine/raylib.dll");
 
         ("{COPYFILE} %{wks.location}bin/" .. outputdir .. "/%{prj.name}/raylib.dll "

@@ -20,7 +20,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 	if (!FileExists(filepath))
 	{
-		SERR("[ SpriteAtlas ] File does not exist. Path: %s", filepath);
+		SError("[ SpriteAtlas ] File does not exist. Path: %s", filepath);
 		return atlas;
 	}
 
@@ -29,9 +29,9 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 	int count = 0;
 	int bufferSize = Kilobytes(10);
-	char* buffer = (char*)AllocFrame(bufferSize, 16);
+	char* buffer = (char*)GameMalloc(Allocator::Frame, bufferSize);
 	int splitBufferSize = Kilobytes(1);
-	char** split = (char**)AllocFrame(splitBufferSize * sizeof(char*), 16);
+	char** split = (char**)GameMalloc(Allocator::Frame, splitBufferSize * sizeof(char*));
 	TextSplitBuffered(atlasData, '\n', &count, buffer, bufferSize, split, splitBufferSize);
 
 	// 1st line empty
@@ -48,14 +48,14 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 	int length = (count / 7) - 1;
 	if (length <= 0)
 	{
-		SERR("Atlas of size 0");
+		SError("Atlas of size 0");
 		return {};
 	}
 
 	zpl_array_init_reserve(atlas.Rects, zpl_heap_allocator(), length);
 	zpl_array_resize(atlas.Rects, length);
 
-	HashMapInitialize(&atlas.NameToIndex, sizeof(uint16_t), length, ALLOCATOR_HEAP);
+	HashMapInitialize(&atlas.NameToIndex, sizeof(uint16_t), length, Allocator::Frame);
 	atlas.Texture = LoadTexture(imgPath);
 
 	char s0[16];
@@ -131,12 +131,12 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 		atlas.Rects[entryCounter] = r;
 
-		SLOG_DEBUG("[ SpriteAtlas ] Loaded rect, %s, x:%u, y:%u, w:%u, h:%u", name, x, y, w, h);
+		SDebugLog("[ SpriteAtlas ] Loaded rect, %s, x:%u, y:%u, w:%u, h:%u", name, x, y, w, h);
 	}
 
 	UnloadFileText(atlasData);
 
-	SLOG_INFO("[ SpriteAtlas ] Successfully loaded sprite atlas, %s, with %i sprites", filepath, length);
+	SInfoLog("[ SpriteAtlas ] Successfully loaded sprite atlas, %s, with %i sprites", filepath, length);
 
 	return atlas;
 }

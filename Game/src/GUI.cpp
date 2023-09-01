@@ -45,11 +45,11 @@ InitializeGUI(GameState* gameState, Font* guiFont)
 	gameState->GUIState.Ctx.clip.userdata	= nk_handle_ptr(0);
 
 	size_t guiMemorySize = Megabytes(2);
-	void* guiMemory = AllocHeap(guiMemorySize, 64);
+	void* guiMemory = GameMalloc(Allocator::Malloc, guiMemorySize);
 
 	if (!nk_init_fixed(&gameState->GUIState.Ctx, guiMemory, guiMemorySize, &gameState->GUIState.Font))
 	{
-		SERR("[ UI ] Nuklear failed to initialized");
+		SError("[ UI ] Nuklear failed to initialized");
 		return false;
 	}
 
@@ -59,7 +59,7 @@ InitializeGUI(GameState* gameState, Font* guiFont)
 	nk_handle userDataHandle = nk_handle_ptr(&UserData);
 	nk_set_user_data(&gameState->GUIState.Ctx, userDataHandle);
 
-	SLOG_INFO("[ UI ] Initialized Nuklear");
+	SInfoLog("[ UI ] Initialized Nuklear");
 	return true;
 }
 
@@ -75,7 +75,7 @@ UpdateGUI(GameState* gameState)
 	{
 		nk_layout_row_dynamic(ctx, 32, 1);
 
-		const char* frameTime = TextFormat("Frametime: %.5f s", Client.FrameTime * 1000);
+		const char* frameTime = TextFormat("Frametime: %.3fs", Client.FrameTime * 1000.0);
 
 		nk_label(ctx, frameTime, 1);
 	}

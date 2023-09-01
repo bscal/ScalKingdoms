@@ -34,8 +34,8 @@ void MoveOnAdd(ecs_iter_t* it)
 	for (int i = 0; i < it->count; ++i)
 	{
 		moves[i] = {};
-		zpl_array_init_reserve(moves[i].TilePath, zpl_heap_allocator(), 1024);
-		HashSetInitialize(&moves[i].Regions, 32, zpl_heap_allocator());
+		zpl_array_init_reserve(moves[i].TilePath, ZplAllocatorArena, 1024);
+		HashSetInitialize(&moves[i].Regions, 32, Allocator::Arena);
 	}
 }
 

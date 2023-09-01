@@ -10,7 +10,7 @@
 void HashMapInitialize(HashMap* map, uint32_t stride, uint32_t capacity, Allocator alloc)
 {
 	SASSERT(stride > 0);
-	SASSERT(alloc.proc);
+	SASSERT(IsAllocatorValid(alloc));
 
 	map->Stride = stride;
 	map->Alloc = alloc;
@@ -20,7 +20,7 @@ void HashMapInitialize(HashMap* map, uint32_t stride, uint32_t capacity, Allocat
 
 void HashMapReserve(HashMap* map, uint32_t capacity)
 {
-	SASSERT(map->Alloc.proc);
+	SASSERT(IsAllocatorValid(map->Alloc));
 	SASSERT(map->Stride > 0);
 
 	if (capacity == 0)
@@ -47,8 +47,8 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 			}
 		}
 		
-		FreeAlign(map->Alloc, map->Keys, 16);
-		FreeAlign(map->Alloc, map->Values, 16);
+		GameFree(map->Alloc, map->Keys);
+		GameFree(map->Alloc, map->Values);
 
 		SASSERT(map->Count == tmpMap.Count);
 		*map = tmpMap;
@@ -60,8 +60,8 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 		size_t newKeysSize = HashMapKeySize(map);
 		size_t newValuesSize = HashMapValueSize(map);
 
-		map->Keys = (HashBucket*)AllocAlign(map->Alloc, newKeysSize, 16);
-		map->Values = (uint8_t*)AllocAlign(map->Alloc, newValuesSize, 16);
+		map->Keys = (HashBucket*)GameMalloc(map->Alloc, newKeysSize);
+		map->Values = (uint8_t*)GameMalloc(map->Alloc, newValuesSize);
 
 		memset(map->Keys, 0, sizeof(newKeysSize));
 
@@ -77,8 +77,8 @@ void HashMapClear(HashMap* map)
 
 void HashMapDestroy(HashMap* map)
 {
-	FreeAlign(map->Alloc, map->Keys, 16);
-	FreeAlign(map->Alloc, map->Values, 16);
+	GameFree(map->Alloc, map->Keys);
+	GameFree(map->Alloc, map->Values);
 	map->Capacity = 0;
 	map->Count = 0;
 }
@@ -101,14 +101,14 @@ uint32_t HashMapSetEx(HashMap* map, uint32_t hash, const void* value, bool repla
 	#define MAX_HASHMAP_STRIDE 16 //kbs
 	if (map->Stride >= Kilobytes(MAX_HASHMAP_STRIDE))
 	{
-		SERR("Sizeof hashmap type > %dkbs. Failing to insert", MAX_HASHMAP_STRIDE);
+		SError("Sizeof hashmap type > %dkbs. Failing to insert", MAX_HASHMAP_STRIDE);
 		return HASHMAP_NOT_FOUND;
 	}
 
 	void* swapMemory = _alloca(map->Stride);
 	if (!swapMemory)
 	{
-		SERR("HashMapPut _alloca returned NULL!");
+		SError("HashMapPut _alloca returned NULL!");
 		return HASHMAP_NOT_FOUND;
 	}
 

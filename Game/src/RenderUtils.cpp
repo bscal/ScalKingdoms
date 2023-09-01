@@ -44,13 +44,13 @@ LoadRenderTextureEx(Vec2i resolution, PixelFormat format, bool useDepth)
 
 		// Check if fbo is complete with attachments (valid)
 		if (rlFramebufferComplete(target.id))
-			SLOG_INFO("FBO: [ID %i] Framebuffer object created successfully", target.id);
+			SInfoLog("FBO: [ID %i] Framebuffer object created successfully", target.id);
 
 		rlDisableFramebuffer();
 	}
 	else
 	{
-		SERR("FBO: Framebuffer object can not be created");
+		SError("FBO: Framebuffer object can not be created");
 	}
 
 	return target;
@@ -157,12 +157,12 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	
 	if (!FileExists(fileName))
 	{
-		SERR("BMFont file does not exist, %s", fileName);
+		SError("BMFont file does not exist, %s", fileName);
 	}
 
 	if (!IsTextureReady(*fontTexture))
 	{
-		SWARN("Font texture atlas is not loaded!");
+		SWarn("Font texture atlas is not loaded!");
 	}
 
 	Font font = { 0 };
@@ -290,7 +290,7 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 
 	if (font->texture.id == 0)
 	{
-		SWARN("Font texture.id == 0");
+		SWarn("Font texture.id == 0");
 		font = &GetGameState()->AssetMgr.MainFont;
 	}
 
@@ -409,7 +409,7 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 			break;
 
 			default:
-				SWARN("Using invalid type for RichType. Type: %d", type);
+				SWarn("Using invalid type for RichType. Type: %d", type);
 				break;
 			}
 			// +3 for ${ and } chars
@@ -449,7 +449,7 @@ const char*
 NewRichTextColor(int color)
 {
 	char* buffer = {};
-	zpl_alloc_str_len(ALLOCATOR_FRAME, buffer, RICH_TEXT_MAX_LENGTH + 2);
+	zpl_alloc_str_len(ZplAllocatorFrame, buffer, RICH_TEXT_MAX_LENGTH + 2);
 	SASSERT(buffer);
 	SClear(buffer, RICH_TEXT_MAX_LENGTH + 2);
 

@@ -112,7 +112,7 @@ void SList<T>::Reserve(uint32_t newCapacity)
 
 	size_t newSize = newCapacity * sizeof(T);
 	size_t oldSize = MemUsed();
-	Memory = (T*)ReallocAlign(Alloc, Memory, newSize, oldSize, 16);
+	Memory = (T*)GameRealloc(Alloc, Memory, newSize, oldSize);
 	Capacity = newCapacity;
 	SASSERT(Memory);
 	SASSERT(Count <= newCapacity);

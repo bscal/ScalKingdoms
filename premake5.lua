@@ -117,11 +117,6 @@ project "Game"
         "luajit",
     }
 
-    dependson
-    {
-        "raylib"
-    }
-
     filter "toolset:msc-ClangCL"
         buildoptions
         { 
@@ -147,10 +142,10 @@ project "Game"
             "-W4", "-WX", "-wd4100", "-wd4201", "-wd4127",
             "-Oi", "-GR", "-GR-", "-EHs-c-", "-D_HAS_EXCEPTIONS=0"
         }
-        --links { "raylib.lib" }
+        links { "raylib.lib" }
 
     filter "system:Unix"
         defines "SCAL_PLATFORM_LINUX"
-        --links { "raylib.so" }
+        links { "raylib.so" }
 
     filter {}

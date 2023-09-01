@@ -40,7 +40,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 
 	if (dimensions.width <= 0 || dimensions.height <= 0)
 	{
-		SERR("TileMap dimensions need to be greater than 0");
+		SError("TileMap dimensions need to be greater than 0");
 		return;
 	}
 
@@ -64,7 +64,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 
 	chunk_init(&tilemap->Chunks, zpl_heap_allocator());
 
-	SLOG_INFO("Starting chunk thread...");
+	SInfoLog("Starting chunk thread...");
 
 	// Init noise
 	tilemap->ChunkLoader.Noise = fnlCreateState();
@@ -77,15 +77,15 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	zpl_thread_init_nowait(&tilemap->ChunkThread);
 	zpl_thread_start(&tilemap->ChunkThread, ChunkThreadFunc, tilemap);
 
-	SLOG_INFO("Chunk thread started!");
+	SInfoLog("Chunk thread started!");
 
-	SLOG_INFO("Tilemap Initialized!");
+	SInfoLog("Tilemap Initialized!");
 }
 
 void
 TileMapFree(TileMap* tilemap)
 {
-	SLOG_INFO("Waiting for chunk thread to shutdown...");
+	SInfoLog("Waiting for chunk thread to shutdown...");
 	// Waits for thread to shutdown;
 	tilemap->ChunkLoader.ShouldShutdown = true;
 	zpl_semaphore_post(&tilemap->ChunkLoader.Signal, 1);
@@ -95,7 +95,7 @@ TileMapFree(TileMap* tilemap)
 	}
 	zpl_thread_destroy(&tilemap->ChunkThread);
 	zpl_semaphore_destroy(&tilemap->ChunkLoader.Signal);
-	SLOG_INFO("Chunk thread shutdown!");
+	SInfoLog("Chunk thread shutdown!");
 
 	for (int i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
 	{
@@ -211,7 +211,7 @@ InternalChunkLoad(TileMap* tilemap, Vec2i coord)
 
 	InternalChunkGenerate(tilemap, chunk);
 
-	SLOG_DEBUG("Chunk loaded. %s", FMT_VEC2I(chunk->Coord));
+	SDebugLog("Chunk loaded. %s", FMT_VEC2I(chunk->Coord));
 
 	return chunk;
 }
@@ -224,7 +224,7 @@ InternalChunkUnload(TileMap* tilemap, Chunk* chunk)
 
 	chunk->IsLoaded = false;
 
-	SLOG_DEBUG("Chunk unloaded. %s", FMT_VEC2I(chunk->Coord));
+	SDebugLog("Chunk unloaded. %s", FMT_VEC2I(chunk->Coord));
 
 	zpl_array_append(tilemap->ChunkLoader.ChunkPool, chunk);
 }
@@ -467,7 +467,7 @@ SetTileId(Chunk* chunk, size_t idx, u16 tile, short layer)
 		} break;
 
 		default:
-			SWARN("SetTile using invalid layer."); break;
+			SWarn("SetTile using invalid layer."); break;
 		}
 	}
 }
