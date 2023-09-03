@@ -149,7 +149,7 @@ void BHeapPushMax(BHeap* bh, void* key, void* user)
     ++bh->Count;
 }
 
-BHeapItem BHeaPopMax(BHeap* bh)
+BHeapItem BHeapPopMax(BHeap* bh)
 {
     SASSERT(bh && bh->Count > 0);
 
@@ -164,6 +164,21 @@ BHeapItem BHeaPopMax(BHeap* bh)
     sx__bheap_heapify_max(bh, 0);
     return result;
 }
+
+
+//BHeapItem* BHeapGet(BHeap* bh, void* key)
+//{
+//    int i, r = 0;													
+//    BHeapItem* x = bh->Items;											
+//        while (x) {
+//            
+//                i = __kb_getp_aux_##name(x, k, &r);							
+//                if (i >= 0 && r == 0) return &__KB_KEY(key_t, x)[i];		
+//                    if (x->is_internal == 0) return 0;							
+//                        x = __KB_PTR(b, x)[i + 1];									
+//        }																
+//            return 0;
+//}
 
 void BHeapClear(BHeap* bh)
 {

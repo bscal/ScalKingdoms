@@ -4,15 +4,35 @@
 #include "Components.h"
 #include "TileMap.h"
 #include "Tile.h"
-#include "Pathfinder.h"
+
+#include "Structures/ArrayList.h"
+#include <corecrt_math.h>
 
 constexpr global_var int MAX_REGION_SEARCH = 128;
 constexpr global_var int MAX_LOCAL_SEARCH = 256;
 
-#define Hash(pos) zpl_fnv32a(&pos, sizeof(Vec2i))
+#define HashRegion(coord) (zpl_fnv64a(&coord, sizeof(Vec2i)))
 #define AllocNode(T) ((T*)GameMalloc(Allocator::Frame, sizeof(T)));
 
-internal inline int
+struct RegionNode
+{
+	Vec2i Pos;
+	RegionNode* Parent;
+	int FCost;
+	int HCost;
+	int GCost;
+};
+
+internal _FORCE_INLINE_ Vec2i
+TileCoordToRegionCoord(Vec2i tile)
+{
+	Vec2i res;
+	res.x = (int)floorf((float)tile.x / REGION_SIZE);
+	res.y = (int)floorf((float)tile.y / REGION_SIZE);
+	return res;
+}
+
+internal int
 RegionCompareCost(void* cur, void* parent)
 {
 	RegionNode* a = (RegionNode*)cur;
@@ -36,7 +56,8 @@ CalculateDistance(Vec2i v0, Vec2i v1)
 	return res;
 }
 
-void RegionStateInit(RegionState* regionState)
+void 
+RegionStateInit(RegionState* regionState)
 {
 	regionState->Open = BHeapCreate(Allocator::Malloc, RegionCompareCost, MAX_REGION_SEARCH);
 	HashMapInitialize(&regionState->RegionMap, sizeof(RegionPaths), MAX_REGION_SEARCH, Allocator::Malloc);
@@ -135,8 +156,25 @@ LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk)
 				break;
 			}
 
-			u32 hash = HashTile(region.Pos);
+			u64 hash = HashTile(region.Pos);
 			HashMapSetEx(&regionState->RegionMap, hash, &region, true);
+		}
+	}
+}
+
+void 
+UnloadRegionPaths(RegionState* regionState, Chunk* chunk)
+{
+	SASSERT(regionState);
+	SASSERT(chunk);
+
+	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
+	{
+		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
+		{
+			Vec2i pos = chunk->Coord + Vec2i{ xDiv, yDiv };
+			u64 hash = HashTile(pos);
+			HashMapRemove(&regionState->RegionMap, hash);
 		}
 	}
 }
@@ -144,13 +182,12 @@ LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk)
 void
 FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2i endTile, HashSet* regionSet)
 {
-	Vec2i start;
-	start.x = (int)floorf((float)startTile.x / (float)REGION_SIZE);
-	start.y = (int)floorf((float)startTile.y / (float)REGION_SIZE);
+	SASSERT(regionState);
+	SASSERT(tilemap);
+	SASSERT(regionSet);
 
-	Vec2i end;
-	end.x = (int)floorf((float)endTile.x / (float)REGION_SIZE);
-	end.y = (int)floorf((float)endTile.y / (float)REGION_SIZE);
+	Vec2i start = TileCoordToRegionCoord(startTile);
+	Vec2i end = TileCoordToRegionCoord(endTile);
 
 	BHeapClear(regionState->Open);
 	HashMapClear(&regionState->OpenMap);
@@ -164,7 +201,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 	node->FCost = node->GCost + node->HCost;
 
 	BHeapPushMin(regionState->Open, node, node);
-	u32 firstHash = Hash(node->Pos);
+	u64 firstHash = HashRegion(node->Pos);
 	HashMapSet(&regionState->OpenMap, firstHash, &node->FCost);
 
 	while (regionState->Open->Count > 0)
@@ -173,7 +210,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 
 		RegionNode* curNode = (RegionNode*)item.User;
 
-		u32 hash = Hash(curNode->Pos);
+		u64 hash = HashRegion(curNode->Pos);
 		HashMapRemove(&regionState->OpenMap, hash);
 		HashSetSet(&regionState->ClosedSet, hash);
 
@@ -190,7 +227,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 				if (Client.DebugShowRegionPaths)
 					ArrayListPush(Allocator::Arena, Client.DebugRegionsPath, prev->Pos);
 
-				u32 prevHash = HashTile(prev->Pos);
+				u64 prevHash = HashTile(prev->Pos);
 				HashSetSet(regionSet, prevHash);
 				prev = prev->Parent;
 			}
@@ -213,7 +250,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 
 				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS[i];
 
-				u32 nextHash = Hash(next);
+				u64 nextHash = HashRegion(next);
 				if (HashSetContains(&regionState->ClosedSet, nextHash))
 					continue;
 
@@ -267,7 +304,7 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 	node->FCost = node->GCost + node->HCost;
 
 	BHeapPushMin(pathfinder->Open, node, node);
-	u32 firstHash = Hash(node->Pos);
+	u64 firstHash = HashRegion(node->Pos);
 	HashMapSet(&pathfinder->OpenSet, firstHash, &node->FCost);
 
 	while (pathfinder->Open->Count > 0)
@@ -276,7 +313,7 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 
 		Node* curNode = (Node*)item.User;
 
-		u32 hash = Hash(curNode->Pos);
+		u64 hash = HashRegion(curNode->Pos);
 		HashMapRemove(&pathfinder->OpenSet, hash);
 		HashSetSet(&pathfinder->ClosedSet, hash);
 
@@ -298,32 +335,32 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 		{
 			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
 			{
-				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
+				Vec2i nextTile = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
 
-				RegionPaths* nextRegion = GetRegion(regionState, next);
-				u32 nextRegionhash = Hash(nextRegion->Pos);
+				RegionPaths* nextRegion = GetRegion(regionState, nextTile);
+				u64 nextRegionhash = HashRegion(nextRegion->Pos);
 				if (!HashSetContains(&moveComponent->Regions, nextRegionhash))
 					continue;
 
-				u32 nextHash = Hash(next);
+				u64 nextHash = HashTile(nextTile);
 				if (HashSetContains(&pathfinder->ClosedSet, nextHash))
 					continue;
 
-				Tile* tile = GetTile(tilemap, next);
+				Tile* tile = GetTile(tilemap, nextTile);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
 					continue;
 				else
 				{
 					int* nextCost = HashMapGet(&pathfinder->OpenSet, nextHash, int);
 					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
-					int cost = curNode->GCost + CalculateDistance(curNode->Pos, next) + tileCost;
+					int cost = curNode->GCost + CalculateDistance(curNode->Pos, nextTile) + tileCost;
 					if (!nextCost || cost < *nextCost)
 					{
 						Node* nextNode = AllocNode(Node);
-						nextNode->Pos = next;
+						nextNode->Pos = nextTile;
 						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
-						nextNode->HCost = CalculateDistance(end, next);
+						nextNode->HCost = CalculateDistance(end, nextTile);
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
 
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
@@ -345,10 +382,6 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 RegionPaths* 
 GetRegion(RegionState* regionState, Vec2i tilePos)
 {
-	int regionX = (int)floorf((float)tilePos.x / (float)REGION_SIZE);
-	int regionY = (int)floorf((float)tilePos.y / (float)REGION_SIZE);
-	Vec2i coord = Vec2i{ regionX, regionY };
-	return HashMapGet(&regionState->RegionMap, Hash(coord), RegionPaths);
+	Vec2i coord = TileCoordToRegionCoord(tilePos);
+	return HashMapGet(&regionState->RegionMap, HashRegion(coord), RegionPaths);
 }
-
-

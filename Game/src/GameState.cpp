@@ -289,7 +289,7 @@ void InputUpdate()
 	{
 		Vec2i tile = ScreenToTile(GetMousePosition());
 
-		u32 hash = HashTile(tile);
+		u64 hash = HashTile(tile);
 		ecs_entity_t* entity = HashMapGet(&State.EntityMap, hash, ecs_entity_t);
 		if (entity)
 		{

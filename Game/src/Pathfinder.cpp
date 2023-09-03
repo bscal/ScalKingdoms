@@ -8,7 +8,6 @@
 constexpr int MAX_SEARCH_TILES = 64 * 64;
 constexpr int PATHFINDER_TABLE_SIZE = MAX_SEARCH_TILES + (int)((float)MAX_SEARCH_TILES * HASHSET_LOAD_FACTOR);
 
-#define Hash(pos) zpl_fnv32a(&pos, sizeof(Vec2i))
 #define AllocNode() ((Node*)GameMalloc(Allocator::Frame, sizeof(Node)));
 
 internal int 
@@ -109,7 +108,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	node->FCost = node->GCost + node->HCost;
 
 	BHeapPushMin(pathfinder->Open, node, node);
-	u32 firstHash = Hash(node->Pos);
+	u64 firstHash = HashTile(node->Pos);
 	HashMapSet(&pathfinder->OpenSet, firstHash, &node->FCost);
 
 	while (pathfinder->Open->Count > 0)
@@ -118,7 +117,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 
 		Node* curNode = (Node*)item.User;
 
-		u32 hash = Hash(node->Pos);
+		u64 hash = HashTile(node->Pos);
 		HashMapRemove(&pathfinder->OpenSet, hash);
 		HashSetSet(&pathfinder->ClosedSet, hash);
 
@@ -138,7 +137,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 
 				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
 
-				u32 nextHash = Hash(next);
+				u64 nextHash = HashTile(next);
 				if (HashSetContains(&pathfinder->ClosedSet, nextHash))
 					continue;
 

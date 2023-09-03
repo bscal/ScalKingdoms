@@ -84,8 +84,8 @@ void MoveSystem(ecs_iter_t* it)
 			Vec2i travelTilePos = WorldToTile(transforms[i].Pos);
 			if (travelTilePos != transforms[i].TilePos)
 			{
-				u32 newHash = HashTile(travelTilePos);
-				u32 oldHash = HashTile(transforms[i].TilePos);
+				u64 newHash = HashTile(travelTilePos);
+				u64 oldHash = HashTile(transforms[i].TilePos);
 
 				HashMapRemove(entityMap, oldHash);
 				HashMapSet(entityMap, newHash, &it->entities[i]);

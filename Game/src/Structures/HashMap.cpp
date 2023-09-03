@@ -2,8 +2,15 @@
 
 #include "Utils.h"
 
-#define HashMapKeyIndex(hash, cap) (hash & (cap - 1))
-#define HashMapSwap(V0, V1, T) T tmp = V0; V0 = V1; V1 = tmp
+struct HashBucket
+{
+	uint64_t Hash;
+	uint32_t ProbeLength;
+	bool IsUsed;
+};
+
+#define HashMapKeyIndex(hash, cap) ((uint32_t)((hash) & (uint64_t)((cap) - 1)))
+#define HashMapSwap(V0, V1, T) do { T tmp = (V0); (V0) = (V1); (V1) = tmp; } while(0)
 #define HashMapKeySize(hashmap) (hashmap->Capacity * sizeof(HashBucket))
 #define HashMapValueSize(hashmap) (hashmap->Capacity * hashmap->Stride)
 
@@ -83,12 +90,12 @@ void HashMapDestroy(HashMap* map)
 	map->Count = 0;
 }
 
-uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value)
+uint32_t HashMapSet(HashMap* map, uint64_t hash, const void* value)
 {
 	return HashMapSetEx(map, hash, value, false);
 }
 
-uint32_t HashMapSetEx(HashMap* map, uint32_t hash, const void* value, bool replace)
+uint32_t HashMapSetEx(HashMap* map, uint64_t hash, const void* value, bool replace)
 {
 	if (map->Count >= map->MaxCount)
 	{
@@ -117,8 +124,8 @@ uint32_t HashMapSetEx(HashMap* map, uint32_t hash, const void* value, bool repla
 	else
 	 	memset(swapMemory, 0, map->Stride);
 
+	uint64_t swapHash = hash;
 	uint32_t insertedIndex = HASHMAP_NOT_FOUND;
-	uint32_t swapHash = hash;
 	uint32_t probeLength = 0;
 
 	uint32_t idx = HashMapKeyIndex(hash, map->Capacity);
@@ -151,12 +158,8 @@ uint32_t HashMapSetEx(HashMap* map, uint32_t hash, const void* value, bool repla
 				if (insertedIndex == HASHMAP_NOT_FOUND)
 					insertedIndex = idx;
 
-				{
-					HashMapSwap(bucket->ProbeLength, probeLength, uint32_t);
-				}
-				{
-					HashMapSwap(bucket->Hash, swapHash, uint32_t);
-				}
+				HashMapSwap(bucket->ProbeLength, probeLength, uint32_t);
+				HashMapSwap(bucket->Hash, swapHash, uint64_t);
 				{
 					// Swaps byte by byte from current value to
 					// value parameter memory;
@@ -180,7 +183,7 @@ uint32_t HashMapSetEx(HashMap* map, uint32_t hash, const void* value, bool repla
 	return insertedIndex;
 }
 
-void* HashMapSetNew(HashMap* map, uint32_t hash)
+void* HashMapSetNew(HashMap* map, uint64_t hash)
 {
 	uint32_t idx = HashMapSet(map, hash, nullptr);
 	if (idx != HASHMAP_NOT_FOUND)
@@ -189,7 +192,7 @@ void* HashMapSetNew(HashMap* map, uint32_t hash)
 		return nullptr;
 }
 
-uint32_t HashMapIndex(HashMap* map, uint32_t hash)
+uint32_t HashMapIndex(HashMap* map, uint64_t hash)
 {
 	if (!map->Keys || map->Count == 0)
 		return HASHMAP_NOT_FOUND;
@@ -215,7 +218,7 @@ uint32_t HashMapIndex(HashMap* map, uint32_t hash)
 }
 
 
-bool HashMapRemove(HashMap* map, uint32_t hash)
+bool HashMapRemove(HashMap* map, uint64_t hash)
 {
 	if (!map->Keys || map->Count == 0)
 		return false;
@@ -266,7 +269,7 @@ bool HashMapRemove(HashMap* map, uint32_t hash)
 	return false;
 }
 
-void HashMapForEach(HashMap* map, void(*Fn)(uint32_t, void*, void*), void* stackMemory)
+void HashMapForEach(HashMap* map, void(*Fn)(uint64_t, void*, void*), void* stackMemory)
 {
 	SASSERT(Fn);
 	for (uint32_t i = 0; i < map->Capacity; ++i)

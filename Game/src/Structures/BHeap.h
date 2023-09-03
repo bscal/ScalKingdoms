@@ -44,7 +44,7 @@ void BHeapPushMin(BHeap* bh, void* key, void* user);
 BHeapItem BHeapPopMin(BHeap* bh);
 
 void BHeapPushMax(BHeap* bh, void* key, void* user);
-BHeapItem BHeaPopMax(BHeap* bh);
+BHeapItem BHeapPopMax(BHeap* bh);
 
 void BHeapClear(BHeap* bh);
 bool BHeapEmpty(BHeap* bh);

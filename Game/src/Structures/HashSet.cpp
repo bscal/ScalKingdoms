@@ -72,7 +72,7 @@ void HashSetDestroy(HashSet* set)
 	set->Count = 0;
 }
 
-bool HashSetSet(HashSet* set, uint32_t hash)
+bool HashSetSet(HashSet* set, uint64_t hash)
 {
 	if (set->Count >= (uint32_t)((float)set->Capacity * HASHSET_LOAD_FACTOR))
 	{
@@ -81,7 +81,7 @@ bool HashSetSet(HashSet* set, uint32_t hash)
 
 	SASSERT(set->Keys);
 
-	uint32_t swapHash = hash;
+	uint64_t swapHash = hash;
 	uint32_t probeLength = 0;
 
 	uint32_t idx = HashMapKeyIndex(hash, set->Capacity);
@@ -108,7 +108,7 @@ bool HashSetSet(HashSet* set, uint32_t hash)
 					HashMapSwap(bucket->ProbeLength, probeLength, uint32_t);
 				}
 				{
-					HashMapSwap(bucket->Hash, swapHash, uint32_t);
+					HashMapSwap(bucket->Hash, swapHash, uint64_t);
 				}
 			}
 
@@ -121,7 +121,7 @@ bool HashSetSet(HashSet* set, uint32_t hash)
 	return false;
 }
 
-bool HashSetContains(HashSet* set, uint32_t hash)
+bool HashSetContains(HashSet* set, uint64_t hash)
 {
 	if (!set->Keys || set->Count == 0)
 		return false;
@@ -146,7 +146,7 @@ bool HashSetContains(HashSet* set, uint32_t hash)
 	return false;
 }
 
-bool HashSetRemove(HashSet* set, uint32_t hash)
+bool HashSetRemove(HashSet* set, uint64_t hash)
 {
 	if (!set->Keys || set->Count == 0)
 		return false;

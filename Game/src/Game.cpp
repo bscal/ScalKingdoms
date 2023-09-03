@@ -25,7 +25,7 @@ ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 	ecs_set_ex(world, entity, CRender, render);
 
 	Vec2i pos = Vec2i{ 0, 0 };
-	u32 hash = HashTile(pos);
+	u64 hash = HashTile(pos);
 	HashMapSet(&gamestate->EntityMap, hash, &entity);
 
 	return entity;
@@ -38,7 +38,7 @@ void DestroyCreature(GameState* gamestate, ecs_entity_t entity)
 		const CTransform* transform = ecs_get(gamestate->World, entity, CTransform);
 		SASSERT(transform);
 
-		u32 hash = HashTile(transform->TilePos);
+		u64 hash = HashTile(transform->TilePos);
 		HashMapRemove(&gamestate->EntityMap, hash);
 
 		ecs_delete(gamestate->World, entity);

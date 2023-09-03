@@ -10,9 +10,9 @@ constexpr static float HASHSET_LOAD_FACTOR = 0.85f;
 
 struct HashSetBucket
 {
-	uint32_t Hash;
-	uint32_t ProbeLength : 31;
-	uint32_t IsUsed : 1;
+	uint64_t Hash;
+	uint32_t ProbeLength;
+	bool IsUsed;
 };
 
 struct HashSet
@@ -31,8 +31,8 @@ void HashSetClear(HashSet* set);
 
 void HashSetDestroy(HashSet* set);
 
-bool HashSetSet(HashSet* set, uint32_t hash);
+bool HashSetSet(HashSet* set, uint64_t hash);
 
-bool HashSetContains(HashSet* set, uint32_t hash);
+bool HashSetContains(HashSet* set, uint64_t hash);
 
-bool HashSetRemove(HashSet* set, uint32_t hash);
+bool HashSetRemove(HashSet* set, uint64_t hash);

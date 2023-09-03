@@ -14,12 +14,7 @@ constexpr static float HASHMAP_LOAD_FACTOR = 0.85f;
 #define HashMapGet(hashmap, hash, T) ((T*)HashMapGetPtr(hashmap, hash))
 #define HashMapValuesIndex(hashmap, idx) (&((uint8_t*)(hashmap->Values))[hashmap->Stride * idx])
 
-struct HashBucket
-{
-	uint32_t Hash;
-	uint32_t ProbeLength : 31;
-	uint32_t IsUsed : 1;
-};
+struct HashBucket;
 
 struct HashMap
 {
@@ -40,20 +35,20 @@ void HashMapClear(HashMap* map);
 
 void HashMapDestroy(HashMap* map);
 
-uint32_t HashMapSet(HashMap* map, uint32_t hash, const void* value);
+uint32_t HashMapSet(HashMap* map, uint64_t hash, const void* value);
 
-uint32_t HashMapSetEx(HashMap* map, uint32_t hash, const void* value, bool replace);
+uint32_t HashMapSetEx(HashMap* map, uint64_t hash, const void* value, bool replace);
 
-void* HashMapSetNew(HashMap* map, uint32_t hash);
+void* HashMapSetNew(HashMap* map, uint64_t hash);
 
-uint32_t HashMapIndex(HashMap* map, uint32_t hash);
+uint32_t HashMapIndex(HashMap* map, uint64_t hash);
 
-bool HashMapRemove(HashMap* map, uint32_t hash);
+bool HashMapRemove(HashMap* map, uint64_t hash);
 
-void HashMapForEach(HashMap* map, void(*Fn)(uint32_t, void*, void*), void* stackMemory);
+void HashMapForEach(HashMap* map, void(*Fn)(uint64_t, void*, void*), void* stackMemory);
 
 _FORCE_INLINE_ void* 
-HashMapGetPtr(HashMap* map, uint32_t hash)
+HashMapGetPtr(HashMap* map, uint64_t hash)
 {
 	uint32_t idx = HashMapIndex(map, hash);
 	return (idx == HASHMAP_NOT_FOUND) ? nullptr : HashMapValuesIndex(map, idx);

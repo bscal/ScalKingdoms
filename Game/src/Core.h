@@ -96,7 +96,9 @@ typedef Vector2 Vec2;
 #define BitToggle(state, bit) (state ^ (1ULL << bit))
 #define BitMask(state, mask) (FlagTrue(state, mask))
 
-#define Swap(x, y, T) (T temp = x; x = y; y = temp)
+#define Swap(x, y, T) do { T temp = (x); (x) = (y); (y) = temp; } while(0)
+
+#define Hash(ptr, size) (zpl_fnv64a(ptr, size))
 
 #if SCAL_DEBUG
 	#if _MSC_VER
@@ -177,7 +179,7 @@ TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 #define FMT_BOOL(boolVar) TextFormat("%s", ((boolVar)) ? "true" : "false")
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
 
-#define HashTile(tileVec2) (zpl_fnv32a(&tileVec2, sizeof(Vec2i)))
+#define HashTile(tileVec2) (zpl_fnv64a(&tileVec2, sizeof(Vec2i)))
 
 inline int ScalTestCounter;
 inline int ScalTestPasses;
