@@ -233,34 +233,37 @@ void HashMapKVForEach(HashMapKV* map, void(*Fn)(void*, void*, void*), void* stac
 internal HashMapKVSetResults
 HashMapKVSet_Internal(HashMapKV* map, const void* key, const void* value)
 {
+	SASSERT(map);
+	SASSERT(key);
+	SASSERT(IsAllocatorValid(map->Alloc));
+	SASSERT(map->KeyStride > 0);
+	SASSERT(map->ValueStride > 0);
+	SASSERT(map->KeyStride + map->ValueStride < Kilobytes(16));
+
 	if (map->Count >= map->MaxCount)
 	{
 		HashMapKVReserve(map, map->Capacity * DEFAULT_RESIZE);
 	}
 
 	SASSERT(map->Slots);
-	SASSERT(map->KeyStride > 0);
-	SASSERT(map->ValueStride > 0);
-
-	#define MAX_HASHMAP_STRIDE 4 //kbs
-	SASSERT(map->KeyStride < MAX_HASHMAP_STRIDE);
-    SASSERT(map->ValueStride < MAX_HASHMAP_STRIDE);
 
     HashKVSlot slot = {};
-    void* swapKey = _alloca(map->KeyStride);
+    void* swapKey = alloca(map->KeyStride);
     SASSERT(swapKey);
 
     memcpy(swapKey, key, map->KeyStride);
 
-    void* swapValue = _alloca(map->ValueStride);
+    void* swapValue = alloca(map->ValueStride);
+	SASSERT(swapValue);
 
     if (value)
         memcpy(swapValue, value, map->ValueStride);
     else
         memset(swapValue, 0, map->ValueStride);
 
-	HashMapKVSetResults res = {};
+	HashMapKVSetResults res;
     res.Index = HASHMAP_NOT_FOUND;
+	res.Contained = false;
 
 	u64 hash = Hash(key, map->KeyStride);
 	u32 idx = ToIdx(hash, map->Capacity);
@@ -321,6 +324,8 @@ HashMapKVSet_Internal(HashMapKV* map, const void* key, const void* value)
 			++idx;
 			if (idx == map->Capacity)
 				idx = 0;
+
+			SASSERT_MSG(probeLength >= 127, "probeLength is >= 127, using bad hash?");
 		}
 	}
 	return res;

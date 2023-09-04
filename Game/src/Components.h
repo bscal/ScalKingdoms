@@ -41,16 +41,27 @@ struct CHealth
 	Flag8 Flags;
 };
 
+
+struct CItemStack
+{
+	u16 Type;
+	u16 Quantity;
+};
+
 #ifdef COMPONENT_DECLARATION
 
 ECS_COMPONENT_DECLARE(CTransform);
 ECS_COMPONENT_DECLARE(CRender);
 ECS_COMPONENT_DECLARE(CMove);
 
+ECS_TAG_DECLARE(GameObject);
+
 #else
 
 extern ECS_COMPONENT_DECLARE(CTransform);
 extern ECS_COMPONENT_DECLARE(CRender);
 extern ECS_COMPONENT_DECLARE(CMove);
+
+extern ECS_TAG_DECLARE(GameObject);
 
 #endif

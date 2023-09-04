@@ -69,6 +69,8 @@ GameInitialize()
 	ECS_COMPONENT_DEFINE(State.World, CTransform);
 	ECS_COMPONENT_DEFINE(State.World, CRender);
 	ECS_COMPONENT_DEFINE(State.World, CMove);
+	
+	ECS_TAG_DEFINE(State.World, GameObject);
 
 	ECS_OBSERVER(State.World, MoveOnAdd, EcsOnAdd, CMove);
 	ECS_OBSERVER(State.World, MoveOnRemove, EcsOnRemove, CMove);

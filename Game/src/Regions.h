@@ -5,6 +5,7 @@
 #include "Structures/HashMap.h"
 #include "Structures/HashSet.h"
 #include "Structures/BHeap.h"
+#include "Structures/ArrayList.h"
 
 struct TileMap;
 struct Chunk;
@@ -15,7 +16,9 @@ constexpr global_var int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
 
 struct RegionPaths
 {
+	ArrayList(ecs_entity_t) Creatures;
 	Vec2i Pos;
+	Vec2i TilePos;
 	bool Sides[4];
 };
 

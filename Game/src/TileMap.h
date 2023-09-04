@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Regions.h"
 #include "Structures/BitArray.h"
+#include "Structures/HashMapKV.h"
 
 #include <FastNoiseLite/FastNoiseLite.h>
 #include <stdint.h>

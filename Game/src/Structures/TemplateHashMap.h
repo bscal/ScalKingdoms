@@ -6,16 +6,16 @@
 constexpr global_var u32 HASHTABLE_NOT_FOUND = UINT32_MAX;
 
 #ifndef HashTableHasher
-#define HashTableHasher(data, len, cap) (zpl_fnv32a((data), (len)) & ((cap) - 1))
+#define HashTableHasher(data, len, cap) (zpl_fnv64a((data), (len)) & ((cap) - 1))
 #endif
 
 template<typename K, typename V>
 struct HashTableBucket
 {
-	K Key;
-	u32 ProbeLength : 31;
-	u32 IsUsed : 1;
 	V Value;
+	K Key;
+	u16 ProbeLength;
+	bool IsUsed;
 };
 
 template<typename K, typename V>
@@ -60,13 +60,13 @@ void HashTableReserve(HashTable<K, V>* map, uint32_t capacity)
 		HashTable<K, V> tmpMap = {};
 		tmpMap.Alloc = map->Alloc;
 		tmpMap.LoadFactor = map->LoadFactor;
-		HashTableReserve(&tmpMap, capacity);
+		HashTableReserve<K, V>(&tmpMap, capacity);
 
 		for (uint32_t i = 0; i < map->Capacity; ++i)
 		{
-			if (map->Keys[i].IsUsed)
+			if (map->Buckets[i].IsUsed)
 			{
-				HashTableSet(&tmpMap, map->Keys[i].Hash, HashMapValuesIndex(map, i));
+				HashTableSet<K, V>(&tmpMap, &map->Buckets[i].Key, &map->Buckets[i].Value);
 			}
 		}
 
@@ -108,15 +108,25 @@ void HashTableDestroy(HashTable<K, V>* map)
 }
 
 template<typename K, typename V>
-uint32_t HashTableSet(HashTable<K, V>* map, K* key)
+uint32_t HashTableSet(HashTable<K, V>* map, K* key, V* value)
 {
+	SASSERT(map);
+	SASSERT(key);
+	SASSERT(IsAllocatorValid(map->Alloc));
+
 	if (map->Count >= map->MaxCount)
 	{
 		HashTableReserve(map, map->Capacity * 2);
 	}
 
+	SASSERT(map->Buckets);
+
 	HashTableBucket<K, V> swapBucket = {};
 	swapBucket.Key = *key;
+	if (value)
+		swapBucket.Value = *value;
+	else
+		swapBucket.Value = {0};
 
 	uint32_t insertedIndex = HASHTABLE_NOT_FOUND;
 	uint32_t probeLength = 0;
@@ -156,8 +166,22 @@ uint32_t HashTableSet(HashTable<K, V>* map, K* key)
 				idx = 0;
 		}
 	}
-
 	return insertedIndex;
+}
+
+template<typename K, typename V>
+uint32_t HashTableSetNullValue(HashTable<K, V>* map, K* key)
+{
+	return HashTableSet<K, V>(map, key, nullptr);
+}
+
+template<typename K, typename V>
+uint32_t HashTableReplace(HashTable<K, V>* map, K* key, V* value)
+{
+	uint32_t insertedIdx = HashTableSet<K, V>(map, key, nullptr);
+	SASSERT(insertedIdx != HASHTABLE_NOT_FOUND);
+	map->Buckets[insertedIdx].Value = *value;
+	return insertedIdx;
 }
 
 template<typename K, typename V>

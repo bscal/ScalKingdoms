@@ -83,6 +83,7 @@ LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk)
 			RegionPaths region = {};
 
 			Vec2i pos = chunkWorld + Vec2i{ xDiv * REGION_SIZE, yDiv * REGION_SIZE };
+			region.TilePos = pos;
 			region.Pos = { pos.x / REGION_SIZE, pos.y / REGION_SIZE };
 
 			for (int i = 0; i < REGION_SIZE; ++i)

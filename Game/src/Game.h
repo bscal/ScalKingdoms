@@ -2,7 +2,16 @@
 
 #include "Core.h"
 
+#include "Structures/ArrayList.h"
+#include "Structures/HashMapKV.h"
+
 struct GameState;
+
+struct Stockpile
+{
+	HashMapKV Quantities;
+	ArrayList(Vec2i) Tiles;
+};
 
 ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile);
 
