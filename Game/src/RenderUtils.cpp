@@ -165,7 +165,7 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 		SWarn("Font texture atlas is not loaded!");
 	}
 
-	Font font = { 0 };
+	Font font = {};
 
 	char buffer[MAX_BUFFER_SIZE] = { 0 };
 	char* searchPoint = NULL;
@@ -317,7 +317,7 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 			// If no } is found in length, then abort.
 			int end = -1;
 			char input[32] = {};
-			for (int c = 0; c < ArrayLength(input); ++c)
+			for (size_t c = 0; c < ArrayLength(input); ++c)
 			{
 				char val = keywordStart[c];
 				if (val == '}')

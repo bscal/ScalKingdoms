@@ -6,17 +6,17 @@ constexpr global_var u32 DEFAULT_CAPACITY = 2;
 constexpr global_var u32 DEFAULT_RESIZE = 2;
 constexpr global_var float DEFAULT_LOADFACTOR = .85f;
 
-#define HashMapCompare(hashmap, v0, v1) (zpl_memcompare(v0, v1, hashmap->KeyStride))
+#define Compare(hashmap, v0, v1) (hashmap->CompareFunc(v0, v1))
 
 #define ToIdx(hash, cap) ((u32)((hash) & (u64)((cap) - 1)))
-#define IndexArray(arr, idx, stride) ((u8*)(arr) + ((idx) * (stride)))
+#define IndexArray(arr, idx, stride) (((u8*)(arr)) + ((idx) * (stride)))
 #define IndexKey(hashmap, idx) (IndexArray(hashmap->Keys, idx, hashmap->KeyStride))
 #define IndexValue(hashmap, idx) (IndexArray(hashmap->Values, idx, hashmap->ValueStride))
 
 struct HashKVSlot
 {
-	u8 ProbeLength : 7;
-	u8 IsUsed : 1;
+	u8 ProbeLength;
+	bool IsUsed;
 };
 
 struct HashMapKVSetResults
@@ -28,13 +28,16 @@ struct HashMapKVSetResults
 internal HashMapKVSetResults
 HashMapKVSet_Internal(HashMapKV* map, const void* key, const void* value);
 
-void HashMapKVInitialize(HashMapKV* map, Allocator alloc, u32 keyStride, u32 valueStride, u32 capacity)
+void HashMapKVInitialize(HashMapKV* map, HashMapKVCompare compareFunc, 
+	u32 keyStride, u32 valueStride, u32 capacity, Allocator alloc)
 {
 	SASSERT(map);
+	SASSERT(compareFunc);
 	SASSERT(IsAllocatorValid(alloc));
     SASSERT(keyStride > 0);
     SASSERT(valueStride > 0);
 
+	map->CompareFunc = compareFunc;
 	map->Alloc = alloc;
 	map->KeyStride = keyStride;
     map->ValueStride = valueStride;
@@ -61,6 +64,7 @@ void HashMapKVReserve(HashMapKV* map, uint32_t capacity)
 	if (map->Slots)
 	{
 		HashMapKV tmpMap = {};
+		tmpMap.CompareFunc = map->CompareFunc;
 		tmpMap.KeyStride = map->KeyStride;
         tmpMap.ValueStride = map->ValueStride;
 		tmpMap.Alloc = map->Alloc;
@@ -88,7 +92,9 @@ void HashMapKVReserve(HashMapKV* map, uint32_t capacity)
 
 		map->Slots = (HashKVSlot*)GameMalloc(map->Alloc, sizeof(HashKVSlot) * map->Capacity);
 		memset(map->Slots, 0, sizeof(HashKVSlot) * map->Capacity);
-		map->Values = GameMalloc(map->Alloc, map->KeyStride * map->Capacity);
+
+		map->Keys = GameMalloc(map->Alloc, map->KeyStride * map->Capacity);
+
         map->Values = GameMalloc(map->Alloc, map->ValueStride * map->Capacity);
 	}
 }
@@ -135,17 +141,16 @@ uint32_t HashMapKVFind(HashMapKV* map, const void* key)
 	SASSERT(key);
 
 	if (!map->Slots || map->Count == 0)
-		return HASHMAP_NOT_FOUND;
+		return HASHMAPKV_NOT_FOUND;
 
-    u64 hash = Hash(key, map->KeyStride);
-	u32 idx = ToIdx(hash, map->Capacity);
+	u32 idx = HashKey(key, map->KeyStride, map->Capacity);
 	u32 probeLength = 0;
 	while (true)
 	{
 		HashKVSlot slot = map->Slots[idx];
 		if (!slot.IsUsed || probeLength > slot.ProbeLength)
-			return HASHMAP_NOT_FOUND;
-		else if (HashMapCompare(map, IndexValue(map, idx), key))
+			return HASHMAPKV_NOT_FOUND;
+		else if (Compare(map, IndexKey(map, idx), key))
 			return idx;
 		else
 		{
@@ -155,14 +160,14 @@ uint32_t HashMapKVFind(HashMapKV* map, const void* key)
 				idx = 0;
 		}
 	}
-	return HASHMAP_NOT_FOUND;
+	return HASHMAPKV_NOT_FOUND;
 }
 
 void* 
 HashMapKVGet(HashMapKV* map, const void* key)
 {
 	u32 idx = HashMapKVFind(map, key);
-    if (idx == HASHMAP_NOT_FOUND)
+    if (idx == HASHMAPKV_NOT_FOUND)
         return nullptr;
     else
         return IndexValue(map, idx);
@@ -173,8 +178,7 @@ bool HashMapKVRemove(HashMapKV* map, const void* key)
 	if (!map->Slots || map->Count == 0)
 		return false;
 
-    u64 hash = Hash(key, map->KeyStride);
-	u32 idx = ToIdx(hash, map->Capacity);
+	u32 idx = HashKey(key, map->KeyStride, map->Capacity);
 	while (true)
 	{
 		HashKVSlot bucket = map->Slots[idx];
@@ -182,7 +186,7 @@ bool HashMapKVRemove(HashMapKV* map, const void* key)
 		{
 			return false;
 		}
-		else if (HashMapCompare(map, key, IndexKey(map, idx)))
+		else if (Compare(map, key, IndexKey(map, idx)))
 		{
 			while (true) // Move any entries after index closer to their ideal probe length.
 			{
@@ -235,6 +239,7 @@ HashMapKVSet_Internal(HashMapKV* map, const void* key, const void* value)
 {
 	SASSERT(map);
 	SASSERT(key);
+	SASSERT(map->CompareFunc);
 	SASSERT(IsAllocatorValid(map->Alloc));
 	SASSERT(map->KeyStride > 0);
 	SASSERT(map->ValueStride > 0);
@@ -247,55 +252,57 @@ HashMapKVSet_Internal(HashMapKV* map, const void* key, const void* value)
 
 	SASSERT(map->Slots);
 
-    HashKVSlot slot = {};
-    void* swapKey = alloca(map->KeyStride);
+    void* swapKey = _alloca(map->KeyStride);
     SASSERT(swapKey);
 
     memcpy(swapKey, key, map->KeyStride);
 
-    void* swapValue = alloca(map->ValueStride);
+    void* swapValue = _alloca(map->ValueStride);
 	SASSERT(swapValue);
 
-    if (value)
+	if (value)
+	{
         memcpy(swapValue, value, map->ValueStride);
-    else
+	}
+	else
+	{
         memset(swapValue, 0, map->ValueStride);
-
+	}
+	
 	HashMapKVSetResults res;
-    res.Index = HASHMAP_NOT_FOUND;
+    res.Index = HASHMAPKV_NOT_FOUND;
 	res.Contained = false;
 
-	u64 hash = Hash(key, map->KeyStride);
-	u32 idx = ToIdx(hash, map->Capacity);
+	u32 idx = HashKey(key, map->KeyStride, map->Capacity);
 	u32 probeLength = 0;
 	while (true)
 	{
-		HashKVSlot bucket = map->Slots[idx];
-		if (!bucket.IsUsed) // Bucket is not used
+		HashKVSlot* bucket = &map->Slots[idx];
+		if (!bucket->IsUsed) // Bucket is not used
 		{
-            bucket.IsUsed = true;
-            bucket.ProbeLength = probeLength;
+            bucket->IsUsed = true;
+            bucket->ProbeLength = probeLength;
             memcpy(IndexKey(map, idx), swapKey, map->KeyStride);
 			memcpy(IndexValue(map, idx), swapValue, map->ValueStride);
 
 			++map->Count;
 
-			if (res.Index == HASHMAP_NOT_FOUND)
+			if (res.Index == HASHMAPKV_NOT_FOUND)
 				res.Index = idx;
 
 			return res;
 		}
 		else
 		{
-			if (HashMapCompare(map, IndexKey(map, idx), swapKey))
+			if (Compare(map, IndexKey(map, idx), swapKey))
 				return { idx, true };
 
-			if (probeLength > bucket.ProbeLength)
+			if (probeLength > bucket->ProbeLength)
 			{
-                if (res.Index == HASHMAP_NOT_FOUND)
+                if (res.Index == HASHMAPKV_NOT_FOUND)
                     res.Index = idx;
 
-				Swap(bucket.ProbeLength, probeLength, uint32_t);
+				Swap(bucket->ProbeLength, probeLength, u16);
                 {
 					// Swaps byte by byte from current value to
 					// value parameter memory;
@@ -325,7 +332,7 @@ HashMapKVSet_Internal(HashMapKV* map, const void* key, const void* value)
 			if (idx == map->Capacity)
 				idx = 0;
 
-			SASSERT_MSG(probeLength >= 127, "probeLength is >= 127, using bad hash?");
+			SASSERT_MSG(probeLength <= 127, "probeLength is > 127, using bad hash?");
 		}
 	}
 	return res;

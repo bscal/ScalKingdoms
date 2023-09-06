@@ -60,10 +60,52 @@ IsPowerOf2_32(uint32_t num)
 	return (num > 0 && ((num & (num - 1)) == 0));
 }
 
+_FORCE_INLINE_ constexpr bool
+IsPowerOf2(size_t num)
+{
+	return (num > 0 && ((num & (num - 1)) == 0));
+}
+
 _FORCE_INLINE_ constexpr size_t
 AlignSize(size_t size, size_t alignment)
 {
 	return (size + (alignment - 1)) & ~(alignment - 1);
+}
+
+_FORCE_INLINE_ constexpr uint64_t
+FNVHash64(const uint8_t* const str, size_t length)
+{
+	constexpr uint64_t OFFSET_BASIS = 0xcbf29ce484222325;
+	constexpr uint64_t PRIME = 0x100000001b3;
+	uint64_t val = OFFSET_BASIS;
+	for (size_t i = 0; i < length; ++i)
+	{
+		val ^= str[i];
+		val *= PRIME;
+	}
+	return val;
+}
+
+_FORCE_INLINE_ constexpr uint32_t
+FNVHash32(const uint8_t* const str, size_t length)
+{
+	constexpr uint32_t OFFSET_BASIS = 0x811c9dc5;
+	constexpr uint32_t PRIME = 0x1000193;
+	uint32_t val = OFFSET_BASIS;
+	for (size_t i = 0; i < length; ++i)
+	{
+		val ^= str[i];
+		val *= PRIME;
+	}
+	return val;
+}
+
+_FORCE_INLINE_ u32
+HashKey(const void* key, size_t len, u32 capacity)
+{
+	u32 hash = FNVHash32((const u8*)key, len);
+	hash &= (capacity - 1);
+	return hash;
 }
 
 // TODO move
@@ -76,11 +118,13 @@ constexpr void
 RemoveWhitespace(char* s)
 {
 	char* d = s;
-	do {
-		while (*d == ' ') {
+	do
+	{
+		while (*d == ' ')
+		{
 			++d;
 		}
-	} while (*s++ = *d++);
+	} while (*s = *d, s++, d++);
 }
 
 enum STR2INT

@@ -238,7 +238,7 @@ ChunkTick(GameState* gameState, Chunk* chunk)
 		bool updateNeighbors = chunk->UpdateState == ChunkUpdateState::SelfAndNeighbors;
 		if (bakeNeighbors || updateNeighbors)
 		{
-			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
 			{
 				Vec2i neighbor = chunk->Coord + Vec2i_NEIGHTBORS[i];
 				Chunk* neighborChunk = GetChunkByCoordNoCache(&gameState->TileMap, neighbor);
@@ -266,7 +266,7 @@ OnChunkLoad(GameState* gameState, Chunk* chunk)
 internal void 
 OnChunkUnload(GameState* gameState, Chunk* chunk)
 {
-
+	UnloadRegionPaths(&gameState->RegionState, chunk);
 }
 
 internal void 

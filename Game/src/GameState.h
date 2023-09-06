@@ -12,6 +12,7 @@
 #include "Structures/SList.h"
 #include "Structures/ArrayList.h"
 #include "Structures/HashMap.h"
+#include "Structures/MemoryArena.h"
 
 #include <luajit/src/lua.hpp>
 
@@ -26,7 +27,8 @@ struct AssetMgr
 
 struct GameState
 {
-	zpl_arena GameMemory;
+	MemArena GameMemory;
+	zpl_arena FrameMemory;
 	zpl_jobs_system Jobs;
 
 	RenderTexture2D ScreenTexture;
@@ -81,3 +83,4 @@ extern struct GameClient Client;
 GameState* GetGameState();
 
 zpl_allocator GetGameAllocator();
+zpl_allocator GetFrameAllocator();

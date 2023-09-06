@@ -6,14 +6,18 @@
 #include "Structures/HashMap.h"
 #include "Structures/HashSet.h"
 #include "Structures/SList.h"
+#include "Structures/HashMapT.h"
+#include "Structures/HashSetT.h"
 
-constexpr size_t MAX_PATHFIND_LENGTH = CHUNK_SIZE * 5;
+constexpr int MAX_PATHFIND_LENGTH = CHUNK_SIZE * 5;
 
 struct Pathfinder
 {
 	BHeap* Open;
-	HashMap OpenSet;
-	HashSet ClosedSet;
+	HashMapT<Vec2i, int> OpenSet;
+	HashSetT<Vec2i> ClosedSet;
+	//HashMap OpenSet;
+	//HashSet ClosedSet;
 };
 
 struct Node

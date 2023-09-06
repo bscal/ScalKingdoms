@@ -3,7 +3,7 @@
 #include "Core.h"
 
 #include "Structures/BitArray.h"
-#include "Structures/HashSet.h"
+#include "Structures/HashSetT.h"
 
 struct CTransform
 {
@@ -21,7 +21,7 @@ struct CRender
 
 struct CMove
 {
-	HashSet Regions;
+	HashSetT<Vec2i> Regions;
 	zpl_array(Vec2i) TilePath;
 	Vec2 Start;
 	Vec2 Target;

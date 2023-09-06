@@ -5,7 +5,7 @@
 
 #include <math.h>
 
-constexpr int MAX_SEARCH_TILES = 64 * 64;
+constexpr int MAX_SEARCH_TILES = 64 * 16;
 constexpr int PATHFINDER_TABLE_SIZE = MAX_SEARCH_TILES + (int)((float)MAX_SEARCH_TILES * HASHSET_LOAD_FACTOR);
 
 #define AllocNode() ((Node*)GameMalloc(Allocator::Frame, sizeof(Node)));
@@ -40,8 +40,8 @@ void
 PathfinderInit(Pathfinder* pathfinder)
 {
 	pathfinder->Open = BHeapCreate(Allocator::Arena, CompareCost, MAX_SEARCH_TILES);
-	HashMapInitialize(&pathfinder->OpenSet, sizeof(int), PATHFINDER_TABLE_SIZE, Allocator::Arena);
-	HashSetInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, Allocator::Arena);
+	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, 0, Allocator::Arena);
+	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, Allocator::Arena);
 }
 
 SList<Vec2i>
@@ -97,8 +97,8 @@ Node*
 FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 {
 	BHeapClear(pathfinder->Open);
-	HashMapClear(&pathfinder->OpenSet);
-	HashSetClear(&pathfinder->ClosedSet);
+	HashMapTClear(&pathfinder->OpenSet);
+	HashSetTClear(&pathfinder->ClosedSet);
 
 	Node* node = AllocNode();
 	node->Pos = start;
@@ -108,8 +108,8 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	node->FCost = node->GCost + node->HCost;
 
 	BHeapPushMin(pathfinder->Open, node, node);
-	u64 firstHash = HashTile(node->Pos);
-	HashMapSet(&pathfinder->OpenSet, firstHash, &node->FCost);
+	//u64 firstHash = HashTile(node->Pos);
+	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node->FCost);
 
 	while (pathfinder->Open->Count > 0)
 	{
@@ -117,9 +117,9 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 
 		Node* curNode = (Node*)item.User;
 
-		u64 hash = HashTile(node->Pos);
-		HashMapRemove(&pathfinder->OpenSet, hash);
-		HashSetSet(&pathfinder->ClosedSet, hash);
+		//u64 hash = HashTile(node->Pos);
+		HashMapTRemove(&pathfinder->OpenSet, &node->Pos);
+		HashSetTSet(&pathfinder->ClosedSet, &node->Pos);
 
 		if (curNode->Pos == end)
 		{
@@ -127,7 +127,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 		}
 		else
 		{
-			for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
+			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
 			{
 				if (pathfinder->Open->Count >= MAX_SEARCH_TILES)
 				{
@@ -137,8 +137,8 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 
 				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
 
-				u64 nextHash = HashTile(next);
-				if (HashSetContains(&pathfinder->ClosedSet, nextHash))
+				//u64 nextHash = HashTile(next);
+				if (HashSetTContains(&pathfinder->ClosedSet, &next))
 					continue;
 
 				Tile* tile = GetTile(tilemap, next);
@@ -146,7 +146,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 					continue;
 				else
 				{
-					int* nextCost = HashMapGet(&pathfinder->OpenSet, nextHash, int);
+					int* nextCost = HashMapTGet(&pathfinder->OpenSet, &next);
 					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
 					int cost = curNode->GCost + ManhattanDistance(curNode->Pos, next) + tileCost;
 					if (!nextCost || cost < *nextCost)
@@ -161,7 +161,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
 						if (!nextCost)
 						{
-							HashMapSet(&pathfinder->OpenSet, nextHash, &nextNode->GCost);
+							HashMapTSet(&pathfinder->OpenSet, &next, &nextNode->GCost);
 						}
 						else
 						{

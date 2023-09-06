@@ -6,6 +6,9 @@
 #include "Structures/HashSet.h"
 #include "Structures/BHeap.h"
 #include "Structures/ArrayList.h"
+#include "Structures/HashMapT.h"
+#include "Structures/HashSetT.h"
+#include "Structures/HashMapKV.h"
 
 struct TileMap;
 struct Chunk;
@@ -24,10 +27,10 @@ struct RegionPaths
 
 struct RegionState
 {
-	HashMap RegionMap;
+	HashMapKV RegionMap;
 	BHeap* Open;
-	HashMap OpenMap;
-	HashSet ClosedSet;
+	HashMapT<Vec2i, int> OpenMap;
+	HashSetT<Vec2i> ClosedSet;
 };
 
 void RegionStateInit(RegionState* regionState);
@@ -36,7 +39,7 @@ void LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk);
 
 void UnloadRegionPaths(RegionState* regionState, Chunk* chunk);
 
-void FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i end, HashSet* regionSet);
+void FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i end, HashSetT<Vec2i>* regionSet);
 
 void RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* moveComponent);
 

@@ -35,7 +35,7 @@ void MoveOnAdd(ecs_iter_t* it)
 	{
 		moves[i] = {};
 		zpl_array_init_reserve(moves[i].TilePath, ZplAllocatorArena, 1024);
-		HashSetInitialize(&moves[i].Regions, 32, Allocator::Arena);
+		HashSetTInitialize(&moves[i].Regions, 32, Allocator::Arena);
 	}
 }
 
@@ -45,7 +45,7 @@ void MoveOnRemove(ecs_iter_t* it)
 	for (int i = 0; i < it->count; ++i)
 	{
 		zpl_array_free(moves[i].TilePath);
-		HashSetDestroy(&moves[i].Regions);
+		HashSetTDestroy(&moves[i].Regions);
 	}
 }
 

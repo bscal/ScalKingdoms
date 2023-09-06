@@ -49,7 +49,7 @@ typedef Vector2 Vec2;
 #endif
 
 #ifndef _ALWAYS_INLINE_
-#if defined(__GNUC__)
+#if defined(__clang__) || defined(__GNUC__)
 #define _ALWAYS_INLINE_ __attribute__((always_inline)) inline
 #elif defined(_MSC_VER)
 #define _ALWAYS_INLINE_ __forceinline
@@ -63,6 +63,16 @@ typedef Vector2 Vec2;
 #define _FORCE_INLINE_ inline
 #else
 #define _FORCE_INLINE_ _ALWAYS_INLINE_
+#endif
+#endif
+
+#ifndef _NEVER_INLINE
+#if defined(__clang__) || defined(__GNUC__)
+#define _NEVER_INLINE __attribute__((__noinline__)) inline
+#elif defined(_MSC_VER)
+#define _NEVER_INLINE __declspec(noinline)
+#else
+#define _NEVER_INLINE 
 #endif
 #endif
 
@@ -97,8 +107,6 @@ typedef Vector2 Vec2;
 #define BitMask(state, mask) (FlagTrue(state, mask))
 
 #define Swap(x, y, T) do { T temp = (x); (x) = (y); (y) = temp; } while(0)
-
-#define Hash(ptr, size) (zpl_fnv64a(ptr, size))
 
 #if SCAL_DEBUG
 	#if _MSC_VER

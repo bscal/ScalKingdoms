@@ -24,9 +24,10 @@ typedef void* (*AllocatorFunction)(AllocatorAction allocatorType, void* ptr, siz
 	const char* file, const char* func, u32 line);
 
 extern zpl_allocator GetGameAllocator();
+extern zpl_allocator GetFrameAllocator();
 
-#define ZplAllocatorArena zpl_heap_allocator()
-#define	ZplAllocatorFrame GetGameAllocator()
+#define ZplAllocatorArena GetGameAllocator()
+#define	ZplAllocatorFrame GetFrameAllocator()
 #define ZplAllocatorMalloc zpl_heap_allocator()
 
 inline bool
@@ -45,17 +46,17 @@ GameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize,
 	{
 	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = zpl_alloc_align(zpl_heap_allocator(), newSize, align);
+		res = zpl_alloc_align(GetGameAllocator(), newSize, align);
 	} break;
 
 	case (ALLOCATOR_TYPE_REALLOC):
 	{
-		res = zpl_resize_align(zpl_heap_allocator(), ptr, oldSize, newSize, align);
+		res = zpl_resize_align(GetGameAllocator(), ptr, oldSize, newSize, align);
 	} break;
 
 	case (ALLOCATOR_TYPE_FREE):
 	{
-		zpl_free(zpl_heap_allocator(), ptr);
+		zpl_free(GetGameAllocator(), ptr);
 		res = nullptr;
 	} break;
 
@@ -82,12 +83,12 @@ FrameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize
 	{
 	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = zpl_alloc_align(GetGameAllocator(), newSize, align);
+		res = zpl_alloc_align(GetFrameAllocator(), newSize, align);
 	} break;
 
 	case (ALLOCATOR_TYPE_REALLOC):
 	{
-		res = zpl_resize_align(GetGameAllocator(), ptr, oldSize, newSize, align);
+		res = zpl_resize_align(GetFrameAllocator(), ptr, oldSize, newSize, align);
 	} break;
 
 	case (ALLOCATOR_TYPE_FREE):

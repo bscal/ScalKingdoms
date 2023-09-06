@@ -31,7 +31,11 @@ ECS_SYSTEM_DECLARE(DrawEntities);
 int 
 GameInitialize()
 {
-	zpl_arena_init_from_allocator(&State.GameMemory, zpl_heap_allocator(), Megabytes(8));
+	size_t gameMemorySize = Megabytes(8);
+	void* gameMemory = zpl_alloc_align(zpl_heap_allocator(), gameMemorySize, 64);
+	State.GameMemory = MemArenaCreate(gameMemory, gameMemorySize);
+
+	zpl_arena_init_from_allocator(&State.FrameMemory, zpl_heap_allocator(), Megabytes(8));
 
 	zpl_affinity affinity;
 	zpl_affinity_init(&affinity);
@@ -107,7 +111,7 @@ GameRun()
 	{
 		double start = GetTime();
 
-		zpl_arena_snapshot arenaSnapshot = zpl_arena_snapshot_begin(&State.GameMemory);
+		zpl_arena_snapshot arenaSnapshot = zpl_arena_snapshot_begin(&State.FrameMemory);
 
 		// Update
 
@@ -204,18 +208,18 @@ void GameLateUpdate()
 	//	float ry = (float)chunk->Coord.y * OFFSET;
 	//	DrawRectangleLinesEx({ rx, ry, OFFSET, OFFSET }, 3.0f, ORANGE);
 	//	});
-	//HashMapForEach(&State.RegionState.RegionMap, [](u32 hash, void* value, void* stack)
-	//{
-	//	constexpr int OFFSET = REGION_SIZE * TILE_SIZE;
-	//	RegionPaths* region = (RegionPaths*)value;
-	//	int rx = region->Pos.x * OFFSET;
-	//	int ry = region->Pos.y * OFFSET;
-	//	DrawRectangleLines(rx, ry, OFFSET, OFFSET, MAGENTA);
-	//	DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 - REGION_SIZE, 2, (region->Sides[0]) ? GREEN : RED);
-	//	DrawCircle(rx + OFFSET / 2 + REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[1]) ? GREEN : RED);
-	//	DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 + REGION_SIZE, 2, (region->Sides[2]) ? GREEN : RED);
-	//	DrawCircle(rx + OFFSET / 2 - REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[3]) ? GREEN : RED);
-	//}, nullptr);
+	HashMapKVForEach(&State.RegionState.RegionMap, [](void* hash, void* value, void* stack)
+	{
+		constexpr int OFFSET = REGION_SIZE * TILE_SIZE;
+		RegionPaths* region = (RegionPaths*)value;
+		int rx = region->Pos.x * OFFSET;
+		int ry = region->Pos.y * OFFSET;
+		DrawRectangleLines(rx, ry, OFFSET, OFFSET, MAGENTA);
+		DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 - REGION_SIZE, 2, (region->Sides[0]) ? GREEN : RED);
+		DrawCircle(rx + OFFSET / 2 + REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[1]) ? GREEN : RED);
+		DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 + REGION_SIZE, 2, (region->Sides[2]) ? GREEN : RED);
+		DrawCircle(rx + OFFSET / 2 - REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[3]) ? GREEN : RED);
+	}, nullptr);
 
 }
 
@@ -351,8 +355,14 @@ GetClient()
 	return &Client;
 }
 
-zpl_allocator
+zpl_allocator 
 GetGameAllocator()
 {
-	return zpl_arena_allocator(&State.GameMemory);
+	return MemArenaAllocator(&State.GameMemory);
+}
+
+zpl_allocator
+GetFrameAllocator()
+{
+	return zpl_arena_allocator(&State.FrameMemory);
 }

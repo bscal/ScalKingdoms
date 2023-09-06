@@ -5,9 +5,11 @@
 
 #include <stdint.h>
 
-constexpr global_var u32 HASHMAP_NOT_FOUND = UINT32_MAX;
+constexpr global_var u32 HASHMAPKV_NOT_FOUND = UINT32_MAX;
 
 struct HashKVSlot;
+
+typedef bool(*HashMapKVCompare)(const void*, const void*);
 
 // Robin hood hashmap seperating Slots (probelength, tombstone), Keys, Values
 struct HashMapKV
@@ -15,6 +17,7 @@ struct HashMapKV
 	HashKVSlot* Slots;
     void* Keys;
 	void* Values;
+	HashMapKVCompare CompareFunc;
 	u32 KeyStride;
     u32 ValueStride;
     u32 Capacity;
@@ -23,7 +26,8 @@ struct HashMapKV
 	Allocator Alloc;
 };
 
-void HashMapKVInitialize(HashMapKV* map, Allocator alloc, u32 keyStride, u32 valueStride, u32 capacity);
+void HashMapKVInitialize(HashMapKV* map, HashMapKVCompare compareFunc, 
+	u32 keyStride, u32 valueStride, u32 capacity, Allocator alloc);
 
 void HashMapKVReserve(HashMapKV* map, uint32_t capacity);
 
