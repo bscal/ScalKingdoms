@@ -1,7 +1,7 @@
 workspace "Kingdoms"
     architecture "x64"
-    --toolset "msc-ClangCL"
-    toolset "msc"
+    toolset "msc-ClangCL"
+    --toolset "msc"
 
     configurations
     {
@@ -105,11 +105,6 @@ project "Game"
         "Game/vendor/luajit/src"
     }
 
-    buildoptions
-    {
-        "-std=c++0x"
-    }
-
     links
     {
         "raylib",
@@ -117,11 +112,15 @@ project "Game"
         "luajit",
     }
 
+    -- -Xclang passes to clang compiler regular -Wno doesnt work with clang-cl :)
     filter "toolset:msc-ClangCL"
         buildoptions
         { 
-            "-Wc++17-compat", "-Weverything", "-Wno-c++98-compat-pedantic",
-            "-Wno-old-style-cast", "-Wno-extra-semi-stmt", "-fno-rtti", "-fno-exceptions"
+            "-Wno-c++98-compat-pedantic", "-Wno-old-style-cast", "-Wno-extra-semi-stmt",
+            "-Xclang -Wno-missing-braces", "-Xclang -Wno-missing-field-initializers",
+            "-Wno-error=misleading-indentation", "-Xclang -Wno-unused-variable",
+            "-Wno-error=unused-command-line-argument",
+            "-Xclang -Wno-unused-but-set-variable"
         }
 
     filter "configurations:Debug"
@@ -139,7 +138,7 @@ project "Game"
         systemversion "latest"
         buildoptions
         {
-            "-W4", "-WX", "-wd4100", "-wd4201", "-wd4127",
+            "-std:c++17", "-W4", "-WX", "-wd4100", "-wd4201", "-wd4127",
             "-Oi", "-GR", "-GR-", "-EHs-c-", "-D_HAS_EXCEPTIONS=0"
         }
         links { "raylib.lib" }

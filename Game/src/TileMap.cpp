@@ -14,8 +14,6 @@
 
 constexpr global_var int MAX_CHUNKS_TO_PROCESS = 12;
 
-ZPL_TABLE_DEFINE(ChunkTable, chunk_, Chunk*);
-
 internal zpl_isize ChunkThreadFunc(zpl_thread* thread);
 
 // Internal thread safe chunk management functions
@@ -62,7 +60,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 		zpl_array_append(tilemap->ChunkLoader.ChunkPool, chunk);
 	}
 
-	chunk_init(&tilemap->Chunks, zpl_heap_allocator());
+	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, 0, Allocator::Arena);
 
 	SInfoLog("Starting chunk thread...");
 
@@ -97,12 +95,15 @@ TileMapFree(TileMap* tilemap)
 	zpl_semaphore_destroy(&tilemap->ChunkLoader.Signal);
 	SInfoLog("Chunk thread shutdown!");
 
-	for (int i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
+	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 	{
-		Chunk* chunk = tilemap->Chunks.entries[i].value;
-		InternalChunkUnload(tilemap, chunk);
+		if (tilemap->ChunkMap.Buckets[i].IsUsed)
+		{
+			Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
+			InternalChunkUnload(tilemap, chunk);
+		}
 	}
-	chunk_destroy(&tilemap->Chunks);
+	HashMapTDestroy(&tilemap->ChunkMap);
 
 	for (int i = 0; i < zpl_array_count(tilemap->ChunkLoader.ChunkPool); ++i)
 	{
@@ -130,14 +131,14 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 		for (zpl_isize i = 0; i < zpl_array_count(chunkLoader->ChunkToRemove); ++i)
 		{
 			OnChunkUnload(gameState, chunkLoader->ChunkToRemove[i].ChunkPtr);
-			chunk_remove(&tilemap->Chunks, chunkLoader->ChunkToRemove[i].Hash);
+			HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunkToRemove[i].Key);
 		}
 		zpl_array_clear(chunkLoader->ChunkToRemove);
 
 		// Add unused chunks from map
 		for (zpl_isize i = 0; i < zpl_array_count(chunkLoader->ChunksToAdd); ++i)
 		{
-			chunk_set(&tilemap->Chunks, chunkLoader->ChunksToAdd[i].Hash, chunkLoader->ChunksToAdd[i].ChunkPtr);
+			HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunkToRemove[i].Key, &chunkLoader->ChunksToAdd[i].ChunkPtr);
 			OnChunkLoad(gameState, chunkLoader->ChunksToAdd[i].ChunkPtr);
 		}
 		zpl_array_clear(chunkLoader->ChunksToAdd);
@@ -147,9 +148,12 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 
 	// Loops over loaded chunks, Unloads out of range, handles chunks waiting for RenderTexture,
 	// handles dirty chunks, and updates chunks.
-	for (zpl_isize i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
+	for (zpl_isize i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 	{
-		Chunk* chunk = tilemap->Chunks.entries[i].value;
+		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
+			continue;
+
+		Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
 
 		if (chunk->BakeState != ChunkUpdateState::None)
 		{
@@ -168,9 +172,13 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 void 
 TileMapDraw(TileMap* tilemap, Rectangle screenRect)
 {
-	for (zpl_isize i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
+	for (zpl_isize i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 	{
-		Chunk* chunk = tilemap->Chunks.entries[i].value;
+		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
+			continue;
+
+
+		Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
 		if (CheckCollisionRecs(chunk->BoundingBox, screenRect))
 		{
 			Rectangle src =
@@ -379,8 +387,7 @@ GetChunk(TileMap* tilemap, Vec2i tile)
 	if (chunkCoord == tilemap->LastChunkCoord)
 		return tilemap->LastChunk;
 
-	size_t hash = Vec2iHash(chunkCoord);
-	Chunk** chunkPtr = chunk_get(&tilemap->Chunks, hash);
+	Chunk** chunkPtr = HashMapTGet(&tilemap->ChunkMap, &tile);
 	if (chunkPtr)
 	{
 		tilemap->LastChunkCoord = chunkCoord;
@@ -396,8 +403,7 @@ GetChunk(TileMap* tilemap, Vec2i tile)
 Chunk* 
 GetChunkByCoordNoCache(TileMap* tilemap, Vec2i chunkCoord)
 {
-	size_t hash = Vec2iHash(chunkCoord);
-	Chunk** chunkPtr = chunk_get(&tilemap->Chunks, hash);
+	Chunk** chunkPtr = HashMapTGet(&tilemap->ChunkMap, &chunkCoord);
 	if (chunkPtr)
 		return *chunkPtr;
 	else
@@ -504,13 +510,16 @@ ChunkThreadFunc(zpl_thread* thread)
 
 		Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
 
-		for (zpl_isize i = 0; i < zpl_array_count(tilemap->Chunks.entries); ++i)
+		for (zpl_isize i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 		{
 			if (zpl_array_count(chunkLoader->ChunkToRemove) >= MAX_CHUNKS_TO_PROCESS)
 				break;
 
-			zpl_u64 key = tilemap->Chunks.entries[i].key;
-			Chunk* chunk = tilemap->Chunks.entries[i].value;
+			if (!tilemap->ChunkMap.Buckets[i].IsUsed)
+				continue;
+
+			Vec2i key = tilemap->ChunkMap.Buckets[i].Key;
+			Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
 			float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
 			if (distance > VIEW_DISTANCE_SQR)
 			{
@@ -518,7 +527,7 @@ ChunkThreadFunc(zpl_thread* thread)
 
 				ChunkLoaderData data;
 				data.ChunkPtr = chunk;
-				data.Hash = key;
+				data.Key = key;
 				zpl_array_append(chunkLoader->ChunkToRemove, data);
 			}
 		}
@@ -544,17 +553,13 @@ ChunkThreadFunc(zpl_thread* thread)
 				float distance = Vector2DistanceSqr(center, position);
 				if (distance < VIEW_DISTANCE_SQR)
 				{
-					zpl_u64 hash = Vec2iHash(coord);
-					zpl_isize slot = chunk_slot(&tilemap->Chunks, hash);
-					if (slot == -1)
+					u32 idx = HashMapTFind(&tilemap->ChunkMap, &coord);
+					if (idx != HashMapT<Vec2i, Chunk*>::NOT_FOUND)
 					{
 						ChunkLoaderData data;
 						data.ChunkPtr = InternalChunkLoad(tilemap, coord);
-						data.Hash = hash;
-
-						if (data.ChunkPtr == nullptr)
-							continue;
-
+						data.Key = coord;
+						SASSERT(data.ChunkPtr);
 						zpl_array_append(chunkLoader->ChunksToAdd, data);
 					}
 

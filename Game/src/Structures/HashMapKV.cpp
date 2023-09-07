@@ -13,12 +13,6 @@ constexpr global_var float DEFAULT_LOADFACTOR = .85f;
 #define IndexKey(hashmap, idx) (IndexArray(hashmap->Keys, idx, hashmap->KeyStride))
 #define IndexValue(hashmap, idx) (IndexArray(hashmap->Values, idx, hashmap->ValueStride))
 
-struct HashKVSlot
-{
-	u8 ProbeLength;
-	bool IsUsed;
-};
-
 struct HashMapKVSetResults
 {
     u32 Index;
@@ -139,6 +133,8 @@ uint32_t HashMapKVFind(HashMapKV* map, const void* key)
 {
 	SASSERT(map);
 	SASSERT(key);
+	SASSERT(map->CompareFunc);
+	SASSERT(IsAllocatorValid(map->Alloc));
 
 	if (!map->Slots || map->Count == 0)
 		return HASHMAPKV_NOT_FOUND;
@@ -175,6 +171,11 @@ HashMapKVGet(HashMapKV* map, const void* key)
 
 bool HashMapKVRemove(HashMapKV* map, const void* key)
 {
+	SASSERT(map);
+	SASSERT(key);
+	SASSERT(map->CompareFunc);
+	SASSERT(IsAllocatorValid(map->Alloc));
+
 	if (!map->Slots || map->Count == 0)
 		return false;
 
@@ -336,4 +337,9 @@ HashMapKVSet_Internal(HashMapKV* map, const void* key, const void* value)
 		}
 	}
 	return res;
+}
+
+void* HashMapKVIndex(HashMapKV* map, u32 idx)
+{
+	return IndexValue(map, idx);
 }

@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Regions.h"
 #include "Structures/BitArray.h"
-#include "Structures/HashMapKV.h"
+#include "Structures/HashMapT.h"
 
 #include <FastNoiseLite/FastNoiseLite.h>
 #include <stdint.h>
@@ -51,7 +51,7 @@ struct Chunk
 struct ChunkLoaderData
 {
 	Chunk* ChunkPtr;
-	zpl_u64 Hash;
+	Vec2i Key;
 };
 
 struct ChunkLoaderState
@@ -67,13 +67,11 @@ struct ChunkLoaderState
 	bool ShouldWork;
 };
 
-ZPL_TABLE_DECLARE(, ChunkTable, chunk_, Chunk*);
-
 struct TileMap
 {
-	ChunkTable Chunks;
 	Vec2i LastChunkCoord;
 	Chunk* LastChunk;
+	HashMapT<Vec2i, Chunk*> ChunkMap;
 	Rectangle Dimensions;
 	zpl_thread ChunkThread;
 	ChunkLoaderState ChunkLoader;

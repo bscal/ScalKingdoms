@@ -3,11 +3,13 @@
 #include "Core.h"
 #include "Memory.h"
 
-#include <stdint.h>
-
 constexpr global_var u32 HASHMAPKV_NOT_FOUND = UINT32_MAX;
 
-struct HashKVSlot;
+struct HashKVSlot
+{
+	u8 ProbeLength;
+	bool IsUsed;
+};
 
 typedef bool(*HashMapKVCompare)(const void*, const void*);
 
@@ -49,5 +51,4 @@ bool HashMapKVRemove(HashMapKV* map, const void* key);
 
 void HashMapKVForEach(HashMapKV* map, void(*Fn)(void*, void*, void*), void* stackMemory);
 
-#define HashMapKVMapGetT(hashmap, key, T) ((T*)HashMapGet(hashmap, key))
-#define HashMapKVMapSetT(hashmap, key, T) ((T*)HashMapSetZeroed(hashmap, key))
+void* HashMapKVIndex(HashMapKV* map, u32 idx);

@@ -19,7 +19,7 @@ struct MemNode
 };
 
 internal MemNode* 
-__SplitMemNode(MemNode* node, size_t bytes)
+SplitMemNode(MemNode* node, size_t bytes)
 {
     uintptr_t n = (uintptr_t)node;
     MemNode* r = (MemNode*)(n + (node->size - bytes));
@@ -30,7 +30,7 @@ __SplitMemNode(MemNode* node, size_t bytes)
 }
 
 internal void 
-__InsertMemNodeBefore(AllocList* list, MemNode* insert, MemNode* curr)
+InsertMemNodeBefore(AllocList* list, MemNode* insert, MemNode* curr)
 {
     insert->next = curr;
 
@@ -45,7 +45,7 @@ __InsertMemNodeBefore(AllocList* list, MemNode* insert, MemNode* curr)
 }
 
 internal MemNode*
-__RemoveMemNode(AllocList* list, MemNode* node)
+RemoveMemNode(AllocList* list, MemNode* node)
 {
     if (node->prev != nullptr) node->prev->next = node->next;
     else
@@ -69,22 +69,22 @@ __RemoveMemNode(AllocList* list, MemNode* node)
 }
 
 internal MemNode* 
-__FindMemNode(AllocList* list, size_t bytes)
+FindMemNode(AllocList* list, size_t bytes)
 {
     for (MemNode* node = list->Head; node != nullptr; node = node->next)
     {
         if (node->size < bytes) continue;
 
         // Close in size - reduce fragmentation by not splitting
-        else if (node->size <= bytes + MEM_SPLIT_THRESHOLD) return __RemoveMemNode(list, node);
-        else return __SplitMemNode(node, bytes);
+        else if (node->size <= bytes + MEM_SPLIT_THRESHOLD) return RemoveMemNode(list, node);
+        else return SplitMemNode(node, bytes);
     }
 
     return nullptr;
 }
 
 internal void 
-__InsertMemNode(MemArena* memArena, AllocList* list, MemNode* node, bool is_bucket)
+InsertMemNode(MemArena* memArena, AllocList* list, MemNode* node, bool is_bucket)
 {
     if (list->Head == nullptr)
     {
@@ -98,7 +98,7 @@ __InsertMemNode(MemArena* memArena, AllocList* list, MemNode* node, bool is_buck
             if ((uintptr_t)iter == memArena->Offset)
             {
                 memArena->Offset += iter->size;
-                __RemoveMemNode(list, iter);
+                RemoveMemNode(list, iter);
                 iter = list->Head;
 
                 if (iter == nullptr)
@@ -168,7 +168,7 @@ __InsertMemNode(MemArena* memArena, AllocList* list, MemNode* node, bool is_buck
                 }
                 else
                 {
-                    __InsertMemNodeBefore(list, node, iter);
+                    InsertMemNodeBefore(list, node, iter);
                     list->Length++;
                     return;
                 }
@@ -176,10 +176,6 @@ __InsertMemNode(MemArena* memArena, AllocList* list, MemNode* node, bool is_buck
         }
     }
 }
-
-//----------------------------------------------------------------------------------
-// Module Functions Definition - Memory Pool
-//----------------------------------------------------------------------------------
 
 MemArena MemArenaCreate(void* _RESTRICT_ buf, size_t size)
 {
@@ -231,7 +227,7 @@ void* MemArenaAlloc(MemArena* memArena, size_t size)
         // If the size is small enough, let's check if our buckets has a fitting memory block.
         if (allocSize > MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1])
         {
-            new_mem = __FindMemNode(&memArena->Large, allocSize);
+            new_mem = FindMemNode(&memArena->Large, allocSize);
         }
         else
         {
@@ -254,7 +250,7 @@ void* MemArenaAlloc(MemArena* memArena, size_t size)
             SASSERT(bucketSlot < MEMARENA_BUCKET_SIZE);
             SASSERT(allocSize == MEMARENA_SIZES[bucketSlot]);
             SASSERT(allocSize <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
-            new_mem = __FindMemNode(&memArena->Buckets[bucketSlot], allocSize);
+            new_mem = FindMemNode(&memArena->Buckets[bucketSlot], allocSize);
         }
 
         if (new_mem == nullptr)
@@ -364,11 +360,11 @@ void MemArenaFree(MemArena* _RESTRICT_ memArena, void* ptr)
             SASSERT(bucketSlot < MEMARENA_BUCKET_SIZE);
             SASSERT(mem_node->size == MEMARENA_SIZES[bucketSlot]);
             SASSERT(mem_node->size <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
-            __InsertMemNode(memArena, &memArena->Buckets[bucketSlot], mem_node, true);
+            InsertMemNode(memArena, &memArena->Buckets[bucketSlot], mem_node, true);
         }
         else
         {
-            __InsertMemNode(memArena, &memArena->Large, mem_node, false);
+            InsertMemNode(memArena, &memArena->Large, mem_node, false);
         }
     }
 }

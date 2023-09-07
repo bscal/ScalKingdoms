@@ -46,7 +46,7 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 	SASSERT(IsAllocatorValid(map->Alloc));
 
 	if (capacity == 0)
-		capacity = DEFAULT_CAPACITY;
+		capacity = HashMapT<K, V>::DEFAULT_CAPACITY;
 
 	if (capacity <= map->Capacity)
 		return;
@@ -71,17 +71,21 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 		GameFree(map->Alloc, map->Buckets);
 
 		SASSERT(map->Count == tmpMap.Count);
+		SASSERT(map->Capacity < tmpMap.Capacity);
 		*map = tmpMap;
 	}
 	else
 	{
 		map->Capacity = capacity;
-		map->MaxCount = (uint32_t)((float)map->Capacity * DEFAULT_LOADFACTOR);
+		map->MaxCount = (uint32_t)((float)map->Capacity * HashMapT<K, V>::DEFAULT_LOADFACTOR);
 
+		SASSERT(IsPowerOf2_32(map->Capacity));
+		SASSERT(map->MaxCount < map->Capacity);
+		
 		size_t size = sizeof(HashMapTBucket<K, V>) * map->Capacity;
-
+		SASSERT(size > 0);
 		map->Buckets = (HashMapTBucket<K, V>*)GameMalloc(map->Alloc, size);
-
+		SASSERT(map->Buckets);
 		memset(map->Buckets, 0, size);
 	}
 }
@@ -113,10 +117,11 @@ uint32_t HashMapTSet(HashMapT<K, V>* map, K* key, V* value)
 	SASSERT(map);
 	SASSERT(key);
 	SASSERT(IsAllocatorValid(map->Alloc));
+	SASSERT(*key == *key);
 
 	if (map->Count >= map->MaxCount)
 	{
-		HashMapTReserve(map, map->Capacity * DEFAULT_RESIZE);
+		HashMapTReserve(map, map->Capacity * HashMapT<K, V>::DEFAULT_RESIZE);
 	}
 
 	SASSERT(map->Buckets);
@@ -124,13 +129,13 @@ uint32_t HashMapTSet(HashMapT<K, V>* map, K* key, V* value)
 	HashMapTBucket<K, V> swapBucket;
 	swapBucket.Key = *key;
 	swapBucket.ProbeLength = 0;
-	swapBucket.IsUsed = 1;
+	swapBucket.IsUsed = true;
 	if (value)
 		swapBucket.Value = *value;
 	else
 		swapBucket.Value = {};
 
-	uint32_t insertedIndex = NOT_FOUND;
+	uint32_t insertedIndex = HashMapT<K, V>::NOT_FOUND;
 	uint32_t probeLength = 0;
 	uint32_t idx = HashKey(key, sizeof(K), map->Capacity);
 	while (true)
@@ -138,7 +143,7 @@ uint32_t HashMapTSet(HashMapT<K, V>* map, K* key, V* value)
 		HashMapTBucket<K, V>* bucket = &map->Buckets[idx];
 		if (!bucket->IsUsed) // Bucket is not used
 		{
-			if (insertedIndex == NOT_FOUND)
+			if (insertedIndex == HashMapT<K, V>::NOT_FOUND)
 				insertedIndex = idx;
 
 			// Found an open spot. Insert and stops searching
@@ -154,7 +159,7 @@ uint32_t HashMapTSet(HashMapT<K, V>* map, K* key, V* value)
 
 			if (probeLength > bucket->ProbeLength)
 			{
-				if (insertedIndex == NOT_FOUND)
+				if (insertedIndex == HashMapT<K, V>::NOT_FOUND)
 					insertedIndex = idx;
 
 				// Swap probe lengths and buckets
@@ -184,7 +189,7 @@ template<typename K, typename V>
 uint32_t HashMapTReplace(HashMapT<K, V>* map, K* key, V* value)
 {
 	uint32_t insertedIdx = HashMapTSet<K, V>(map, key, nullptr);
-	SASSERT(insertedIdx != NOT_FOUND);
+	SASSERT(insertedIdx != HashMapT::NOT_FOUND);
 	map->Buckets[insertedIdx].Value = *value;
 	return insertedIdx;
 }
@@ -198,7 +203,7 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 	SASSERT(*key == *key);
 
 	if (!map->Buckets || map->Count == 0)
-		return NOT_FOUND;
+		return  HashMapT<K, V>::NOT_FOUND;
 
 	SASSERT(map->Buckets);
 
@@ -208,7 +213,7 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 	{
 		HashMapTBucket<K, V>* bucket = &map->Buckets[idx];
 		if (!bucket->IsUsed || probeLength > bucket->ProbeLength)
-			return HASHMAPT_NOT_FOUND;
+			return  HashMapT<K, V>::NOT_FOUND;
 		else if (*key == bucket->Key)
 			return idx;
 		else
@@ -219,14 +224,15 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 				idx = 0;
 		}
 	}
-	return NOT_FOUND;
+	SASSERT_MSG(false, "Shouldn't be executed");
+	return HashMapT<K,V>::NOT_FOUND;
 }
 
 template<typename K, typename V>
 V* HashMapTGet(HashMapT<K, V>* map, K* key)
 {
 	uint32_t idx = HashMapTFind<K, V>(map, key);
-	return (idx != NOT_FOUND) ? &map->Buckets[idx].Value : nullptr;
+	return (idx != HashMapT<K,V>::NOT_FOUND) ? &map->Buckets[idx].Value : nullptr;
 }
 
 template<typename K, typename V>
@@ -234,6 +240,7 @@ bool HashMapTRemove(HashMapT<K, V>* map, K* key)
 {
 	SASSERT(map);
 	SASSERT(key);
+	SASSERT(*key == *key);
 
 	if (!map->Buckets || map->Count == 0)
 		return false;
@@ -246,7 +253,7 @@ bool HashMapTRemove(HashMapT<K, V>* map, K* key)
 		HashMapTBucket<K, V>* bucket = &map->Buckets[index];
 		if (!bucket->IsUsed)
 		{
-			break; // No key found
+			return false; // No key found
 		}
 		else
 		{
@@ -281,6 +288,7 @@ bool HashMapTRemove(HashMapT<K, V>* map, K* key)
 			}
 		}
 	}
+	SASSERT_MSG(false, "Shouldn't be executed");
 	return false;
 }
 

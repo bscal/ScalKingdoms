@@ -30,6 +30,7 @@ template<typename K>
 void
 HashSetTInitialize(HashSetT<K>* set, uint32_t capacity, Allocator allocator)
 {
+	SASSERT(set);
 	SASSERT(IsAllocatorValid(allocator));
 
 	set->Alloc = allocator;
@@ -41,10 +42,11 @@ template<typename K>
 void 
 HashSetTReserve(HashSetT<K>* set, uint32_t capacity)
 {
+	SASSERT(set);
 	SASSERT(IsAllocatorValid(set->Alloc));
 
 	if (capacity == 0)
-		capacity = DEFAULT_CAPACITY;
+		capacity = HashSetT<K>::DEFAULT_CAPACITY;
 
 	if (capacity <= set->Capacity)
 		return;
@@ -68,16 +70,23 @@ HashSetTReserve(HashSetT<K>* set, uint32_t capacity)
 
 		GameFree(set->Alloc, set->Keys);
 
+		SASSERT(set->Keys);
 		SASSERT(set->Count == tmpSet.Count);
+		SASSERT(set->Capacity < tmpSet.Capacity);
 		*set = tmpSet;
 	}
 	else
 	{
 		set->Capacity = capacity;
-		set->MaxCount = (uint32_t)((float)set->Capacity * DEFAULT_LOADFACTOR);
+		set->MaxCount = (uint32_t)((float)set->Capacity * HashSetT<K>::DEFAULT_LOADFACTOR);
+
+		SASSERT(IsPowerOf2_32(set->Capacity));
+		SASSERT(set->MaxCount < set->Capacity);
 
 		size_t size = sizeof(HashSetTBucket<K>) * set->Capacity;
+		SASSERT(size > 0);
 		set->Keys = (HashSetTBucket<K>*)GameMalloc(set->Alloc, size);
+		SASSERT(set->Keys);
 		memset(set->Keys, 0, size);
 	}
 }
@@ -86,6 +95,7 @@ template<typename K>
 void 
 HashSetTClear(HashSetT<K>* set)
 {
+	SASSERT(set);
 	size_t size = sizeof(HashSetTBucket<K>) * set->Capacity;
 	memset(set->Keys, 0, size);
 	set->Count = 0;
@@ -95,6 +105,7 @@ template<typename K>
 void 
 HashSetTDestroy(HashSetT<K>* set)
 {
+	SASSERT(set);
 	GameFree(set->Alloc, set->Keys);
 	*set = {};
 }
@@ -105,10 +116,12 @@ HashSetTSet(HashSetT<K>* set, const K* key)
 {
 	SASSERT(set);
 	SASSERT(key);
+	SASSERT(IsAllocatorValid(set->Alloc));
+	SASSERT(*key == *key);
 
 	if (set->Count >= set->MaxCount)
 	{
-		HashSetTReserve(set, set->Capacity * DEFAULT_RESIZE);
+		HashSetTReserve(set, set->Capacity * HashSetT<K>::DEFAULT_RESIZE);
 	}
 
 	SASSERT(set->Keys);
@@ -130,7 +143,7 @@ HashSetTSet(HashSetT<K>* set, const K* key)
 		else
 		{
 			if (bucket->Key == swapKey)
-				break;
+				return false;
 
 			if (probeLength > bucket->ProbeLength)
 			{
@@ -151,6 +164,9 @@ template<typename K>
 bool 
 HashSetTContains(HashSetT<K>* set, K* key)
 {
+	SASSERT(set);
+	SASSERT(key);
+	SASSERT(*key == *key);
 	if (!key || !set->Keys || set->Count == 0)
 		return false;
 
@@ -171,6 +187,7 @@ HashSetTContains(HashSetT<K>* set, K* key)
 				idx = 0;
 		}
 	}
+	SASSERT_MSG(false, "Shouldn't be executed");
 	return false;
 }
 
@@ -178,6 +195,9 @@ template<typename K>
 bool 
 HashSetTRemove(HashSetT<K>* set, K* key)
 {
+	SASSERT(set);
+	SASSERT(key);
+	SASSERT(*key == *key);
 	if (!set->Keys || set->Count == 0)
 		return false;
 
@@ -187,7 +207,7 @@ HashSetTRemove(HashSetT<K>* set, K* key)
 		HashSetTBucket<K>* bucket = &set->Keys[idx];
 		if (!bucket->IsUsed)
 		{
-			break;
+			return false;
 		}
 		else
 		{
@@ -216,12 +236,13 @@ HashSetTRemove(HashSetT<K>* set, K* key)
 				}
 			}
 			else
-			{
+			{-
 				++idx;
 				if (idx == set->Capacity)
 					idx = 0; // continue searching till 0 or found equals key
 			}
 		}
 	}
+	SASSERT_MSG(false, "Shouldn't be executed");
 	return false;
 }

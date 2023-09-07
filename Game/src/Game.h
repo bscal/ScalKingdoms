@@ -4,14 +4,27 @@
 
 #include "Structures/ArrayList.h"
 #include "Structures/HashMapKV.h"
+#include "Structures/HashMapT.h"
 
 struct GameState;
+struct CItemStack;
 
 struct Stockpile
 {
 	HashMapKV Quantities;
 	ArrayList(Vec2i) Tiles;
 };
+
+struct ItemStackHolder
+{
+	HashMapT<u16, u16> Quantities;
+	ArrayList(ecs_entity_t) ItemStacks;
+};
+
+void ItemStackHolderAdd(ItemStackHolder* holder, CItemStack* stack);
+void ItemStackHolderRemove(ItemStackHolder* holder, CItemStack* stack);
+int ItemStackHolderFind(ItemStackHolder* holder, u16 itemId);
+void ItemStackHolderFill(ItemStackHolder* holder, u16 itemId, ArrayList(ecs_entity_t) inItemStacks);
 
 ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile);
 

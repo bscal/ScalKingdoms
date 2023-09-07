@@ -25,9 +25,6 @@ struct MemArena
     AllocList Buckets[MEMARENA_BUCKET_SIZE];
 };
 
-//------------------------------------------------------------------------------------
-// Functions Declaration - Memory Pool
-//------------------------------------------------------------------------------------
 MemArena MemArenaCreate(void* _RESTRICT_ buf, size_t bytes);
 
 void* MemArenaAlloc(MemArena* memArena, size_t bytes);
