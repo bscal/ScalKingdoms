@@ -203,7 +203,7 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 	SASSERT(*key == *key);
 
 	if (!map->Buckets || map->Count == 0)
-		return  HashMapT<K, V>::NOT_FOUND;
+		return HashMapT<K, V>::NOT_FOUND;
 
 	SASSERT(map->Buckets);
 
@@ -213,7 +213,7 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 	{
 		HashMapTBucket<K, V>* bucket = &map->Buckets[idx];
 		if (!bucket->IsUsed || probeLength > bucket->ProbeLength)
-			return  HashMapT<K, V>::NOT_FOUND;
+			return HashMapT<K, V>::NOT_FOUND;
 		else if (*key == bucket->Key)
 			return idx;
 		else
