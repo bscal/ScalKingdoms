@@ -114,18 +114,7 @@ TextSplitBuffered(const char* text, char delimiter, int* _RESTRICT_ count,
 	char* _RESTRICT_ buffer, int bufferLength,
 	char** _RESTRICT_ splitBuffer, int splitBufferLength);
 
-constexpr void
-RemoveWhitespace(char* s)
-{
-	char* d = s;
-	do
-	{
-		while (*d == ' ')
-		{
-			++d;
-		}
-	} while (*s = *d, s++, d++);
-}
+void RemoveWhitespace(char* s);
 
 enum STR2INT
 {

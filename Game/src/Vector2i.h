@@ -29,10 +29,10 @@ constexpr static Vector2i Vec2i_UP      = { 0, -1 };
 constexpr static Vector2i Vec2i_DOWN    = { 0, 1 };
 constexpr static Vector2i Vec2i_LEFT    = { -1, 0 };
 constexpr static Vector2i Vec2i_RIGHT   = { 1, 0 };
-constexpr static Vector2i Vec2i_NW      = { 0, -1 };
-constexpr static Vector2i Vec2i_NE      = { 0, 1 };
-constexpr static Vector2i Vec2i_SW      = { 1, 0 };
-constexpr static Vector2i Vec2i_SE      = { -1, 0 };
+constexpr static Vector2i Vec2i_NW      = { -1, 1 };
+constexpr static Vector2i Vec2i_NE      = { 1, 1 };
+constexpr static Vector2i Vec2i_SW      = { -1, -1 };
+constexpr static Vector2i Vec2i_SE      = { 1, -1 };
 
 constexpr static Vector2i Vec2i_MAX     = { INT32_MAX, INT32_MAX };
 constexpr static Vector2i Vec2i_NULL    = Vec2i_MAX;

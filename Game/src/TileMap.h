@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Game.h"
 #include "Regions.h"
 #include "Structures/BitArray.h"
 #include "Structures/HashMapT.h"
@@ -45,6 +46,7 @@ struct Chunk
 	ChunkUpdateState UpdateState;
 	bool IsGenerated;
 	bool IsLoaded; // TODO do we just remove this?
+	ItemStackHolder ItemHolder;
 	Tile TileArray[CHUNK_AREA];
 };
 

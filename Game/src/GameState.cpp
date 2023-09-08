@@ -37,13 +37,13 @@ GameInitialize()
 
 	zpl_arena_init_from_allocator(&State.FrameMemory, zpl_heap_allocator(), Megabytes(8));
 
-	zpl_affinity affinity;
-	zpl_affinity_init(&affinity);
+	//zpl_affinity affinity;
+	//zpl_affinity_init(&affinity);
 
-	int threadCount = (affinity.thread_count > 4) ? 4 : 2;
-	zpl_jobs_init(&State.Jobs, zpl_heap_allocator(), threadCount);
-	SInfoLog("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
-		, threadCount, affinity.thread_count, affinity.core_count);
+	//int threadCount = (affinity.thread_count > 4) ? 4 : 2;
+	//zpl_jobs_init(&State.Jobs, zpl_heap_allocator(), threadCount);
+	//SInfoLog("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
+	//	, threadCount, affinity.thread_count, affinity.core_count);
 
 	InitWindow(WIDTH, HEIGHT, TITLE);
 	SetTraceLogLevel(LOG_ALL);
@@ -89,8 +89,7 @@ GameInitialize()
 
 	Client.IsDebugMode = true;
 	Client.DebugShowRegionPaths = true;
-	zpl_array_init(Client.PathfinderPath, zpl_heap_allocator());
-	zpl_array_init(Client.PathfinderVisited, zpl_heap_allocator());
+	Client.DebugShowTilePaths = true;
 
 	if (Client.IsDebugMode)
 		SInfoLog("[ Game ] Running in DEBUG mode!");
@@ -171,34 +170,31 @@ void GameUpdate()
 
 void GameLateUpdate()
 {
-	for (int i = 0; i < ArrayListCount(Client.DebugRegionsPath); ++i)
-	{
-		int x = Client.DebugRegionsPath[i].x * REGION_SIZE * TILE_SIZE;
-		int y = Client.DebugRegionsPath[i].y * REGION_SIZE * TILE_SIZE;
-		DrawRectangle(x, y, REGION_SIZE * TILE_SIZE, REGION_SIZE * TILE_SIZE, Color{ 0, 100, 155, 155 });
-	}
+	//for (int i = 0; i < ArrayListCount(Client.DebugRegionsPath); ++i)
+	//{
+	//	int x = Client.DebugRegionsPath[i].x * REGION_SIZE * TILE_SIZE;
+	//	int y = Client.DebugRegionsPath[i].y * REGION_SIZE * TILE_SIZE;
+	//	DrawRectangle(x, y, REGION_SIZE * TILE_SIZE, REGION_SIZE * TILE_SIZE, Color{ 0, 100, 155, 155 });
+	//}
 
 	//Vector2 target = State.Camera.target;
 	//DrawRectangleLines((int)(target.x - HALF_TILE_SIZE), (int)(target.y - HALF_TILE_SIZE), 16, 16, MAGENTA);
 
-	//if (Client.TileMapDebugFlag.Flags > 0)
+	//if (Client.DebugShowTilePaths)
 	//{
-	//	if (Client.TileMapDebugFlag.Get(TILE_MAP_DEBUG_FLAG_PATHFINDING) && Client.PathfinderVisited)
+	//	Color closed = Color{ RED.r, RED.g, RED.b, 155 };
+	//	for (int i = 0; i < ArrayListCount(Client.PathfinderVisited); ++i)
 	//	{
-	//		Color closed = Color{ RED.r, RED.g, RED.b, 155 };
-	//		for (int i = 0; i < zpl_array_count(Client.PathfinderVisited); ++i)
-	//		{
-	//			int x = Client.PathfinderVisited[i].x * TILE_SIZE;
-	//			int y = Client.PathfinderVisited[i].y * TILE_SIZE;
-	//			DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, closed);
-	//		}
-	//		Color path = Color{ BLUE.r, BLUE.g, BLUE.b, 155 };
-	//		for (int i = 0; i < zpl_array_count(Client.PathfinderPath); ++i)
-	//		{
-	//			int x = Client.PathfinderPath[i].x * TILE_SIZE;
-	//			int y = Client.PathfinderPath[i].y * TILE_SIZE;
-	//			DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, path);
-	//		}
+	//		int x = Client.PathfinderVisited[i].x * TILE_SIZE;
+	//		int y = Client.PathfinderVisited[i].y * TILE_SIZE;
+	//		DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, closed);
+	//	}
+	//	Color path = Color{ BLUE.r, BLUE.g, BLUE.b, 155 };
+	//	for (int i = 0; i < ArrayListCount(Client.PathfinderPath); ++i)
+	//	{
+	//		int x = Client.PathfinderPath[i].x * TILE_SIZE;
+	//		int y = Client.PathfinderPath[i].y * TILE_SIZE;
+	//		DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, path);
 	//	}
 	//}
 
@@ -208,18 +204,18 @@ void GameLateUpdate()
 	//	float ry = (float)chunk->Coord.y * OFFSET;
 	//	DrawRectangleLinesEx({ rx, ry, OFFSET, OFFSET }, 3.0f, ORANGE);
 	//	});
-	HashMapKVForEach(&State.RegionState.RegionMap, [](void* hash, void* value, void* stack)
-	{
-		constexpr int OFFSET = REGION_SIZE * TILE_SIZE;
-		RegionPaths* region = (RegionPaths*)value;
-		int rx = region->Pos.x * OFFSET;
-		int ry = region->Pos.y * OFFSET;
-		DrawRectangleLines(rx, ry, OFFSET, OFFSET, MAGENTA);
-		DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 - REGION_SIZE, 2, (region->Sides[0]) ? GREEN : RED);
-		DrawCircle(rx + OFFSET / 2 + REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[1]) ? GREEN : RED);
-		DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 + REGION_SIZE, 2, (region->Sides[2]) ? GREEN : RED);
-		DrawCircle(rx + OFFSET / 2 - REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[3]) ? GREEN : RED);
-	}, nullptr);
+	//HashMapKVForEach(&State.RegionState.RegionMap, [](void* hash, void* value, void* stack)
+	//{
+	//	constexpr int OFFSET = REGION_SIZE * TILE_SIZE;
+	//	RegionPaths* region = (RegionPaths*)value;
+	//	int rx = region->Pos.x * OFFSET;
+	//	int ry = region->Pos.y * OFFSET;
+	//	DrawRectangleLines(rx, ry, OFFSET, OFFSET, MAGENTA);
+	//	DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 - REGION_SIZE, 2, (region->Sides[0]) ? GREEN : RED);
+	//	DrawCircle(rx + OFFSET / 2 + REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[1]) ? GREEN : RED);
+	//	DrawCircle(rx + OFFSET / 2, ry + OFFSET / 2 + REGION_SIZE, 2, (region->Sides[2]) ? GREEN : RED);
+	//	DrawCircle(rx + OFFSET / 2 - REGION_SIZE, ry + OFFSET / 2, 2, (region->Sides[3]) ? GREEN : RED);
+	//}, nullptr);
 
 }
 

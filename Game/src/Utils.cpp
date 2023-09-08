@@ -40,6 +40,21 @@ TextSplitBuffered(const char* text, char delimiter, int* _RESTRICT_ count,
 	*count = counter;
 }
 
+void RemoveWhitespace(char* s)
+{
+	char* d = s;
+	do
+	{
+		while (isspace(*d))
+		{
+			++d;
+		}
+		*s = *d;
+		++s;
+		++d;
+	} while (*s);
+}
+
 STR2INT 
 Str2Int(int* out, const char* s, int base)
 {

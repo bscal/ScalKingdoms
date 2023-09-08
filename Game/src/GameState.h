@@ -60,18 +60,19 @@ struct GameClient
 	double FrameTime;
 
 	// Extra debug values
-	zpl_array(Vec2i) PathfinderVisited;
-	zpl_array(Vec2i) PathfinderPath;
+	ArrayList(Vec2i) PathfinderVisited;
+	ArrayList(Vec2i) PathfinderPath;
 	ArrayList(Vec2i) DebugRegionsPath;
 
 	bool IsDebugMode;
 
 	union
 	{
-		bool DebugOptions[1];
+		bool DebugOptions[2];
 		struct
 		{
 			bool DebugShowRegionPaths;
+			bool DebugShowTilePaths;
 		};
 	};
 };
