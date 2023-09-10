@@ -54,7 +54,7 @@ void MoveSystem(ecs_iter_t* it)
 	CTransform* transforms = ecs_field(it, CTransform, 1);
 	CMove* moves = ecs_field(it, CMove, 2);
 
-	HashMap* entityMap = &GetGameState()->EntityMap;
+	HashMapT<Vec2i, ecs_entity_t>* entityMap = &GetGameState()->EntityMap;
 
 	float baseMS = 8.0f * it->delta_time;
 
@@ -84,11 +84,8 @@ void MoveSystem(ecs_iter_t* it)
 			Vec2i travelTilePos = WorldToTile(transforms[i].Pos);
 			if (travelTilePos != transforms[i].TilePos)
 			{
-				u64 newHash = HashTile(travelTilePos);
-				u64 oldHash = HashTile(transforms[i].TilePos);
-
-				HashMapRemove(entityMap, oldHash);
-				HashMapSet(entityMap, newHash, &it->entities[i]);
+				HashMapTRemove(entityMap, &transforms[i].TilePos);
+				HashMapTSet(entityMap, &travelTilePos, &it->entities[i]);
 
 				transforms[i].TilePos = travelTilePos;
 			}

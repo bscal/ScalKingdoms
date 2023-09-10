@@ -60,7 +60,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 		zpl_array_append(tilemap->ChunkLoader.ChunkPool, chunk);
 	}
 
-	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, 0, Allocator::Arena);
+	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, Allocator::Arena);
 
 	SInfoLog("Starting chunk thread...");
 

@@ -29,7 +29,7 @@ struct HashMapT
 };
 
 template<typename K, typename V>
-void HashMapTInitialize(HashMapT<K, V>* map, uint32_t capacity, float loadFactor, Allocator alloc)
+void HashMapTInitialize(HashMapT<K, V>* map, uint32_t capacity, Allocator alloc)
 {
 	SASSERT(map);
 	SASSERT(IsAllocatorValid(alloc));
@@ -189,7 +189,7 @@ template<typename K, typename V>
 uint32_t HashMapTReplace(HashMapT<K, V>* map, K* key, V* value)
 {
 	uint32_t insertedIdx = HashMapTSet<K, V>(map, key, nullptr);
-	SASSERT(insertedIdx != HashMapT::NOT_FOUND);
+	SASSERT(insertedIdx != UINT32_MAX);
 	map->Buckets[insertedIdx].Value = *value;
 	return insertedIdx;
 }
@@ -236,7 +236,7 @@ V* HashMapTGet(HashMapT<K, V>* map, K* key)
 }
 
 template<typename K, typename V>
-bool HashMapTRemove(HashMapT<K, V>* map, K* key)
+bool HashMapTRemove(HashMapT<K, V>* map, const K* key)
 {
 	SASSERT(map);
 	SASSERT(key);

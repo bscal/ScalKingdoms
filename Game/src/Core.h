@@ -35,6 +35,7 @@ typedef uint64_t u64;
 
 typedef Vector2i Vec2i;
 typedef Vector2 Vec2;
+typedef zpl_string String;
 
 #define internal static
 #define local_persistent static

@@ -12,7 +12,7 @@
 #include "Structures/SList.h"
 #include "Structures/ArrayList.h"
 #include "Structures/HashMap.h"
-#include "Structures/MemoryArena.h"
+#include "Lib/MemoryArena.h"
 
 #include <luajit/src/lua.hpp>
 
@@ -44,7 +44,7 @@ struct GameState
 	zpl_random Random;
 	ecs_world_t* World;
 
-	HashMap EntityMap;
+	HashMapT<Vec2i, ecs_entity_t> EntityMap;
 
 	ActionMgr ActionMgr;
 

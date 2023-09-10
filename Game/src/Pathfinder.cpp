@@ -40,7 +40,7 @@ void
 PathfinderInit(Pathfinder* pathfinder)
 {
 	pathfinder->Open = BHeapCreate(Allocator::Arena, CompareCost, MAX_SEARCH_TILES);
-	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, 0, Allocator::Arena);
+	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, Allocator::Arena);
 	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, Allocator::Arena);
 }
 

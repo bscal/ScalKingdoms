@@ -242,7 +242,7 @@ void SList<T>::Pop(T* valueDest)
 	SASSERT(Memory);
 	SASSERT(Count > 0);
 	SASSERT(Count <= Capacity);
-	SMemCopy(valueDest, Memory + LastIndex(), sizeof(T));
+	SCopy(valueDest, Memory + LastIndex(), sizeof(T));
 	--Count;
 }
 
@@ -253,7 +253,7 @@ void SList<T>::PopAt(uint32_t index, T* valueDest)
 	SASSERT(Count > 0);
 	SASSERT(index < Count);
 	SASSERT(Count <= Capacity);
-	SMemCopy(valueDest, Memory + index, sizeof(T));
+	SCopy(valueDest, Memory + index, sizeof(T));
 	if (index != LastIndex())
 	{
 		T* dst = Memory + index;

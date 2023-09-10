@@ -55,7 +55,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 	zpl_array_init_reserve(atlas.Rects, zpl_heap_allocator(), length);
 	zpl_array_resize(atlas.Rects, length);
 
-	HashMapInitialize(&atlas.NameToIndex, sizeof(uint16_t), length, Allocator::Frame);
+	HashMapStrInitialize(&atlas.NameToIndex, sizeof(u16), length, Allocator::Malloc);
 	atlas.Texture = LoadTexture(imgPath);
 
 	char s0[16];
@@ -79,8 +79,8 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 		line += 7;
 
-		zpl_u32 hash = HashString(name, strlen(name));
-		HashMapSet(&atlas.NameToIndex, hash, &entryCounter);
+		zpl_string str = zpl_string_make(ZplAllocatorMalloc, name);
+		HashMapStrSet(&atlas.NameToIndex, str, &entryCounter);
 
 		int err;
 
@@ -144,7 +144,8 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 void SpriteAtlasUnload(SpriteAtlas* atlas)
 {
 	zpl_array_free(atlas->Rects);
-	HashMapDestroy(&atlas->NameToIndex);
+	// Note: Doesn't free strings
+	HashMapStrFree(&atlas->NameToIndex);
 	UnloadTexture(atlas->Texture);
 }
 
@@ -152,8 +153,8 @@ Rectangle SpriteAtlasGet(SpriteAtlas* atlas, const char* name)
 {
 	Rectangle result = {};
 
-	zpl_u32 hash = HashString(name, strlen(name));
-	uint16_t* idx = HashMapGet(&atlas->NameToIndex, hash, uint16_t);
+	zpl_string nameString = zpl_string_make(ZplAllocatorFrame, name);
+	u16* idx = (u16*)HashMapStrGet(&atlas->NameToIndex, nameString);
 	if (idx)
 	{
 		Rect16 textRect = atlas->Rects[*idx];

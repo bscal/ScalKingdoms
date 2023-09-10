@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "Structures/HashMap.h"
+#include "Structures/HashMapStr.h"
 
 struct Rect16
 {
@@ -15,7 +15,7 @@ struct SpriteAtlas
 {
 	Texture2D Texture;
 	zpl_array(Rect16) Rects;
-	HashMap NameToIndex;
+	HashMapStr NameToIndex;
 };
 
 SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile);

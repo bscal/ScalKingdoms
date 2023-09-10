@@ -6,12 +6,10 @@
 #include "Tile.h"
 
 #include "Structures/ArrayList.h"
-#include <corecrt_math.h>
 
 constexpr global_var int MAX_REGION_SEARCH = 128;
 constexpr global_var int MAX_LOCAL_SEARCH = 256;
 
-#define HashRegion(coord) (zpl_fnv64a(&coord, sizeof(Vec2i)))
 #define AllocNode(T) ((T*)GameMalloc(Allocator::Frame, sizeof(T)));
 
 struct RegionNode
@@ -68,8 +66,8 @@ void
 RegionStateInit(RegionState* regionState)
 {
 	regionState->Open = BHeapCreate(Allocator::Arena, RegionCompareCost, MAX_REGION_SEARCH);
-	HashMapKVInitialize(&regionState->RegionMap, RegionCompareFunc, sizeof(Vec2i), sizeof(RegionPaths), MAX_REGION_SEARCH, Allocator::Arena);
-	HashMapTInitialize(&regionState->OpenMap, sizeof(RegionNode*), MAX_REGION_SEARCH, Allocator::Arena);
+	HashMapInitialize(&regionState->RegionMap, RegionCompareFunc, sizeof(Vec2i), sizeof(RegionPaths), MAX_REGION_SEARCH, Allocator::Arena);
+	HashMapTInitialize(&regionState->OpenMap, sizeof(RegionNode*), Allocator::Arena);
 	HashSetTInitialize(&regionState->ClosedSet, MAX_REGION_SEARCH, Allocator::Arena);
 }
 
@@ -165,7 +163,7 @@ LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk)
 				break;
 			}
 
-			HashMapKVReplace(&regionState->RegionMap, &region.Pos, &region);
+			HashMapReplace(&regionState->RegionMap, &region.Pos, &region);
 		}
 	}
 }
@@ -185,7 +183,7 @@ UnloadRegionPaths(RegionState* regionState, Chunk* chunk)
 		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
 		{
 			Vec2i pos = startRegionCoord + Vec2i{ xDiv, yDiv };
-			HashMapKVRemove(&regionState->RegionMap, &pos);
+			HashMapRemove(&regionState->RegionMap, &pos);
 		}
 	}
 }
@@ -222,7 +220,6 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 
 		RegionNode* curNode = (RegionNode*)item.User;
 
-		//u64 hash = HashRegion(curNode->Pos);
 		bool wasRemoved = HashMapTRemove(&regionState->OpenMap, &curNode->Pos);
 		SASSERT(wasRemoved);
 		HashSetTSet(&regionState->ClosedSet, &curNode->Pos);
@@ -238,7 +235,6 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 				if (Client.DebugShowRegionPaths)
 					ArrayListPush(Allocator::Arena, Client.DebugRegionsPath, prev->Pos);
 
-				//u64 prevHash = HashTile(prev->Pos);
 				HashSetTSet(regionSet, &prev->Pos);
 				prev = prev->Parent;
 			}
@@ -260,11 +256,10 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 
 				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS[i];
 
-				//u64 nextHash = HashRegion(next);
 				if (HashSetTContains(&regionState->ClosedSet, &next))
 					continue;
 
-				RegionPaths* nextRegion = (RegionPaths*)HashMapKVGet(&regionState->RegionMap, &next);
+				RegionPaths* nextRegion = (RegionPaths*)HashMapGet(&regionState->RegionMap, &next);
 				if (!nextRegion || !nextRegion->Sides[i])
 					continue;
 				else
@@ -281,9 +276,9 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
 
 						
+						BHeapPushMin(regionState->Open, nextNode, nextNode);
 						if (!nextCost)
 						{
-							BHeapPushMin(regionState->Open, nextNode, nextNode);
 							HashMapTSet(&regionState->OpenMap, &next, &nextNode->GCost);
 						}
 						else
@@ -328,7 +323,6 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 	node->FCost = node->GCost + node->HCost;
 
 	BHeapPushMin(pathfinder->Open, node, node);
-	//u64 firstHash = HashRegion(node->Pos);
 	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node->GCost);
 
 	while (pathfinder->Open->Count > 0)
@@ -337,11 +331,8 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 
 		Node* curNode = (Node*)item.User;
 
-		//u64 hash = HashRegion(curNode->Pos);
 		HashMapTRemove(&pathfinder->OpenSet, &curNode->Pos);
 		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
-
-		SInfoLog("TILE %s", FMT_VEC2I(curNode->Pos));
 
 		if (Client.DebugShowTilePaths)
 			ArrayListPush(Allocator::Arena, Client.PathfinderVisited, curNode->Pos);
@@ -370,13 +361,11 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 			{
 				Vec2i nextTile = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
 
-				RegionPaths* nextRegion = GetRegion(regionState, nextTile);
-				//u64 nextRegionhash = HashRegion(nextRegion->Pos);
-				if (!nextRegion || !HashSetTContains(&moveComponent->Regions, &nextRegion->Pos))
+				if (HashSetTContains(&pathfinder->ClosedSet, &nextTile))
 					continue;
 
-				//u64 nextHash = HashTile(nextTile);
-				if (HashSetTContains(&pathfinder->ClosedSet, &nextTile))
+				RegionPaths* nextRegion = GetRegion(regionState, nextTile);
+				if (!nextRegion || !HashSetTContains(&moveComponent->Regions, &nextRegion->Pos))
 					continue;
 
 				Tile* tile = GetTile(tilemap, nextTile);
@@ -385,7 +374,6 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 				else
 				{
 					int* nextCost = HashMapTGet(&pathfinder->OpenSet, &nextTile);
-					//int nextCostCost = (nextCost) ? *nextCost : 0;
 					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
 					int cost = curNode->GCost + CalculateDistance(curNode->Pos, nextTile) + tileCost;
 					if (!nextCost || cost < *nextCost)
@@ -396,7 +384,6 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 						nextNode->GCost = cost;
 						nextNode->HCost = CalculateDistance(nextTile, end);
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
-
 						
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
 						if (!nextCost)
@@ -423,5 +410,267 @@ RegionPaths*
 GetRegion(RegionState* regionState, Vec2i tilePos)
 {
 	Vec2i coord = TileCoordToRegionCoord(tilePos);
-	return (RegionPaths*)HashMapKVGet(&regionState->RegionMap, &coord);
+	return (RegionPaths*)HashMapGet(&regionState->RegionMap, &coord);
+}
+
+#include "Structures/BitArray.h"
+
+//global_var BHeap* PortalOpenSet;
+//global_var HashMapT<Vec2i, PortalNode*> PortalOpenSetMap;
+//global_var HashSetT<Vec2i> PortalClosedSet;
+global_var SList<Vec2i> PortalSearchQueue;
+global_var HashMapT<Vec2i, Region> RegionMap;
+
+void RegionInit(Region* region, TileMap* tilemap, Chunk* chunk)
+{
+	SASSERT(region);
+	SASSERT(tilemap);
+	SASSERT(chunk);
+
+	if (!RegionMap.Buckets)
+	{
+		HashMapTInitialize(&RegionMap, 32 * 12, Allocator::Arena);
+		PortalSearchQueue.Reserve(REGION_SIZE * REGION_SIZE);
+	}
+
+	Vec2i chunkWorld = ChunkToTile(chunk->Coord);
+	Vec2i startRegion = TileCoordToRegionCoord(chunkWorld);
+
+	SInfoLog("Loading regions for %s", FMT_VEC2I(chunk->Coord));
+
+	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
+	{
+		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
+		{
+			u8 costArray[REGION_SIZE * REGION_SIZE];
+			int idx = 0;
+			for (int y = 0; y < REGION_SIZE; ++y)
+			{
+				for (int x = 0; x < REGION_SIZE; ++x)
+				{
+					Vec2i pos = chunkWorld + Vec2i{ x, y };
+					Tile* tile = GetTile(tilemap, pos);
+					if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+						costArray[idx] = UINT8_MAX;
+					else
+						costArray[idx] = GetTileInfo(tile->BackgroundId)->MovementCost;
+					++idx;
+				}
+			}
+
+			Region region = {};
+
+			Vec2i pos = chunkWorld + Vec2i{ xDiv * REGION_SIZE, yDiv * REGION_SIZE };
+			Vec2i regionPos = startRegion + Vec2i{ xDiv, yDiv };
+			//Vec2i tilePos = pos;
+			//Vec2i pos = { pos.x / REGION_SIZE, pos.y / REGION_SIZE };
+
+			bool hitWall; 
+
+			hitWall = true;
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ i, 0 };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[0];
+
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				if (!hitWall)
+					continue;
+
+				hitWall = false;
+
+				Portal portal = {};
+				portal.Pos = tilePos;
+				PortalGenerate(&portal, tilemap, chunk, costArray);
+
+				ArrayListPush(Allocator::Arena, region.Portals, portal);
+			}
+
+			hitWall = true;
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ REGION_SIZE - 1, i };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[1];
+
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				if (!hitWall)
+					continue;
+
+				hitWall = false;
+
+				Portal portal = {};
+				portal.Pos = tilePos;
+				PortalGenerate(&portal, tilemap, chunk, costArray);
+
+				ArrayListPush(Allocator::Arena, region.Portals, portal);
+			}
+
+			hitWall = true;
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ i, REGION_SIZE - 1 };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[2];
+
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				if (!hitWall)
+					continue;
+
+				hitWall = false;
+
+				Portal portal = {};
+				portal.Pos = tilePos;
+				PortalGenerate(&portal, tilemap, chunk, costArray);
+
+				ArrayListPush(Allocator::Arena, region.Portals, portal);
+			}
+
+			hitWall = true;
+			for (int i = 0; i < REGION_SIZE; ++i)
+			{
+				Vec2i tilePos = pos + Vec2i{ 0, i };
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[3];
+
+				Tile* tile = GetTile(tilemap, tilePos);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
+				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
+				{
+					hitWall = true;
+					continue;
+				}
+
+				if (!hitWall)
+					continue;
+
+				hitWall = false;
+
+				Portal portal = {};
+				portal.Pos = tilePos;
+				PortalGenerate(&portal, tilemap, chunk, costArray);
+
+				ArrayListPush(Allocator::Arena, region.Portals, portal);
+			}
+
+			HashMapTReplace(&RegionMap, &regionPos, &region);
+		}
+	}
+}
+
+void 
+PortalGenerate(Portal* portal, TileMap* tilemap, Chunk* chunk, const ArrayList(u8) costArray)
+{
+	SASSERT(portal);
+	SASSERT(tilemap);
+	SASSERT(chunk);
+	SASSERT(costArray);
+
+	PortalSearchQueue.Clear();
+
+	Flag64 VisitedSet = {};
+
+	while (PortalSearchQueue.Count > 0)
+	{
+		Vec2i pop;
+		PortalSearchQueue.Pop(&pop);
+
+		int idx = pop.x + pop.y * REGION_SIZE;
+
+		for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+		{
+			Vec2i next = pop + Vec2i_NEIGHTBORS[i];
+			int nextIdx = next.x + next.y * REGION_SIZE;
+			
+			if (nextIdx < 0 || nextIdx >= REGION_SIZE * REGION_SIZE)
+				continue;
+
+			Tile* tile = GetTile(tilemap, next);
+			if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+			{
+				portal->Integration[nextIdx] = UINT8_MAX;
+				VisitedSet.True(nextIdx);
+				continue;
+			}
+			
+			u8 newCost = costArray[nextIdx] + portal->Integration[idx];
+			if (VisitedSet.Get(nextIdx) && newCost < portal->Integration[nextIdx])
+			{
+				portal->Integration[nextIdx] = newCost;
+				PortalSearchQueue.Push(&next);
+				VisitedSet.True(nextIdx);
+			}
+		}
+	}
+
+	int idx = 0;
+	for (int y = 0; y < REGION_SIZE; ++y)
+	{
+		for (int x = 0; x < REGION_SIZE; ++x)
+		{
+			if (portal->Integration[idx] != UINT8_MAX)
+			{
+				u8 lowestDir = UINT8_MAX;
+				u8 lowest = UINT8_MAX;
+				for (u8 dir = 0; dir < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++dir)
+				{
+					Vec2i neighbor = Vec2i{ x, y } + Vec2i_NEIGHTBORS_CORNERS[dir];
+					int neighborIdx = neighbor.x + neighbor.y * REGION_SIZE;
+					if (portal->Integration[neighborIdx] < lowest)
+					{
+						lowest = portal->Integration[neighborIdx];
+						lowestDir = dir;
+					}
+				}
+				if (lowestDir != UINT8_MAX)
+				{
+					portal->Flow[idx].Dir = lowestDir;
+					portal->Flow[idx].Pathable = true;
+				}
+			}
+			++idx;
+		}
+	}
 }

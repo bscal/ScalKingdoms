@@ -3,7 +3,7 @@
 #include "Core.h"
 
 #include "Structures/ArrayList.h"
-#include "Structures/HashMapKV.h"
+#include "Structures/HashMap.h"
 #include "Structures/HashMapT.h"
 
 struct GameState;
@@ -11,7 +11,7 @@ struct CItemStack;
 
 struct Stockpile
 {
-	HashMapKV Quantities;
+	HashMap Quantities;
 	ArrayList(Vec2i) Tiles;
 };
 

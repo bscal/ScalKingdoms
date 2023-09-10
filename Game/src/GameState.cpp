@@ -59,7 +59,7 @@ GameInitialize()
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
 	SASSERT(guiInitialized);
 
-	HashMapInitialize(&State.EntityMap, sizeof(ecs_entity_t), 64, Allocator::Arena);
+	HashMapTInitialize(&State.EntityMap, 64, Allocator::Arena);
 
 	zpl_random_init(&State.Random);
 
@@ -291,8 +291,7 @@ void InputUpdate()
 	{
 		Vec2i tile = ScreenToTile(GetMousePosition());
 
-		u64 hash = HashTile(tile);
-		ecs_entity_t* entity = HashMapGet(&State.EntityMap, hash, ecs_entity_t);
+		ecs_entity_t* entity = HashMapTGet(&State.EntityMap, &tile);
 		if (entity)
 		{
 			Client.SelectedEntity = *entity;
