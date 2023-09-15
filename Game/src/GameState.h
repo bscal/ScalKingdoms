@@ -57,7 +57,7 @@ struct GameClient
 	ecs_entity_t Player;
 	ecs_entity_t SelectedEntity;
 
-	double FrameTime;
+	double UpdateTime; // In seconds
 
 	// Extra debug values
 	ArrayList(Vec2i) PathfinderVisited;

@@ -31,11 +31,11 @@ ECS_SYSTEM_DECLARE(DrawEntities);
 int 
 GameInitialize()
 {
-	size_t gameMemorySize = Megabytes(8);
+	size_t gameMemorySize = Megabytes(16);
 	void* gameMemory = zpl_alloc_align(zpl_heap_allocator(), gameMemorySize, 64);
 	State.GameMemory = MemArenaCreate(gameMemory, gameMemorySize);
 
-	zpl_arena_init_from_allocator(&State.FrameMemory, zpl_heap_allocator(), Megabytes(8));
+	zpl_arena_init_from_allocator(&State.FrameMemory, zpl_heap_allocator(), Megabytes(32));
 
 	//zpl_affinity affinity;
 	//zpl_affinity_init(&affinity);
@@ -144,6 +144,8 @@ GameRun()
 		EndMode2D();
 		EndTextureMode();
 
+		Client.UpdateTime = GetTime() - start;
+
 		BeginDrawing();
 		ClearBackground(BLACK);
 
@@ -153,10 +155,10 @@ GameRun()
 			, {}, 0, WHITE);
 
 		DrawGUI(&State);
-
-		Client.FrameTime = GetTime() - start;
-
-
+		//DrawFPS(GetScreenWidth() - 128, 2);
+		BeginMode2D(State.Camera);
+		DrawRegions();
+		EndMode2D();
 		EndDrawing();
 
 		zpl_arena_snapshot_end(arenaSnapshot);
@@ -283,8 +285,23 @@ void InputUpdate()
 	if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
 	{
 		Vec2i tile = ScreenToTile(GetMousePosition());
+
+		struct PathFindStack
+		{
+			ArrayList(Vec2i) Path;
+		};
+
+		PathFindStack stack = {};
 		ecs_entity_t selectedEntity = Client.SelectedEntity;
-		MoveEntity(&State, selectedEntity, tile);
+		const CTransform* transform = ecs_get(State.World, selectedEntity, CTransform);
+		PathfindNodes(&State.Pathfinder, transform->TilePos, tile,
+			[](Node* node, void* stack)
+			{
+				PathFindStack* pathfindStack = (PathFindStack*)stack;
+				ArrayListPush(Allocator::Arena, pathfindStack->Path, node->Pos);
+				SInfoLog("%s", FMT_VEC2I(node->Pos));
+			}, &stack);
+		//MoveEntity(&State, selectedEntity, tile);
 	}
 
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))

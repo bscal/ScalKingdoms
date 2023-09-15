@@ -12,6 +12,9 @@
 struct TileMap;
 struct Chunk;
 struct CMove;
+struct Portal;
+struct Node;
+struct Pathfinder;
 
 constexpr global_var int DIVISIONS = 4;
 constexpr global_var int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
@@ -26,12 +29,21 @@ struct FlowTile
 };
 static_assert(sizeof(FlowTile) == 1);
 
+
+
+struct PortalConnection
+{
+	Vec2i OtherPortal;
+	int Cost;
+	ArrayList(Vec2i) Path;
+};
+
 struct Portal
 {
 	Vec2i Pos;
+	Vec2i ConnectedPortalPos;
 	Region* CurRegion;
-	u8 Integration[REGION_SIZE * REGION_SIZE];
-	FlowTile Flow[REGION_SIZE * REGION_SIZE];
+	ArrayList(PortalConnection) PortalConnections;
 };
 
 struct Region
@@ -39,8 +51,11 @@ struct Region
 	ArrayList(Portal) Portals;
 };
 
-void RegionInit(Region* region, TileMap* tilemap, Chunk* chunk);
-void PortalGenerate(Portal* portal, TileMap* tilemap, Chunk* chunk, const ArrayList(u8) costArray);
+void RegionInit2(TileMap* tilemap, Chunk* chunk);
+void PathfindNodes(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack);
+//void PortalGenerate(Portal* portal, TileMap* tilemap, Chunk* chunk, const ArrayList(u8) costArray);
+Portal* PortalFind(Vec2i pos);
+void DrawRegions();
 
 struct RegionPaths
 {

@@ -160,7 +160,7 @@ constexpr global_var int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
 constexpr global_var int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
 constexpr global_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
-constexpr global_var int VIEW_RADIUS = 2;
+constexpr global_var int VIEW_RADIUS = 3;
 constexpr global_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
 
 enum class Direction : uint8_t

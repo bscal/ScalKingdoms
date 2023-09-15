@@ -45,7 +45,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	tilemap->LastChunkCoord = Vec2i{ INT32_MAX, INT32_MAX };
 	tilemap->Dimensions = dimensions;
 
-	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = 6 * 6;
+	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS;
 
 	zpl_array_init_reserve(tilemap->ChunkLoader.ChunkPool, zpl_heap_allocator(), VIEW_DISTANCE_TOTAL_CHUNKS);
 
