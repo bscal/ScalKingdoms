@@ -88,8 +88,6 @@ GameInitialize()
 	PathfinderInit(&State.Pathfinder);
 
 	Client.IsDebugMode = true;
-	Client.DebugShowRegionPaths = true;
-	Client.DebugShowTilePaths = true;
 
 	if (Client.IsDebugMode)
 		SInfoLog("[ Game ] Running in DEBUG mode!");
@@ -184,20 +182,20 @@ void GameLateUpdate()
 
 	//if (Client.DebugShowTilePaths)
 	//{
-	//	Color closed = Color{ RED.r, RED.g, RED.b, 155 };
-	//	for (int i = 0; i < ArrayListCount(Client.PathfinderVisited); ++i)
-	//	{
-	//		int x = Client.PathfinderVisited[i].x * TILE_SIZE;
-	//		int y = Client.PathfinderVisited[i].y * TILE_SIZE;
-	//		DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, closed);
-	//	}
-	//	Color path = Color{ BLUE.r, BLUE.g, BLUE.b, 155 };
-	//	for (int i = 0; i < ArrayListCount(Client.PathfinderPath); ++i)
-	//	{
-	//		int x = Client.PathfinderPath[i].x * TILE_SIZE;
-	//		int y = Client.PathfinderPath[i].y * TILE_SIZE;
-	//		DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, path);
-	//	}
+		//Color closed = Color{ RED.r, RED.g, RED.b, 155 };
+		//for (int i = 0; i < ArrayListCount(Client.PathfinderVisited); ++i)
+		//{
+		//	int x = Client.PathfinderVisited[i].x * TILE_SIZE;
+		//	int y = Client.PathfinderVisited[i].y * TILE_SIZE;
+		//	DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, closed);
+		//}
+		Color path = Color{ BLUE.r, BLUE.g, BLUE.b, 155 };
+		for (int i = 0; i < ArrayListCount(Client.DebugPathfinder); ++i)
+		{
+			int x = Client.DebugPathfinder[i].x * TILE_SIZE;
+			int y = Client.DebugPathfinder[i].y * TILE_SIZE;
+			DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, path);
+		}
 	//}
 
 	//chunk_map(&State.TileMap.Chunks, [](u64 key, Chunk* chunk) {
@@ -288,18 +286,19 @@ void InputUpdate()
 
 		struct PathFindStack
 		{
-			ArrayList(Vec2i) Path;
+			ArrayList(Vec2i)* Path;
 		};
 
 		PathFindStack stack = {};
+		stack.Path = &Client.DebugPathfinder;
 		ecs_entity_t selectedEntity = Client.SelectedEntity;
 		const CTransform* transform = ecs_get(State.World, selectedEntity, CTransform);
-		PathfindNodes(&State.Pathfinder, transform->TilePos, tile,
-			[](Node* node, void* stack)
+		PathfindNodes(transform->TilePos, tile,
+			[](PortalSearchData* node, void* stack)
 			{
 				PathFindStack* pathfindStack = (PathFindStack*)stack;
-				ArrayListPush(Allocator::Arena, pathfindStack->Path, node->Pos);
-				SInfoLog("%s", FMT_VEC2I(node->Pos));
+				ArrayListPush(Allocator::Arena, *pathfindStack->Path, node->Portal->Pos);
+				SInfoLog("%s", FMT_VEC2I(node->Portal->Pos));
 			}, &stack);
 		//MoveEntity(&State, selectedEntity, tile);
 	}

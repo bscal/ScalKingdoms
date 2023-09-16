@@ -1,6 +1,7 @@
 #include "Regions.h"
 
 #include "GameState.h"
+#include "Pathfinder.h"
 #include "Components.h"
 #include "TileMap.h"
 #include "Tile.h"
@@ -224,22 +225,12 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 
 		if (curNode->Pos == end)
 		{
-			if (Client.DebugShowRegionPaths)
-				ArrayListClear(Client.DebugRegionsPath);
-
 			RegionNode* prev = curNode;
 			while (prev)
 			{
-				if (Client.DebugShowRegionPaths)
-					ArrayListPush(Allocator::Arena, Client.DebugRegionsPath, prev->Pos);
-
 				HashSetTSet(regionSet, &prev->Pos);
 				prev = prev->Parent;
 			}
-
-			if (Client.DebugShowRegionPaths)
-				SDebugLog("[ Debug::Pathfinding ] %d region path length, %d total regions", regionSet->Count, regionState->ClosedSet.Count);
-
 			return;
 		}
 		else
@@ -298,12 +289,6 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 void 
 RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* moveComponent)
 {
-	if (Client.DebugShowTilePaths)
-	{
-		ArrayListClear(Client.PathfinderPath);
-		ArrayListClear(Client.PathfinderVisited);
-	}
-
 	Pathfinder* pathfinder = &GetGameState()->Pathfinder;
 	TileMap* tilemap = &GetGameState()->TileMap;
 
@@ -332,9 +317,6 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 		HashMapTRemove(&pathfinder->OpenSet, &curNode->Pos);
 		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
 
-		if (Client.DebugShowTilePaths)
-			ArrayListPush(Allocator::Arena, Client.PathfinderVisited, curNode->Pos);
-
 		if (curNode->Pos == end)
 		{
 			int count = 0;
@@ -343,14 +325,9 @@ RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* mov
 			while (prev)
 			{
 				zpl_array_append(moveComponent->TilePath, prev->Pos);
-
-				if (Client.DebugShowTilePaths)
-					ArrayListPush(Allocator::Arena, Client.PathfinderPath, prev->Pos);
-
 				prev = prev->Parent;
 				++count;
 			}
-			SDebugLog("[ Debug::Pathfinding ] %d path length, %d total tiles", count, GetGameState()->Pathfinder.ClosedSet.Count);
 			return;
 		}
 		else
@@ -457,262 +434,131 @@ void RegionInit2(TileMap* tilemap, Chunk* chunk)
 			Region region = {};
 
 			Vec2i pos = chunkWorld + Vec2i{ xDiv * REGION_SIZE, yDiv * REGION_SIZE };
-			Vec2i regionPos = startRegion + Vec2i{ xDiv, yDiv };
+			
+			region.Coord = startRegion + Vec2i{ xDiv, yDiv };
 
-			Vec2i lastPos;
-			bool hitWall; 
+			for (int i = 0; i < ArrayLength(region.Sides); ++i)
+				region.Sides[i] = Vec2i_NULL;
 
-			// Loop through side and check for portals
-			lastPos = Vec2i_NULL;
-			hitWall = true;
-			for (int i = 0; i < REGION_SIZE; ++i)
+			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
-				Vec2i tilePos = pos + Vec2i{ i, 0 };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[0];
+				constexpr int SIDE = 0;
+
+				int sideIdx = REGION_SIDE_POINTS[i];
+				Vec2i offset = { i * sideIdx, 0 };
+				Vec2i tilePos = pos + offset;
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
 					continue;
-				}
 
 				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
 				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
-					continue;
-				}
-
-				if (!hitWall)
 					continue;
 
-				lastPos = tilePos;
-				hitWall = false;
-
-				Portal portal = {};
-				portal.Pos = tilePos;
-				portal.ConnectedPortalPos = neighborTilePos;
-				//PortalGenerate(&portal, tilemap, chunk, costArray);
-
-				ArrayListPush(Allocator::Arena, region.Portals, portal);
-			}
-
-			// Start on other end of side, This is so if we have a side with no or few walls, we will have
-			// a min of 2 connections, unless only 1 position for a portal.
-			for (int i = REGION_SIZE - 1; i >= 0; --i)
-			{
-				Vec2i tilePos = pos + Vec2i{ i, 0 };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[0];
-
-				Tile* tile = GetTile(tilemap, tilePos);
-				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
-				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				if (tilePos != lastPos)
-				{
-					Portal portal = {};
-					portal.Pos = tilePos;
-					portal.ConnectedPortalPos = neighborTilePos;
-					ArrayListPush(Allocator::Arena, region.Portals, portal);
-				}
+				region.Sides[SIDE] = tilePos;
 				break;
 			}
 
-			lastPos = Vec2i_NULL;
-			hitWall = true;
-			for (int i = 0; i < REGION_SIZE; ++i)
+			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
-				Vec2i tilePos = pos + Vec2i{ REGION_SIZE - 1, i };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[1];
+				constexpr int SIDE = 1;
+
+				int sideIdx = REGION_SIDE_POINTS[i];
+				Vec2i offset = { REGION_SIZE - 1, i * sideIdx };
+				Vec2i tilePos = pos + offset;
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
 					continue;
-				}
 
 				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
 				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
-					continue;
-				}
-
-				if (!hitWall)
 					continue;
 
-				lastPos = tilePos;
-				hitWall = false;
-
-				Portal portal = {};
-				portal.Pos = tilePos;
-				portal.ConnectedPortalPos = neighborTilePos;
-				ArrayListPush(Allocator::Arena, region.Portals, portal);
-			}
-
-			// Start on other end of side, This is so if we have a side with no or few walls, we will have
-			// a min of 2 connections, unless only 1 position for a portal.
-			for (int i = REGION_SIZE - 1; i >= 0; --i)
-			{
-				Vec2i tilePos = pos + Vec2i{ REGION_SIZE - 1, i };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[1];
-
-				Tile* tile = GetTile(tilemap, tilePos);
-				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
-				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				if (tilePos != lastPos)
-				{
-					Portal portal = {};
-					portal.Pos = tilePos;
-					portal.ConnectedPortalPos = neighborTilePos;
-					ArrayListPush(Allocator::Arena, region.Portals, portal);
-				}
+				region.Sides[SIDE] = tilePos;
 				break;
 			}
 
-			lastPos = Vec2i_NULL;
-			hitWall = true;
-			for (int i = 0; i < REGION_SIZE; ++i)
+			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
-				Vec2i tilePos = pos + Vec2i{ i, REGION_SIZE - 1 };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[2];
+				constexpr int SIDE = 2;
+
+				int sideIdx = REGION_SIDE_POINTS[i];
+				Vec2i offset = { i * sideIdx, REGION_SIZE - 1 };
+				Vec2i tilePos = pos + offset;
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
 					continue;
-				}
 
 				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
 				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
-					continue;
-				}
-
-				if (!hitWall)
 					continue;
 
-				lastPos = tilePos;
-				hitWall = false;
-
-				Portal portal = {};
-				portal.Pos = tilePos;
-				portal.ConnectedPortalPos = neighborTilePos;
-
-				ArrayListPush(Allocator::Arena, region.Portals, portal);
-			}
-			// Start on other end of side, This is so if we have a side with no or few walls, we will have
-			// a min of 2 connections, unless only 1 position for a portal.
-			for (int i = REGION_SIZE - 1; i >= 0; --i)
-			{
-				Vec2i tilePos = pos + Vec2i{ i, REGION_SIZE - 1 };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[2];
-
-				Tile* tile = GetTile(tilemap, tilePos);
-				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
-				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				if (tilePos != lastPos)
-				{
-					Portal portal = {};
-					portal.Pos = tilePos;
-					portal.ConnectedPortalPos = neighborTilePos;
-					ArrayListPush(Allocator::Arena, region.Portals, portal);
-				}
+				region.Sides[SIDE] = tilePos;
 				break;
 			}
 
-			lastPos = Vec2i_NULL;
-			hitWall = true;
-			for (int i = 0; i < REGION_SIZE; ++i)
+			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
-				Vec2i tilePos = pos + Vec2i{ 0, i };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[3];
+				constexpr int SIDE = 3;
+
+				int sideIdx = REGION_SIDE_POINTS[i];
+				Vec2i offset = { 0, i * sideIdx };
+				Vec2i tilePos = pos + offset;
+				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
 					continue;
-				}
 
 				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
 				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					hitWall = true;
-					continue;
-				}
-
-				if (!hitWall)
 					continue;
 
-				lastPos = tilePos;
-				hitWall = false;
-
-				Portal portal = {};
-				portal.Pos = tilePos;
-				portal.ConnectedPortalPos = neighborTilePos;
-
-				ArrayListPush(Allocator::Arena, region.Portals, portal);
-			}
-			// Start on other end of side, This is so if we have a side with no or few walls, we will have
-			// a min of 2 connections, unless only 1 position for a portal.
-			for (int i = REGION_SIZE - 1; i >= 0; --i)
-			{
-				Vec2i tilePos = pos + Vec2i{ 0, i };
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[3];
-
-				Tile* tile = GetTile(tilemap, tilePos);
-				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				Tile* neighborTile = GetTile(tilemap, neighborTilePos);
-				if (!neighborTile || neighborTile->Flags.Get(TILE_FLAG_COLLISION))
-				{
-					continue;
-				}
-
-				if (tilePos != lastPos)
-				{
-					Portal portal = {};
-					portal.Pos = tilePos;
-					portal.ConnectedPortalPos = neighborTilePos;
-					ArrayListPush(Allocator::Arena, region.Portals, portal);
-				}
+				region.Sides[SIDE] = tilePos;
 				break;
 			}
-			HashMapTReplace(&RegionMap, &regionPos, &region);
+
+			for (int i = 0; i < REGION_DIR_MAX; ++i)
+			{
+				u8 nodeFrom = REGION_DIR_START[i];
+				u8 nodeTo = REGION_DIR_END[i];
+				SASSERT(nodeFrom != nodeTo);
+
+				Vec2i start = region.Sides[nodeFrom];
+				Vec2i end = region.Sides[nodeTo];
+
+				if (start == Vec2i_NULL || end == Vec2i_NULL)
+					continue;
+
+				struct RegionPathStack
+				{
+					Region* Region;
+					int Index;
+					int TotalCost;
+				};
+
+				RegionPathStack stack = {};
+				stack.Region = &region;
+				stack.Index = i;
+
+				Pathfind(&GetGameState()->Pathfinder, start, end,
+					[](Node* node, void* stack)
+					{
+						RegionPathStack* pathStack = (RegionPathStack*)stack;
+						ArrayList(Vec2i) path = pathStack->Region->Paths[pathStack->Index];
+						ArrayListPush(Allocator::Arena, path, node->Pos);
+						pathStack->Region->PathCost[pathStack->Index] += node->GCost;
+					}, &stack);
+				
+			}
+
+			HashMapTReplace(&RegionMap, &region.Coord, &region);
 		}
 	}
 
@@ -859,12 +705,6 @@ PortalFind(Vec2i pos)
 internal int 
 Pathfind(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack)
 {
-	if (Client.DebugShowTilePaths)
-	{
-		ArrayListClear(Client.PathfinderPath);
-		ArrayListClear(Client.PathfinderVisited);
-	}
-
 	TileMap* tilemap = &GetGameState()->TileMap;
 
 	BHeapClear(pathfinder->Open);
@@ -889,9 +729,6 @@ Pathfind(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, 
 
 		HashMapTRemove(&pathfinder->OpenSet, &curNode->Pos);
 		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
-
-		if (Client.DebugShowTilePaths)
-			ArrayListPush(Allocator::Arena, Client.PathfinderVisited, curNode->Pos);
 
 		if (curNode->Pos == end)
 		{
@@ -965,42 +802,40 @@ void DrawRegions()
 	}
 }
 
+HashSetT<Portal*> PortalsVisited;
+
+
+ArrayList(PortalSearchData*) PortalQueue;
+
 void
-PathfindNodes(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack)
+PathfindNodes(Vec2i start, Vec2i end, void(*callback)(PortalSearchData*, void*), void* stack)
 {
+	Region* startRegion = HashMapTGet(&RegionMap, &start);
+	Portal* startPortal = &startRegion->Portals[0];
 
-	BHeapClear(pathfinder->Open);
-	HashMapTClear(&pathfinder->OpenSet);
-	HashSetTClear(&pathfinder->ClosedSet);
+	Vec2i endRegionCoord = TileCoordToRegionCoord(end);
 
-	Node* node = AllocNode(Node);
-	node->Pos = start;
-	node->Parent = nullptr;
-	node->GCost = 0;
-	node->HCost = CalculateDistance(start, end);
-	node->FCost = node->GCost + node->HCost;
+	HashSetTClear(&PortalsVisited);
+	ArrayListClear(PortalQueue);
 
-	BHeapPushMin(pathfinder->Open, node, node);
-	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node->GCost);
-
-	while (pathfinder->Open->Count > 0)
 	{
-		BHeapItem item = BHeapPopMin(pathfinder->Open);
+		PortalSearchData* data = AllocNode(PortalSearchData);
+		data->Portal = startPortal;
+		data->Parent = nullptr;
+		ArrayListPush(Allocator::Arena, PortalQueue, data);
+	}
 
-		Node* curNode = (Node*)item.User;
+	while (ArrayListCount(PortalQueue) > 0)
+	{
+		PortalSearchData* current = ArrayListLast(PortalQueue);
+		ArrayListPopLast(PortalQueue);
 
-		HashMapTRemove(&pathfinder->OpenSet, &curNode->Pos);
-		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
+		HashSetTSet(&PortalsVisited, &current->Portal);
 
-		Portal* portal = PortalFind(curNode->Pos);
-		SASSERT(portal);
-
-		Portal* connectedPortal = PortalFind(portal->ConnectedPortalPos);
-		SASSERT(connectedPortal);
-
-		if (curNode->Pos == end)
+		Vec2i currentRegion = TileCoordToRegionCoord(current->Portal->Pos);
+		if (currentRegion == endRegionCoord)
 		{
-			Node* prev = curNode;
+			PortalSearchData* prev = current;
 			while (prev)
 			{
 				callback(prev, stack);
@@ -1010,39 +845,21 @@ PathfindNodes(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(No
 		}
 		else
 		{
-			for (int i = 0; i < ArrayListCount(connectedPortal->PortalConnections); ++i)
+			for (int i = 0; i < ArrayListCount(current->Portal->PortalConnections); ++i)
 			{
-				if (connectedPortal->PortalConnections[i].OtherPortal == connectedPortal->Pos)
-					continue;
-				SASSERT(connectedPortal->PortalConnections[i].OtherPortal != connectedPortal->Pos);
-
-				Vec2i nextTile = connectedPortal->PortalConnections[i].OtherPortal;
-
-				if (HashSetTContains(&pathfinder->ClosedSet, &nextTile))
+				Portal* other = PortalFind(current->Portal->PortalConnections[i].OtherPortal);
+				Portal* other2 = PortalFind(other->ConnectedPortalPos);
+				if (HashSetTContains(&PortalsVisited, &other))
 					continue;
 
-				int* nextCost = HashMapTGet(&pathfinder->OpenSet, &nextTile);
-				int cost = curNode->GCost + connectedPortal->PortalConnections[i].Cost;
-				if (!nextCost || cost < *nextCost)
-				{
-					Node* nextNode = AllocNode(Node);
-					nextNode->Pos = nextTile;
-					nextNode->Parent = curNode;
-					nextNode->GCost = cost;
-					nextNode->HCost = CalculateDistance(nextTile, end);
-					nextNode->FCost = nextNode->GCost + nextNode->HCost;
+				HashSetTSet(&PortalsVisited, &other);
 
-					BHeapPushMin(pathfinder->Open, nextNode, nextNode);
-					if (!nextCost)
-					{
-						HashMapTSet(&pathfinder->OpenSet, &nextTile, &nextNode->GCost);
-					}
-					else
-					{
-						*nextCost = nextNode->GCost;
-					}
-				}
+				PortalSearchData* data = AllocNode(PortalSearchData);
+				data->Portal = other2;
+				data->Parent = current;
+				ArrayListPush(Allocator::Arena, PortalQueue, data);
 			}
 		}
+
 	}
 }

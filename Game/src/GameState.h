@@ -62,19 +62,9 @@ struct GameClient
 	// Extra debug values
 	ArrayList(Vec2i) PathfinderVisited;
 	ArrayList(Vec2i) PathfinderPath;
-	ArrayList(Vec2i) DebugRegionsPath;
+	ArrayList(Vec2i) DebugPathfinder;
 
 	bool IsDebugMode;
-
-	union
-	{
-		bool DebugOptions[2];
-		struct
-		{
-			bool DebugShowRegionPaths;
-			bool DebugShowTilePaths;
-		};
-	};
 };
 
 extern struct GameClient Client;
