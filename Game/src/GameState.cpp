@@ -86,6 +86,7 @@ GameInitialize()
 
 	RegionStateInit(&State.RegionState);
 	PathfinderInit(&State.Pathfinder);
+	PathfinderRegionsInit(&State.RegionPathfinder);
 
 	Client.IsDebugMode = true;
 
@@ -153,10 +154,20 @@ GameRun()
 			, {}, 0, WHITE);
 
 		DrawGUI(&State);
-		//DrawFPS(GetScreenWidth() - 128, 2);
+
 		BeginMode2D(State.Camera);
-		DrawRegions();
+		//DrawRegions();
+		for (int i = 0; i < ArrayListCount(Client.MoveData.RegionPath); ++i)
+		{
+			DrawRectangle(
+				Client.MoveData.RegionPath[i].RegionCoord.x * REGION_SIZE * TILE_SIZE,
+				Client.MoveData.RegionPath[i].RegionCoord.y * REGION_SIZE * TILE_SIZE,
+				REGION_SIZE * TILE_SIZE,
+				REGION_SIZE * TILE_SIZE,
+				RED);
+		}
 		EndMode2D();
+
 		EndDrawing();
 
 		zpl_arena_snapshot_end(arenaSnapshot);
@@ -189,13 +200,13 @@ void GameLateUpdate()
 		//	int y = Client.PathfinderVisited[i].y * TILE_SIZE;
 		//	DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, closed);
 		//}
-		Color path = Color{ BLUE.r, BLUE.g, BLUE.b, 155 };
-		for (int i = 0; i < ArrayListCount(Client.DebugPathfinder); ++i)
-		{
-			int x = Client.DebugPathfinder[i].x * TILE_SIZE;
-			int y = Client.DebugPathfinder[i].y * TILE_SIZE;
-			DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, path);
-		}
+		//Color path = Color{ BLUE.r, BLUE.g, BLUE.b, 155 };
+		//for (int i = 0; i < ArrayListCount(Client.DebugPathfinder); ++i)
+		//{
+		//	int x = Client.DebugPathfinder[i].x * TILE_SIZE;
+		//	int y = Client.DebugPathfinder[i].y * TILE_SIZE;
+		//	DrawRectangle(x, y, TILE_SIZE, TILE_SIZE, path);
+		//}
 	//}
 
 	//chunk_map(&State.TileMap.Chunks, [](u64 key, Chunk* chunk) {
@@ -293,13 +304,9 @@ void InputUpdate()
 		stack.Path = &Client.DebugPathfinder;
 		ecs_entity_t selectedEntity = Client.SelectedEntity;
 		const CTransform* transform = ecs_get(State.World, selectedEntity, CTransform);
-		PathfindNodes(transform->TilePos, tile,
-			[](PortalSearchData* node, void* stack)
-			{
-				PathFindStack* pathfindStack = (PathFindStack*)stack;
-				ArrayListPush(Allocator::Arena, *pathfindStack->Path, node->Portal->Pos);
-				SInfoLog("%s", FMT_VEC2I(node->Portal->Pos));
-			}, &stack);
+
+		PathfindRegion(transform->TilePos, tile, &Client.MoveData);
+
 		//MoveEntity(&State, selectedEntity, tile);
 	}
 

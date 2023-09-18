@@ -31,23 +31,6 @@ struct FlowTile
 };
 static_assert(sizeof(FlowTile) == 1);
 
-
-
-struct PortalConnection
-{
-	Vec2i OtherPortal;
-	int Cost;
-	ArrayList(Vec2i) Path;
-};
-
-struct Portal
-{
-	Vec2i Pos;
-	Vec2i ConnectedPortalPos;
-	Vec2i CurRegion;
-	ArrayList(PortalConnection) PortalConnections;
-};
-
 enum class RegionDirection : u8
 {
 	N2W,
@@ -56,7 +39,7 @@ enum class RegionDirection : u8
 	E2N,
 	E2W,
 	E2S,
-	S2E,
+	S2E,//
 	S2N,
 	S2W,
 	W2S,
@@ -68,41 +51,53 @@ enum class RegionDirection : u8
 constexpr int REGION_DIR_MAX = (int)RegionDirection::MAX;
 constexpr u8 REGION_DIR_START[REGION_DIR_MAX] = { 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3 };
 constexpr u8 REGION_DIR_END[REGION_DIR_MAX] = { 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0 };
+constexpr u8 DIRECTION_2_REGION_DIR[4][4] =
+{
+	{ 0, 2, 1, 0 },
+	{ 3, 0, 5, 4 },
+	{ 7, 6, 0, 8 },
+	{ 11, 10, 9, 0 }
+};
 
 struct RegionPath
 {
-	Region* Current;
-	Region* From;
-	int DirectionCur;
-	int DirectionFrom;
+	Vec2i RegionCoord;
 	RegionDirection Direction;
+};
+
+struct RegionNode
+{
+	Vec2i Pos;
+	RegionNode* Parent;
+	int GCost;
+	int HCost;
+	int FCost;
+	u8 SideFrom;
+	u8 SideTo;
 };
 
 struct Region
 {
-	ArrayList(Portal) Portals;
-
 	Vec2i Coord;
 	Vec2i Sides[4];
+	Vec2i SideConnections[4];
 	int PathCost[REGION_DIR_MAX];
 	ArrayList(Vec2i) Paths[REGION_DIR_MAX];
 };
 
-struct PortalSearchData
+struct RegionMoveData
 {
-	Portal* Portal;
-	PortalSearchData* Parent;
-
-	friend inline bool operator==(PortalSearchData left, PortalSearchData right)
-	{
-		return left.Portal == right.Portal && left.Parent == right.Parent;
-	}
+	Vec2i StartRegionTilePos;
+	ArrayList(Vec2i) StartPath;
+	Vec2i EndRegionTilePos;
+	ArrayList(Vec2i) EndPath;
+	ArrayList(RegionPath) RegionPath;
+	bool NeedToPathfindToStart;
+	bool NeedToPathfindToEnd;
 };
 
 void RegionInit2(TileMap* tilemap, Chunk* chunk);
-void PathfindNodes(Vec2i start, Vec2i end, void(*callback)(PortalSearchData*, void*), void* stack);
-//void PortalGenerate(Portal* portal, TileMap* tilemap, Chunk* chunk, const ArrayList(u8) costArray);
-Portal* PortalFind(Vec2i pos);
+void PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData);
 void DrawRegions();
 
 struct RegionPaths

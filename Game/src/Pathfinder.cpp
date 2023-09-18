@@ -36,12 +36,34 @@ CompareCost(void* cur, void* parent)
 		return 1;
 }
 
+internal int
+CompareCostRegions(void* cur, void* parent)
+{
+	RegionNode* nodeCur = (RegionNode*)cur;
+	RegionNode* nodeParent = (RegionNode*)parent;
+
+	if (nodeCur->FCost == nodeParent->FCost)
+		return (nodeCur->HCost < nodeParent->HCost) ? -1 : 1;
+	else if (nodeCur->FCost < nodeParent->FCost)
+		return -1;
+	else
+		return 1;
+}
+
 void
 PathfinderInit(Pathfinder* pathfinder)
 {
 	pathfinder->Open = BHeapCreate(Allocator::Arena, CompareCost, MAX_SEARCH_TILES);
 	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, Allocator::Arena);
 	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, Allocator::Arena);
+}
+
+void
+PathfinderRegionsInit(Pathfinder* pathfinder)
+{
+	pathfinder->Open = BHeapCreate(Allocator::Arena, CompareCostRegions, 128);
+	HashMapTInitialize(&pathfinder->OpenSet, 128, Allocator::Arena);
+	HashSetTInitialize(&pathfinder->ClosedSet, 128, Allocator::Arena);
 }
 
 SList<Vec2i>

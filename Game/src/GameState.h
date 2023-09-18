@@ -49,6 +49,7 @@ struct GameState
 	ActionMgr ActionMgr;
 
 	Pathfinder Pathfinder;
+	struct Pathfinder RegionPathfinder;
 	RegionState RegionState;
 };
 
@@ -56,6 +57,8 @@ struct GameClient
 {
 	ecs_entity_t Player;
 	ecs_entity_t SelectedEntity;
+
+	RegionMoveData MoveData;
 
 	double UpdateTime; // In seconds
 

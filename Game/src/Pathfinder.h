@@ -30,6 +30,7 @@ struct Node
 };
 
 void PathfinderInit(Pathfinder* pathfinder);
+void PathfinderRegionsInit(Pathfinder* pathfinder);
 
 SList<Vec2i> PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
 

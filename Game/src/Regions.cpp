@@ -13,15 +13,6 @@ constexpr global_var int MAX_LOCAL_SEARCH = 256;
 
 #define AllocNode(T) ((T*)GameMalloc(Allocator::Frame, sizeof(T)));
 
-struct RegionNode
-{
-	Vec2i Pos;
-	RegionNode* Parent;
-	int FCost;
-	int HCost;
-	int GCost;
-};
-
 internal _FORCE_INLINE_ Vec2i
 TileCoordToRegionCoord(Vec2i tile)
 {
@@ -34,8 +25,8 @@ TileCoordToRegionCoord(Vec2i tile)
 internal int
 RegionCompareCost(void* cur, void* parent)
 {
-	RegionNode* a = (RegionNode*)cur;
-	RegionNode* b = (RegionNode*)parent;
+	Node* a = (Node*)cur;
+	Node* b = (Node*)parent;
 	if (a->FCost == b->FCost)
 		return (a->HCost < b->HCost) ? -1 : 0;
 	else if (a->FCost < b->FCost)
@@ -203,7 +194,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 	HashMapTClear(&regionState->OpenMap);
 	HashSetTClear(&regionState->ClosedSet);
 
-	RegionNode* node = AllocNode(RegionNode);
+	Node* node = AllocNode(Node);
 	node->Pos = start;
 	node->Parent = nullptr;
 	node->GCost = 0;
@@ -217,7 +208,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 	{
 		BHeapItem item = BHeapPopMin(regionState->Open);
 
-		RegionNode* curNode = (RegionNode*)item.User;
+		Node* curNode = (Node*)item.User;
 
 		bool wasRemoved = HashMapTRemove(&regionState->OpenMap, &curNode->Pos);
 		SASSERT(wasRemoved);
@@ -225,7 +216,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 
 		if (curNode->Pos == end)
 		{
-			RegionNode* prev = curNode;
+			Node* prev = curNode;
 			while (prev)
 			{
 				HashSetTSet(regionSet, &prev->Pos);
@@ -257,7 +248,7 @@ FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i startTile, Vec2
 					int cost = curNode->GCost + CalculateDistance(curNode->Pos, next);
 					if (!nextCost || cost < *nextCost)
 					{
-						RegionNode* nextNode = AllocNode(RegionNode);
+						Node* nextNode = AllocNode(Node);
 						nextNode->Pos = next;
 						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
@@ -394,10 +385,12 @@ GetRegion(RegionState* regionState, Vec2i tilePos)
 global_var SList<Vec2i> PortalSearchQueue;
 global_var HashMapT<Vec2i, Region> RegionMap;
 
-internal int
-Pathfind(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack);
+internal void
+Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end,
+	void(*callback)(Node*, void*), void* stack);
 
-void RegionInit2(TileMap* tilemap, Chunk* chunk)
+void 
+RegionInit2(TileMap* tilemap, Chunk* chunk)
 {
 	SASSERT(tilemap);
 	SASSERT(chunk);
@@ -415,37 +408,23 @@ void RegionInit2(TileMap* tilemap, Chunk* chunk)
 	{
 		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
 		{
-			u8 costArray[REGION_SIZE * REGION_SIZE];
-			int idx = 0;
-			for (int y = 0; y < REGION_SIZE; ++y)
-			{
-				for (int x = 0; x < REGION_SIZE; ++x)
-				{
-					Vec2i pos = chunkWorld + Vec2i{ x, y };
-					Tile* tile = GetTile(tilemap, pos);
-					if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-						costArray[idx] = UINT8_MAX;
-					else
-						costArray[idx] = GetTileInfo(tile->BackgroundId)->MovementCost;
-					++idx;
-				}
-			}
-
 			Region region = {};
 
 			Vec2i pos = chunkWorld + Vec2i{ xDiv * REGION_SIZE, yDiv * REGION_SIZE };
 			
 			region.Coord = startRegion + Vec2i{ xDiv, yDiv };
 
-			for (int i = 0; i < ArrayLength(region.Sides); ++i)
+			for (int i = 0; i < (int)ArrayLength(region.Sides); ++i)
+			{
 				region.Sides[i] = Vec2i_NULL;
+			}
 
-			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
+			for (int i = 0; i < (int)ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
 				constexpr int SIDE = 0;
 
 				int sideIdx = REGION_SIDE_POINTS[i];
-				Vec2i offset = { i * sideIdx, 0 };
+				Vec2i offset = { sideIdx, 0 };
 				Vec2i tilePos = pos + offset;
 				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
@@ -458,15 +437,16 @@ void RegionInit2(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
+				region.Sides[SIDE] = neighborTilePos;
 				break;
 			}
 
-			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
+			for (int i = 0; i < (int)ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
 				constexpr int SIDE = 1;
 
 				int sideIdx = REGION_SIDE_POINTS[i];
-				Vec2i offset = { REGION_SIZE - 1, i * sideIdx };
+				Vec2i offset = { REGION_SIZE - 1, sideIdx };
 				Vec2i tilePos = pos + offset;
 				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
@@ -479,15 +459,16 @@ void RegionInit2(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
+				region.Sides[SIDE] = neighborTilePos;
 				break;
 			}
 
-			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
+			for (int i = 0; i < (int)ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
 				constexpr int SIDE = 2;
 
 				int sideIdx = REGION_SIDE_POINTS[i];
-				Vec2i offset = { i * sideIdx, REGION_SIZE - 1 };
+				Vec2i offset = { sideIdx, REGION_SIZE - 1 };
 				Vec2i tilePos = pos + offset;
 				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
@@ -500,15 +481,16 @@ void RegionInit2(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
+				region.Sides[SIDE] = neighborTilePos;
 				break;
 			}
 
-			for (int i = 0; i < ArrayLength(REGION_SIDE_POINTS); ++i)
+			for (int i = 0; i < (int)ArrayLength(REGION_SIDE_POINTS); ++i)
 			{
 				constexpr int SIDE = 3;
 
 				int sideIdx = REGION_SIDE_POINTS[i];
-				Vec2i offset = { 0, i * sideIdx };
+				Vec2i offset = { 0, sideIdx };
 				Vec2i tilePos = pos + offset;
 				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
 
@@ -521,192 +503,63 @@ void RegionInit2(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
+				region.Sides[SIDE] = neighborTilePos;
 				break;
-			}
-
-			for (int i = 0; i < REGION_DIR_MAX; ++i)
-			{
-				u8 nodeFrom = REGION_DIR_START[i];
-				u8 nodeTo = REGION_DIR_END[i];
-				SASSERT(nodeFrom != nodeTo);
-
-				Vec2i start = region.Sides[nodeFrom];
-				Vec2i end = region.Sides[nodeTo];
-
-				if (start == Vec2i_NULL || end == Vec2i_NULL)
-					continue;
-
-				struct RegionPathStack
-				{
-					Region* Region;
-					int Index;
-					int TotalCost;
-				};
-
-				RegionPathStack stack = {};
-				stack.Region = &region;
-				stack.Index = i;
-
-				Pathfind(&GetGameState()->Pathfinder, start, end,
-					[](Node* node, void* stack)
-					{
-						RegionPathStack* pathStack = (RegionPathStack*)stack;
-						ArrayList(Vec2i) path = pathStack->Region->Paths[pathStack->Index];
-						ArrayListPush(Allocator::Arena, path, node->Pos);
-						pathStack->Region->PathCost[pathStack->Index] += node->GCost;
-					}, &stack);
-				
 			}
 
 			HashMapTReplace(&RegionMap, &region.Coord, &region);
 		}
-	}
 
-	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
-	{
-		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
+		for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
 		{
-			Vec2i pos = chunkWorld + Vec2i{ xDiv* REGION_SIZE, yDiv* REGION_SIZE };
-			Vec2i regionPos = startRegion + Vec2i{ xDiv, yDiv };
-			Region region = *HashMapTGet(&RegionMap, &regionPos);
-			// All portals initialized, generate paths
-			int portalCount = ArrayListCount(region.Portals);
-			for (int i = 0; i < portalCount; ++i)
+			for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
 			{
-				ArrayListReserve(Allocator::Arena, region.Portals[i].PortalConnections, portalCount);
-				ArrayListAdd(Allocator::Arena, region.Portals[i].PortalConnections, portalCount);
-				//ArrayListReserve(Allocator::Arena, region.Portals[i].PortalPaths, portalCount);
-				//ArrayListAdd(Allocator::Arena, region.Portals[i].PortalPaths, portalCount);
+				Vec2i regionCoord = startRegion + Vec2i{ xDiv, yDiv };
+				Region* region = HashMapTGet(&RegionMap, &regionCoord);
+				if (!region)
+					continue;
 
-				for (int j = 0; j < portalCount; ++j)
+				for (int i = 0; i < REGION_DIR_MAX; ++i)
 				{
-					if (region.Portals[i].Pos == region.Portals[j].Pos)
+					u8 nodeFrom = REGION_DIR_START[i];
+					u8 nodeTo = REGION_DIR_END[i];
+					SASSERT(nodeFrom != nodeTo);
+
+					Vec2i start = region->Sides[nodeFrom];
+					Vec2i end = region->Sides[nodeTo];
+
+					if (start == Vec2i_NULL || end == Vec2i_NULL)
 						continue;
 
-					region.Portals[i].PortalConnections[j].OtherPortal = region.Portals[j].Pos;
-					region.Portals[i].PortalConnections[j].Cost = 0;
-					ArrayListReserve(Allocator::Arena, region.Portals[i].PortalConnections[j].Path, portalCount);
-
-					struct PathfindStack
+					struct RegionPathStack
 					{
-						ArrayList(Vec2i) Path;
-						int* PathCost;
+						Region* Region;
+						int Index;
+						int TotalCost;
 					};
 
-					PathfindStack stack;
-					stack.Path = region.Portals[i].PortalConnections[j].Path;
-					stack.PathCost = &region.Portals[i].PortalConnections[j].Cost;
+					RegionPathStack stack = {};
+					stack.Region = region;
+					stack.Index = i;
 
-					int count = Pathfind(&GetGameState()->Pathfinder, region.Portals[i].Pos, region.Portals[j].Pos,
+					Pathfind(&GetGameState()->Pathfinder, &GetGameState()->TileMap, start, end,
 						[](Node* node, void* stack)
 						{
-							PathfindStack* pathfindStack = (PathfindStack*)stack;
-							ArrayListPush(Allocator::Arena, pathfindStack->Path, node->Pos);
-							*pathfindStack->PathCost += node->GCost;
+							RegionPathStack* pathStack = (RegionPathStack*)stack;
+							ArrayListPush(Allocator::Arena, pathStack->Region->Paths[pathStack->Index], node->Pos);
+							pathStack->Region->PathCost[pathStack->Index] += node->GCost;
 						}, &stack);
+
+					ArrayListPush(Allocator::Arena, region->Paths[i], region->SideConnections[nodeTo]);
 				}
 			}
 		}
 	}
-
-}
-/*
-void 
-PortalGenerate(Portal* portal, TileMap* tilemap, Chunk* chunk, const ArrayList(u8) costArray)
-{
-	SASSERT(portal);
-	SASSERT(tilemap);
-	SASSERT(chunk);
-	SASSERT(costArray);
-
-	PortalSearchQueue.Clear();
-
-	Flag64 VisitedSet = {};
-
-	while (PortalSearchQueue.Count > 0)
-	{
-		Vec2i pop;
-		PortalSearchQueue.Pop(&pop);
-
-		int idx = pop.x + pop.y * REGION_SIZE;
-
-		for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
-		{
-			Vec2i next = pop + Vec2i_NEIGHTBORS[i];
-			int nextIdx = next.x + next.y * REGION_SIZE;
-			
-			if (nextIdx < 0 || nextIdx >= REGION_SIZE * REGION_SIZE)
-				continue;
-
-			Tile* tile = GetTile(tilemap, next);
-			if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-			{
-				portal->Integration[nextIdx] = UINT8_MAX;
-				VisitedSet.True(nextIdx);
-				continue;
-			}
-			
-			u8 newCost = costArray[nextIdx] + portal->Integration[idx];
-			if (VisitedSet.Get(nextIdx) && newCost < portal->Integration[nextIdx])
-			{
-				portal->Integration[nextIdx] = newCost;
-				PortalSearchQueue.Push(&next);
-				VisitedSet.True(nextIdx);
-			}
-		}
-	}
-
-	int idx = 0;
-	for (int y = 0; y < REGION_SIZE; ++y)
-	{
-		for (int x = 0; x < REGION_SIZE; ++x)
-		{
-			if (portal->Integration[idx] != UINT8_MAX)
-			{
-				u8 lowestDir = UINT8_MAX;
-				u8 lowest = UINT8_MAX;
-				for (u8 dir = 0; dir < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++dir)
-				{
-					Vec2i neighbor = Vec2i{ x, y } + Vec2i_NEIGHTBORS_CORNERS[dir];
-					int neighborIdx = neighbor.x + neighbor.y * REGION_SIZE;
-					if (portal->Integration[neighborIdx] < lowest)
-					{
-						lowest = portal->Integration[neighborIdx];
-						lowestDir = dir;
-					}
-				}
-				if (lowestDir != UINT8_MAX)
-				{
-					portal->Flow[idx].Dir = lowestDir;
-					portal->Flow[idx].Pathable = true;
-				}
-			}
-			++idx;
-		}
-	}
-}
-*/
-Portal* 
-PortalFind(Vec2i pos)
-{
-	Vec2i regionCoord = TileCoordToRegionCoord(pos);
-	Region* region = HashMapTGet(&RegionMap, &regionCoord);
-	if (region)
-	{
-		for (int i = 0; i < ArrayListCount(region->Portals); ++i)
-		{
-			if (region->Portals[i].Pos == pos)
-				return &region->Portals[i];
-		}
-	}
-	return nullptr;
 }
 
-internal int 
-Pathfind(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack)
+internal void 
+Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack)
 {
-	TileMap* tilemap = &GetGameState()->TileMap;
-
 	BHeapClear(pathfinder->Open);
 	HashMapTClear(&pathfinder->OpenSet);
 	HashSetTClear(&pathfinder->ClosedSet);
@@ -732,16 +585,13 @@ Pathfind(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, 
 
 		if (curNode->Pos == end)
 		{
-			int count = 0;
-
 			Node* prev = curNode;
 			while (prev)
 			{
 				callback(prev, stack);
 				prev = prev->Parent;
-				++count;
 			}
-			return count;
+			return;
 		}
 		else
 		{
@@ -783,83 +633,178 @@ Pathfind(Pathfinder* pathfinder, Vec2i start, Vec2i end, void(*callback)(Node*, 
 			}
 		}
 	}
-	return 0;
 }
 
-void DrawRegions()
+void
+PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 {
-	for (u32 i = 0; i < RegionMap.Capacity; ++i)
+	Pathfinder* pathfinder = &GetGameState()->RegionPathfinder;
+	Pathfinder* pathfinderForTiles = &GetGameState()->Pathfinder;
+	TileMap* tilemap = &GetGameState()->TileMap;
+
+	BHeapClear(pathfinder->Open);
+	HashMapTClear(&pathfinder->OpenSet);
+	HashSetTClear(&pathfinder->ClosedSet);
+
+	moveData->NeedToPathfindToStart = false;
+	moveData->NeedToPathfindToEnd = false;
+	moveData->StartRegionTilePos = tileStart;
+	moveData->EndRegionTilePos = tileEnd;
+	ArrayListClear(moveData->StartPath);
+	ArrayListClear(moveData->EndPath);
+	ArrayListClear(moveData->RegionPath);
+
+
+	Vec2i regionStart = TileCoordToRegionCoord(tileStart);
+	Vec2i regionEnd = TileCoordToRegionCoord(tileEnd);
+
+	Region* curRegion = HashMapTGet(&RegionMap, &regionStart);
+	SASSERT(curRegion);
+
+	Vec2i firstTarget = Vec2i_NULL;
+	int shortestDist = INT32_MAX;
+	int shortestDir = 0;
+	for (int i = 0; i < 4; ++i)
 	{
-		if (RegionMap.Buckets[i].IsUsed)
+		if (curRegion->Sides[i] != Vec2i_NULL)
 		{
-			ArrayList(Portal) portals = RegionMap.Buckets[i].Value.Portals;
-			for (int j = 0; j < ArrayListCount(portals); ++j)
+			firstTarget = curRegion->Sides[i];
+			int dist = CalculateDistance(firstTarget, tileEnd);
+			if (dist < shortestDist)
 			{
-				Vec2i pos = portals[j].Pos;
-				DrawRectangle(pos.x * TILE_SIZE, pos.y * TILE_SIZE, 4, 4, RED);
+				shortestDist = dist;
+				shortestDir = i;
 			}
 		}
 	}
-}
+	SASSERT(firstTarget != Vec2i_NULL);
 
-HashSetT<Portal*> PortalsVisited;
-
-
-ArrayList(PortalSearchData*) PortalQueue;
-
-void
-PathfindNodes(Vec2i start, Vec2i end, void(*callback)(PortalSearchData*, void*), void* stack)
-{
-	Region* startRegion = HashMapTGet(&RegionMap, &start);
-	Portal* startPortal = &startRegion->Portals[0];
-
-	Vec2i endRegionCoord = TileCoordToRegionCoord(end);
-
-	HashSetTClear(&PortalsVisited);
-	ArrayListClear(PortalQueue);
-
-	{
-		PortalSearchData* data = AllocNode(PortalSearchData);
-		data->Portal = startPortal;
-		data->Parent = nullptr;
-		ArrayListPush(Allocator::Arena, PortalQueue, data);
-	}
-
-	while (ArrayListCount(PortalQueue) > 0)
-	{
-		PortalSearchData* current = ArrayListLast(PortalQueue);
-		ArrayListPopLast(PortalQueue);
-
-		HashSetTSet(&PortalsVisited, &current->Portal);
-
-		Vec2i currentRegion = TileCoordToRegionCoord(current->Portal->Pos);
-		if (currentRegion == endRegionCoord)
+	moveData->NeedToPathfindToStart = true;
+	Pathfind(pathfinderForTiles, tilemap, tileStart, firstTarget,
+		[](Node* node, void* stack)
 		{
-			PortalSearchData* prev = current;
+			RegionMoveData* moveData = (RegionMoveData*)stack;
+			ArrayListPush(Allocator::Arena, moveData->StartPath, node->Pos);
+		}, moveData);
+
+	RegionNode* node = AllocNode(RegionNode);
+	node->Pos = regionStart + Vec2i_NEIGHTBORS[shortestDir];
+	node->Parent = nullptr;
+	node->GCost = 0;
+	node->HCost = CalculateDistance(regionStart, regionEnd);
+	node->FCost = node->GCost + node->HCost;
+	node->SideFrom = shortestDir;
+	node->SideTo = 0;
+
+	BHeapPushMin(pathfinder->Open, node, node);
+	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node->GCost);
+
+	while (pathfinder->Open->Count > 0)
+	{
+		BHeapItem item = BHeapPopMin(pathfinder->Open);
+
+		RegionNode* curNode = (RegionNode*)item.User;
+
+		HashMapTRemove(&pathfinder->OpenSet, &curNode->Pos);
+		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
+		Region* curRegion = HashMapTGet(&RegionMap, &curNode->Pos);
+
+		if (curNode->Pos == regionEnd)
+		{
+			Vec2i curTile = curRegion->Sides[curNode->SideFrom];
+
+			if (curTile != tileEnd)
+			{
+				moveData->NeedToPathfindToEnd = true;
+				Pathfind(pathfinderForTiles, tilemap, curTile, tileEnd,
+					[](Node* node, void* stack)
+					{
+						RegionMoveData* moveData = (RegionMoveData*)stack;
+						ArrayListPush(Allocator::Arena, moveData->EndPath, node->Pos);
+					}, moveData);
+			}
+
+			RegionNode* prev = curNode;
 			while (prev)
 			{
-				callback(prev, stack);
+				RegionPath regionPath = {};
+				regionPath.RegionCoord = prev->Pos;
+				regionPath.Direction = (RegionDirection)DIRECTION_2_REGION_DIR[prev->SideFrom][prev->SideTo];
+				ArrayListPush(Allocator::Arena, moveData->RegionPath, regionPath);
 				prev = prev->Parent;
 			}
 			return;
 		}
 		else
 		{
-			for (int i = 0; i < ArrayListCount(current->Portal->PortalConnections); ++i)
+			for (size_t neighborDirection = 0; neighborDirection < ArrayLength(Vec2i_NEIGHTBORS); ++neighborDirection)
 			{
-				Portal* other = PortalFind(current->Portal->PortalConnections[i].OtherPortal);
-				Portal* other2 = PortalFind(other->ConnectedPortalPos);
-				if (HashSetTContains(&PortalsVisited, &other))
+				Vec2i regionNextCoord = curNode->Pos + Vec2i_NEIGHTBORS[neighborDirection];
+
+				if (HashSetTContains(&pathfinder->ClosedSet, &regionNextCoord))
 					continue;
 
-				HashSetTSet(&PortalsVisited, &other);
+				Region* regionNext = HashMapTGet(&RegionMap, &regionNextCoord);
+				if (!regionNext)
+					continue;
+				else
+				{
+					if (regionNext->Sides[neighborDirection] == Vec2i_NULL)
+						continue;
 
-				PortalSearchData* data = AllocNode(PortalSearchData);
-				data->Portal = other2;
-				data->Parent = current;
-				ArrayListPush(Allocator::Arena, PortalQueue, data);
+					constexpr u8 INVERSE[] = { 2, 3, 0, 1 };
+					u8 pathDir = DIRECTION_2_REGION_DIR[curNode->SideFrom][neighborDirection];
+					int* nextCost = HashMapTGet(&pathfinder->OpenSet, &regionNextCoord);
+					int cost = curNode->GCost + CalculateDistance(curNode->Pos, regionNextCoord) + curRegion->PathCost[pathDir];
+					if (!nextCost || cost < *nextCost)
+					{
+						RegionNode* nextNode = AllocNode(RegionNode);
+						nextNode->Pos = regionNextCoord;
+						nextNode->Parent = curNode;
+						nextNode->GCost = cost;
+						nextNode->HCost = CalculateDistance(regionNextCoord, regionEnd);
+						nextNode->FCost = nextNode->GCost + nextNode->HCost;
+						nextNode->SideFrom = INVERSE[neighborDirection];
+						curNode->SideTo = neighborDirection;
+
+						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
+						if (!nextCost)
+						{
+							HashMapTSet(&pathfinder->OpenSet, &regionNextCoord, &nextNode->GCost);
+						}
+						else
+						{
+							*nextCost = nextNode->GCost;
+						}
+					}
+				}
 			}
 		}
+	}
+}
 
+void 
+DrawRegions()
+{
+	for (u32 i = 0; i < RegionMap.Capacity; ++i)
+	{
+		if (RegionMap.Buckets[i].IsUsed)
+		{
+			for (int side = 0; side < (int)ArrayLength(RegionMap.Buckets[i].Value.Sides); ++side)
+			{
+				Vec2i pos = RegionMap.Buckets[i].Value.Sides[side];
+				if (pos != Vec2i_NULL)
+					DrawRectangle(pos.x * TILE_SIZE, pos.y * TILE_SIZE, 4, 4, RED);
+
+				//for (int dir = 0; dir < REGION_DIR_MAX; ++dir)
+				//{
+				//	for (int idx = 0; idx < (int)ArrayListCount(RegionMap.Buckets[i].Value.Paths[dir]); ++idx)
+				//	{
+				//		Vec2i tile = RegionMap.Buckets[i].Value.Paths[dir][idx];
+				//		DrawRectangle(tile.x * TILE_SIZE, tile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, BLUE);
+				//	}
+				//}
+			}
+		}
 	}
 }
