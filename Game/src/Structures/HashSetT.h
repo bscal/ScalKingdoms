@@ -30,8 +30,8 @@ template<typename K>
 void
 HashSetTInitialize(HashSetT<K>* set, uint32_t capacity, Allocator allocator)
 {
-	SASSERT(set);
-	SASSERT(IsAllocatorValid(allocator));
+	SAssert(set);
+	SAssert(IsAllocatorValid(allocator));
 
 	set->Alloc = allocator;
 	if (capacity > 0)
@@ -42,8 +42,8 @@ template<typename K>
 void 
 HashSetTReserve(HashSetT<K>* set, uint32_t capacity)
 {
-	SASSERT(set);
-	SASSERT(IsAllocatorValid(set->Alloc));
+	SAssert(set);
+	SAssert(IsAllocatorValid(set->Alloc));
 
 	if (capacity == 0)
 		capacity = HashSetT<K>::DEFAULT_CAPACITY;
@@ -68,11 +68,11 @@ HashSetTReserve(HashSetT<K>* set, uint32_t capacity)
 			}
 		}
 
-		GameFree(set->Alloc, set->Keys);
+		SFree(set->Alloc, set->Keys);
 
-		SASSERT(set->Keys);
-		SASSERT(set->Count == tmpSet.Count);
-		SASSERT(set->Capacity < tmpSet.Capacity);
+		SAssert(set->Keys);
+		SAssert(set->Count == tmpSet.Count);
+		SAssert(set->Capacity < tmpSet.Capacity);
 		*set = tmpSet;
 	}
 	else
@@ -80,13 +80,13 @@ HashSetTReserve(HashSetT<K>* set, uint32_t capacity)
 		set->Capacity = capacity;
 		set->MaxCount = (uint32_t)((float)set->Capacity * HashSetT<K>::DEFAULT_LOADFACTOR);
 
-		SASSERT(IsPowerOf2_32(set->Capacity));
-		SASSERT(set->MaxCount < set->Capacity);
+		SAssert(IsPowerOf2_32(set->Capacity));
+		SAssert(set->MaxCount < set->Capacity);
 
 		size_t size = sizeof(HashSetTBucket<K>) * set->Capacity;
-		SASSERT(size > 0);
-		set->Keys = (HashSetTBucket<K>*)GameMalloc(set->Alloc, size);
-		SASSERT(set->Keys);
+		SAssert(size > 0);
+		set->Keys = (HashSetTBucket<K>*)SMalloc(set->Alloc, size);
+		SAssert(set->Keys);
 		memset(set->Keys, 0, size);
 	}
 }
@@ -95,7 +95,7 @@ template<typename K>
 void 
 HashSetTClear(HashSetT<K>* set)
 {
-	SASSERT(set);
+	SAssert(set);
 	size_t size = sizeof(HashSetTBucket<K>) * set->Capacity;
 	memset(set->Keys, 0, size);
 	set->Count = 0;
@@ -105,8 +105,8 @@ template<typename K>
 void 
 HashSetTDestroy(HashSetT<K>* set)
 {
-	SASSERT(set);
-	GameFree(set->Alloc, set->Keys);
+	SAssert(set);
+	SFree(set->Alloc, set->Keys);
 	*set = {};
 }
 
@@ -114,17 +114,17 @@ template<typename K>
 bool 
 HashSetTSet(HashSetT<K>* set, const K* key)
 {
-	SASSERT(set);
-	SASSERT(key);
-	SASSERT(IsAllocatorValid(set->Alloc));
-	SASSERT(*key == *key);
+	SAssert(set);
+	SAssert(key);
+	SAssert(IsAllocatorValid(set->Alloc));
+	SAssert(*key == *key);
 
 	if (set->Count >= set->MaxCount)
 	{
 		HashSetTReserve(set, set->Capacity * HashSetT<K>::DEFAULT_RESIZE);
 	}
 
-	SASSERT(set->Keys);
+	SAssert(set->Keys);
 
 	K swapKey = *key;
 	uint32_t idx = HashKey(key, sizeof(K), set->Capacity);
@@ -164,9 +164,9 @@ template<typename K>
 bool 
 HashSetTContains(HashSetT<K>* set, K* key)
 {
-	SASSERT(set);
-	SASSERT(key);
-	SASSERT(*key == *key);
+	SAssert(set);
+	SAssert(key);
+	SAssert(*key == *key);
 	if (!key || !set->Keys || set->Count == 0)
 		return false;
 
@@ -187,7 +187,7 @@ HashSetTContains(HashSetT<K>* set, K* key)
 				idx = 0;
 		}
 	}
-	SASSERT_MSG(false, "Shouldn't be executed");
+	SAssertMsg(false, "Shouldn't be executed");
 	return false;
 }
 
@@ -195,13 +195,13 @@ template<typename K>
 bool 
 HashSetTRemove(HashSetT<K>* set, K* key)
 {
-	SASSERT(set);
-	SASSERT(key);
-	SASSERT(*key == *key);
+	SAssert(set);
+	SAssert(key);
+	SAssert(*key == *key);
 	if (!set->Keys || set->Count == 0)
 		return false;
 
-	uint32_t idx = HashKey(key, sizeof(K), map->Capacity);
+	uint32_t idx = HashKey(key, sizeof(K), set->Capacity);
 	while (true)
 	{
 		HashSetTBucket<K>* bucket = &set->Keys[idx];
@@ -236,13 +236,13 @@ HashSetTRemove(HashSetT<K>* set, K* key)
 				}
 			}
 			else
-			{-
+			{
 				++idx;
 				if (idx == set->Capacity)
 					idx = 0; // continue searching till 0 or found equals key
 			}
 		}
 	}
-	SASSERT_MSG(false, "Shouldn't be executed");
+	SAssertMsg(false, "Shouldn't be executed");
 	return false;
 }

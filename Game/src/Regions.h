@@ -76,6 +76,13 @@ struct RegionNode
 	u8 SideTo;
 };
 
+struct RegionPathfinder
+{
+	BHeap* Open;
+	HashMapT<Vec2i, RegionNode*> OpenSet;
+	HashSetT<Vec2i> ClosedSet;
+};
+
 struct Region
 {
 	Vec2i Coord;
@@ -115,6 +122,8 @@ struct RegionState
 	HashMapT<Vec2i, int> OpenMap;
 	HashSetT<Vec2i> ClosedSet;
 };
+
+void PathfinderRegionsInit(RegionPathfinder* pathfinder);
 
 void RegionStateInit(RegionState* regionState);
 

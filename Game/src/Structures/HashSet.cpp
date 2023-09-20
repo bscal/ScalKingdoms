@@ -8,7 +8,7 @@
 
 void HashSetInitialize(HashSet* set, uint32_t capacity, Allocator allocator)
 {
-	SASSERT(IsAllocatorValid(allocator));
+	SAssert(IsAllocatorValid(allocator));
 
 	set->Alloc = allocator;
 	if (capacity > 0)
@@ -17,7 +17,7 @@ void HashSetInitialize(HashSet* set, uint32_t capacity, Allocator allocator)
 
 void HashSetReserve(HashSet* set, uint32_t capacity)
 {
-	SASSERT(IsAllocatorValid(set->Alloc));
+	SAssert(IsAllocatorValid(set->Alloc));
 
 	if (capacity == 0)
 		capacity = HASHSET_DEFAULT_CAPACITY;
@@ -42,9 +42,9 @@ void HashSetReserve(HashSet* set, uint32_t capacity)
 			}
 		}
 
-		GameFree(set->Alloc, set->Keys);
+		SFree(set->Alloc, set->Keys);
 
-		SASSERT(set->Count == tmpSet.Count);
+		SAssert(set->Count == tmpSet.Count);
 		*set = tmpSet;
 	}
 	else
@@ -53,7 +53,7 @@ void HashSetReserve(HashSet* set, uint32_t capacity)
 
 		size_t newKeysSize = HashMapKeySize(set);
 
-		set->Keys = (HashSetBucket*)GameMalloc(set->Alloc, newKeysSize);
+		set->Keys = (HashSetBucket*)SMalloc(set->Alloc, newKeysSize);
 
 		memset(set->Keys, 0, sizeof(newKeysSize));
 	}
@@ -67,7 +67,7 @@ void HashSetClear(HashSet* set)
 
 void HashSetDestroy(HashSet* set)
 {
-	GameFree(set->Alloc, set->Keys);
+	SFree(set->Alloc, set->Keys);
 	set->Capacity = 0;
 	set->Count = 0;
 }
@@ -79,7 +79,7 @@ bool HashSetSet(HashSet* set, uint64_t hash)
 		HashSetReserve(set, set->Capacity * HASHSET_DEFAULT_RESIZE);
 	}
 
-	SASSERT(set->Keys);
+	SAssert(set->Keys);
 
 	uint64_t swapHash = hash;
 	uint32_t probeLength = 0;

@@ -49,7 +49,7 @@ struct GameState
 	ActionMgr ActionMgr;
 
 	Pathfinder Pathfinder;
-	struct Pathfinder RegionPathfinder;
+	RegionPathfinder RegionPathfinder;
 	RegionState RegionState;
 };
 
@@ -67,6 +67,7 @@ struct GameClient
 	ArrayList(Vec2i) PathfinderPath;
 	ArrayList(Vec2i) DebugPathfinder;
 
+	bool IsConsoleOpen;
 	bool IsDebugMode;
 };
 

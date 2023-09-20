@@ -31,8 +31,8 @@ struct HashMapT
 template<typename K, typename V>
 void HashMapTInitialize(HashMapT<K, V>* map, uint32_t capacity, Allocator alloc)
 {
-	SASSERT(map);
-	SASSERT(IsAllocatorValid(alloc));
+	SAssert(map);
+	SAssert(IsAllocatorValid(alloc));
 
 	map->Alloc = alloc;
 	if (capacity > 0)
@@ -42,8 +42,8 @@ void HashMapTInitialize(HashMapT<K, V>* map, uint32_t capacity, Allocator alloc)
 template<typename K, typename V>
 void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 {
-	SASSERT(map);
-	SASSERT(IsAllocatorValid(map->Alloc));
+	SAssert(map);
+	SAssert(IsAllocatorValid(map->Alloc));
 
 	if (capacity == 0)
 		capacity = HashMapT<K, V>::DEFAULT_CAPACITY;
@@ -68,10 +68,10 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 			}
 		}
 
-		GameFree(map->Alloc, map->Buckets);
+		SFree(map->Alloc, map->Buckets);
 
-		SASSERT(map->Count == tmpMap.Count);
-		SASSERT(map->Capacity < tmpMap.Capacity);
+		SAssert(map->Count == tmpMap.Count);
+		SAssert(map->Capacity < tmpMap.Capacity);
 		*map = tmpMap;
 	}
 	else
@@ -79,13 +79,13 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 		map->Capacity = capacity;
 		map->MaxCount = (uint32_t)((float)map->Capacity * HashMapT<K, V>::DEFAULT_LOADFACTOR);
 
-		SASSERT(IsPowerOf2_32(map->Capacity));
-		SASSERT(map->MaxCount < map->Capacity);
+		SAssert(IsPowerOf2_32(map->Capacity));
+		SAssert(map->MaxCount < map->Capacity);
 		
 		size_t size = sizeof(HashMapTBucket<K, V>) * map->Capacity;
-		SASSERT(size > 0);
-		map->Buckets = (HashMapTBucket<K, V>*)GameMalloc(map->Alloc, size);
-		SASSERT(map->Buckets);
+		SAssert(size > 0);
+		map->Buckets = (HashMapTBucket<K, V>*)SMalloc(map->Alloc, size);
+		SAssert(map->Buckets);
 		memset(map->Buckets, 0, size);
 	}
 }
@@ -93,7 +93,7 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 template<typename K, typename V>
 void HashMapTClear(HashMapT<K, V>* map)
 {
-	SASSERT(map);
+	SAssert(map);
 	for (uint32_t i = 0; i < map->Capacity; ++i)
 	{
 		map->Buckets[i].ProbeLength = 0;
@@ -105,8 +105,8 @@ void HashMapTClear(HashMapT<K, V>* map)
 template<typename K, typename V>
 void HashMapTDestroy(HashMapT<K, V>* map)
 {
-	SASSERT(map);
-	GameFree(map->Alloc, map->Buckets);
+	SAssert(map);
+	SFree(map->Alloc, map->Buckets);
 	map->Capacity = 0;
 	map->Count = 0;
 }
@@ -114,17 +114,17 @@ void HashMapTDestroy(HashMapT<K, V>* map)
 template<typename K, typename V>
 uint32_t HashMapTSet(HashMapT<K, V>* map, K* key, V* value)
 {
-	SASSERT(map);
-	SASSERT(key);
-	SASSERT(IsAllocatorValid(map->Alloc));
-	SASSERT(*key == *key);
+	SAssert(map);
+	SAssert(key);
+	SAssert(IsAllocatorValid(map->Alloc));
+	SAssert(*key == *key);
 
 	if (map->Count >= map->MaxCount)
 	{
 		HashMapTReserve(map, map->Capacity * HashMapT<K, V>::DEFAULT_RESIZE);
 	}
 
-	SASSERT(map->Buckets);
+	SAssert(map->Buckets);
 
 	HashMapTBucket<K, V> swapBucket;
 	swapBucket.Key = *key;
@@ -136,7 +136,7 @@ uint32_t HashMapTSet(HashMapT<K, V>* map, K* key, V* value)
 		swapBucket.Value = {};
 
 	uint32_t insertedIndex = HashMapT<K, V>::NOT_FOUND;
-	uint32_t probeLength = 0;
+	uint16_t probeLength = 0;
 	uint32_t idx = HashKey(key, sizeof(K), map->Capacity);
 	while (true)
 	{
@@ -189,7 +189,7 @@ template<typename K, typename V>
 uint32_t HashMapTReplace(HashMapT<K, V>* map, K* key, V* value)
 {
 	uint32_t insertedIdx = HashMapTSet<K, V>(map, key, nullptr);
-	SASSERT(insertedIdx != UINT32_MAX);
+	SAssert(insertedIdx != UINT32_MAX);
 	map->Buckets[insertedIdx].Value = *value;
 	return insertedIdx;
 }
@@ -197,15 +197,15 @@ uint32_t HashMapTReplace(HashMapT<K, V>* map, K* key, V* value)
 template<typename K, typename V>
 uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 {
-	SASSERT(map);
-	SASSERT(key);
-	SASSERT(IsAllocatorValid(map->Alloc));
-	SASSERT(*key == *key);
+	SAssert(map);
+	SAssert(key);
+	SAssert(IsAllocatorValid(map->Alloc));
+	SAssert(*key == *key);
 
 	if (!map->Buckets || map->Count == 0)
 		return HashMapT<K, V>::NOT_FOUND;
 
-	SASSERT(map->Buckets);
+	SAssert(map->Buckets);
 
 	uint32_t probeLength = 0;
 	uint32_t idx = HashKey(key, sizeof(K), map->Capacity);
@@ -224,7 +224,7 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 				idx = 0;
 		}
 	}
-	SASSERT_MSG(false, "Shouldn't be executed");
+	SAssertMsg(false, "Shouldn't be executed");
 	return HashMapT<K,V>::NOT_FOUND;
 }
 
@@ -238,14 +238,14 @@ V* HashMapTGet(HashMapT<K, V>* map, K* key)
 template<typename K, typename V>
 bool HashMapTRemove(HashMapT<K, V>* map, const K* key)
 {
-	SASSERT(map);
-	SASSERT(key);
-	SASSERT(*key == *key);
+	SAssert(map);
+	SAssert(key);
+	SAssert(*key == *key);
 
 	if (!map->Buckets || map->Count == 0)
 		return false;
 
-	SASSERT(map->Buckets);
+	SAssert(map->Buckets);
 
 	uint32_t index = HashKey(key, sizeof(K), map->Capacity);
 	while (true)
@@ -288,14 +288,14 @@ bool HashMapTRemove(HashMapT<K, V>* map, const K* key)
 			}
 		}
 	}
-	SASSERT_MSG(false, "Shouldn't be executed");
+	SAssertMsg(false, "Shouldn't be executed");
 	return false;
 }
 
 template<typename K, typename V>
 void HashMapTForEach(HashMapT<K, V>* map, void(*Fn)(K*, V*, void*), void* stackMemory)
 {
-	SASSERT(Fn);
+	SAssert(Fn);
 	for (uint32_t i = 0; i < map->Capacity; ++i)
 	{
 		if (map->Buckets[i].IsUsed)

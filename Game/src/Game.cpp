@@ -35,7 +35,7 @@ void DestroyCreature(GameState* gamestate, ecs_entity_t entity)
 	if (ecs_is_valid(gamestate->World, entity))
 	{
 		const CTransform* transform = ecs_get(gamestate->World, entity, CTransform);
-		SASSERT(transform);
+		SAssert(transform);
 
 		HashMapTRemove(&gamestate->EntityMap, &transform->TilePos);
 
@@ -48,7 +48,7 @@ void MoveEntity(GameState* state, ecs_entity_t id, Vec2i tile)
 	if (ecs_is_valid(state->World, id))
 	{
 		const CTransform* transform = ecs_get(state->World, id, CTransform);
-		SASSERT(transform);
+		SAssert(transform);
 
 		CMove* move = ecs_get_mut(state->World, id, CMove);
 		if (move)

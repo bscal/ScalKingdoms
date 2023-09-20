@@ -5,6 +5,7 @@
 #include "Tile.h"
 #include "Sprite.h"
 #include "Systems.h"
+#include "Console.h"
 
 #define COMPONENT_DECLARATION
 #include "Components.h"
@@ -45,6 +46,18 @@ GameInitialize()
 	//SInfoLog("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
 	//	, threadCount, affinity.thread_count, affinity.core_count);
 
+	ConsoleInit();
+
+	Command cmd = {};
+	cmd.ArgumentString = zpl_string_make(ZplAllocatorMalloc, "Testing args");
+	cmd.OnCommand = [](zpl_string cmd, const char** arg, int argCount)
+	{
+		SInfoLog("Command executed! %s, %d", cmd, argCount);
+
+		return 0;
+	};
+	ConsoleRegisterCommand(zpl_string_make(ZplAllocatorMalloc, "TestCommand"), &cmd);
+
 	InitWindow(WIDTH, HEIGHT, TITLE);
 	SetTraceLogLevel(LOG_ALL);
 	SetTargetFPS(60);
@@ -57,7 +70,7 @@ GameInitialize()
 	LoadAssets(&State);
 
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
-	SASSERT(guiInitialized);
+	SAssert(guiInitialized);
 
 	HashMapTInitialize(&State.EntityMap, 64, Allocator::Arena);
 
@@ -153,19 +166,11 @@ GameRun()
 			, { 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() }
 			, {}, 0, WHITE);
 
+		ConsoleDraw(&Client, &State.GUIState);
 		DrawGUI(&State);
 
 		BeginMode2D(State.Camera);
-		//DrawRegions();
-		for (int i = 0; i < ArrayListCount(Client.MoveData.RegionPath); ++i)
-		{
-			DrawRectangle(
-				Client.MoveData.RegionPath[i].RegionCoord.x * REGION_SIZE * TILE_SIZE,
-				Client.MoveData.RegionPath[i].RegionCoord.y * REGION_SIZE * TILE_SIZE,
-				REGION_SIZE * TILE_SIZE,
-				REGION_SIZE * TILE_SIZE,
-				RED);
-		}
+		DrawRegions();
 		EndMode2D();
 
 		EndDrawing();
@@ -255,7 +260,12 @@ void InputUpdate()
 	}
 	
 	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
-	State.Camera.target = transform->Pos;
+	State.Camera.target.x += movement.x;
+	State.Camera.target.y += movement.y;
+	if (IsKeyPressed(KEY_P))
+	{
+		State.Camera.target = transform->Pos;
+	}
 
 	float mouseWheel = GetMouseWheelMove();
 	if (mouseWheel != 0)
@@ -303,10 +313,7 @@ void InputUpdate()
 		PathFindStack stack = {};
 		stack.Path = &Client.DebugPathfinder;
 		ecs_entity_t selectedEntity = Client.SelectedEntity;
-		const CTransform* transform = ecs_get(State.World, selectedEntity, CTransform);
-
 		PathfindRegion(transform->TilePos, tile, &Client.MoveData);
-
 		//MoveEntity(&State, selectedEntity, tile);
 	}
 
@@ -321,6 +328,11 @@ void InputUpdate()
 			const char* entityInfo = ecs_entity_str(State.World, *entity);
 			SInfoLog("%s", entityInfo);
 		}
+	}
+
+	if (IsKeyPressed(KEY_BACKSLASH))
+	{
+		Client.IsConsoleOpen = !Client.IsConsoleOpen;
 	}
 }
 

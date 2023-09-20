@@ -47,8 +47,8 @@ u16 TileMgrRegisterTile(const TileInfo* tileInfo)
 
 TileInfo* GetTileInfo(u16 id)
 {
-	SASSERT(TileManager.TileDefinitions);
-	SASSERT(id < zpl_array_count(TileManager.TileDefinitions));
+	SAssert(TileManager.TileDefinitions);
+	SAssert(id < zpl_array_count(TileManager.TileDefinitions));
 	if (id >= zpl_array_count(TileManager.TileDefinitions))
 		return &TileManager.TileDefinitions[0];
 
@@ -62,7 +62,7 @@ TileInfo* GetTileInfoTile(Tile tile)
 
 Texture2D* GetTileSheet()
 {
-	SASSERT(TileManager.TileSetTexture->id > 0);
+	SAssert(TileManager.TileSetTexture->id > 0);
 	return TileManager.TileSetTexture;
 }
 

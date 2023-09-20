@@ -9,10 +9,18 @@ struct HashStrSlot;
 
 typedef bool(*HashMapKVCompare)(const void*, const void*);
 
+struct HashStrSlot
+{
+	zpl_string String;
+	u32 Hash;
+	u16 ProbeLength;
+	bool IsUsed;
+};
+
 // Robin hood hashmap seperating Slots (probelength, tombstone), Keys, Values
 struct HashMapStr
 {
-	HashStrSlot* Slots;
+	HashStrSlot* Buckets;
 	void* Values;
 	u32 ValueStride;
 	u32 Capacity;

@@ -33,8 +33,8 @@ internal void OnChunkUpdate(GameState* gameState, Chunk* chunk); // When a chunk
 void
 TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 {
-	SASSERT(gameState);
-	SASSERT(tilemap);
+	SAssert(gameState);
+	SAssert(tilemap);
 
 	if (dimensions.width <= 0 || dimensions.height <= 0)
 	{
@@ -203,7 +203,7 @@ InternalChunkLoad(TileMap* tilemap, Vec2i coord)
 		return nullptr;
 
 	Chunk* chunk = zpl_array_back(tilemap->ChunkLoader.ChunkPool);
-	SASSERT(chunk);
+	SAssert(chunk);
 	zpl_array_pop(tilemap->ChunkLoader.ChunkPool);
 
 	chunk->Coord = coord;
@@ -227,8 +227,8 @@ InternalChunkLoad(TileMap* tilemap, Vec2i coord)
 internal void
 InternalChunkUnload(TileMap* tilemap, Chunk* chunk)
 {
-	SASSERT(tilemap);
-	SASSERT(chunk);
+	SAssert(tilemap);
+	SAssert(chunk);
 
 	chunk->IsLoaded = false;
 
@@ -376,7 +376,7 @@ GetLocalTileIdx(Vec2i tile)
 	int x = IntModNegative(tile.x, CHUNK_SIZE);
 	int y = IntModNegative(tile.y, CHUNK_SIZE);
 	size_t idx = (size_t)x + (size_t)y * CHUNK_SIZE;
-	SASSERT(idx < CHUNK_AREA);
+	SAssert(idx < CHUNK_AREA);
 	return idx;
 }
 
@@ -418,7 +418,7 @@ GetTile(TileMap* tilemap, Vec2i tileCoord)
 	{
 		size_t idx = GetLocalTileIdx(tileCoord);
 		Tile* tile = &chunk->TileArray[idx];
-		SASSERT(tile);
+		SAssert(tile);
 		return tile;
 	}
 	else
@@ -439,8 +439,8 @@ FindTile(TileMap* tilemap, Vec2i coord)
 void
 SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile)
 {
-	SASSERT(tilemap);
-	SASSERT(tile);
+	SAssert(tilemap);
+	SAssert(tile);
 	Chunk* chunk = GetChunk(tilemap, coord);
 	if (chunk)
 	{
@@ -453,9 +453,9 @@ SetTile(TileMap* tilemap, Vec2i coord, const Tile* tile)
 void
 SetTileId(Chunk* chunk, size_t idx, u16 tile, short layer)
 {
-	SASSERT(chunk);
-	SASSERT(idx < CHUNK_AREA);
-	SASSERT(layer >= 0);
+	SAssert(chunk);
+	SAssert(idx < CHUNK_AREA);
+	SAssert(layer >= 0);
 	if (chunk)
 	{
 		chunk->BakeState = ChunkUpdateState::Self;

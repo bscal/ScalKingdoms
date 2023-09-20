@@ -10,14 +10,6 @@ constexpr global_var float DEFAULT_LOADFACTOR = .85f;
 #define IndexArray(arr, idx, stride) (((u8*)(arr)) + ((idx) * (stride)))
 #define IndexValue(hashmap, idx) (IndexArray(hashmap->Values, idx, hashmap->ValueStride))
 
-struct HashStrSlot
-{
-	zpl_string String;
-	u32 Hash;
-	u16 ProbeLength;
-	bool IsUsed;
-};
-
 struct HashMapStrSetResults
 {
 	u32 Index;
@@ -30,9 +22,9 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 void 
 HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, Allocator alloc)
 {
-	SASSERT(map);
-	SASSERT(IsAllocatorValid(alloc));
-	SASSERT(valueStride > 0);
+	SAssert(map);
+	SAssert(IsAllocatorValid(alloc));
+	SAssert(valueStride > 0);
 
 	map->Alloc = alloc;
 	map->ValueStride = valueStride;
@@ -43,9 +35,9 @@ HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, Allocator a
 void 
 HashMapStrReserve(HashMapStr* map, uint32_t capacity)
 {
-	SASSERT(map);
-	SASSERT(IsAllocatorValid(map->Alloc));
-	SASSERT(map->ValueStride > 0);
+	SAssert(map);
+	SAssert(IsAllocatorValid(map->Alloc));
+	SAssert(map->ValueStride > 0);
 
 	if (capacity == 0)
 		capacity = DEFAULT_CAPACITY;
@@ -56,7 +48,7 @@ HashMapStrReserve(HashMapStr* map, uint32_t capacity)
 	if (!IsPowerOf2_32(capacity))
 		capacity = AlignPowTwo32(capacity);
 
-	if (map->Slots)
+	if (map->Buckets)
 	{
 		HashMapStr tmpMap = {};
 		tmpMap.ValueStride = map->ValueStride;
@@ -65,16 +57,16 @@ HashMapStrReserve(HashMapStr* map, uint32_t capacity)
 
 		for (u32 i = 0; i < map->Capacity; ++i)
 		{
-			if (map->Slots[i].IsUsed)
+			if (map->Buckets[i].IsUsed)
 			{
-				HashMapStrSet(&tmpMap, map->Slots[i].String, IndexValue(map, i));
+				HashMapStrSet(&tmpMap, map->Buckets[i].String, IndexValue(map, i));
 			}
 		}
 
-		GameFree(map->Alloc, map->Slots);
-		GameFree(map->Alloc, map->Values);
+		SFree(map->Alloc, map->Buckets);
+		SFree(map->Alloc, map->Values);
 
-		SASSERT(map->Count == tmpMap.Count);
+		SAssert(map->Count == tmpMap.Count);
 		*map = tmpMap;
 	}
 	else
@@ -82,23 +74,23 @@ HashMapStrReserve(HashMapStr* map, uint32_t capacity)
 		map->Capacity = capacity;
 		map->MaxCount = (u32)((float)map->Capacity * DEFAULT_LOADFACTOR);
 
-		map->Slots = (HashStrSlot*)GameMalloc(map->Alloc, sizeof(HashStrSlot) * map->Capacity);
-		memset(map->Slots, 0, sizeof(HashStrSlot) * map->Capacity);
+		map->Buckets = (HashStrSlot*)SMalloc(map->Alloc, sizeof(HashStrSlot) * map->Capacity);
+		memset(map->Buckets, 0, sizeof(HashStrSlot) * map->Capacity);
 
-		map->Values = GameMalloc(map->Alloc, map->ValueStride * map->Capacity);
+		map->Values = SMalloc(map->Alloc, map->ValueStride * map->Capacity);
 	}
 }
 
 void HashMapStrClear(HashMapStr* map)
 {
-	memset(map->Slots, 0, sizeof(HashStrSlot) * map->Capacity);
+	memset(map->Buckets, 0, sizeof(HashStrSlot) * map->Capacity);
 	map->Count = 0;
 }
 
 void HashMapStrFree(HashMapStr* map)
 {
-	GameFree(map->Alloc, map->Slots);
-	GameFree(map->Alloc, map->Values);
+	SFree(map->Alloc, map->Buckets);
+	SFree(map->Alloc, map->Values);
 	map->Capacity = 0;
 	map->Count = 0;
 }
@@ -126,11 +118,11 @@ HashMapStrSetZeroed(HashMapStr* map, const zpl_string key)
 
 uint32_t HashMapStrFind(HashMapStr* map, const zpl_string key)
 {
-	SASSERT(map);
-	SASSERT(key);
-	SASSERT(IsAllocatorValid(map->Alloc));
+	SAssert(map);
+	SAssert(key);
+	SAssert(IsAllocatorValid(map->Alloc));
 
-	if (!map->Slots || map->Count == 0)
+	if (!map->Buckets || map->Count == 0)
 		return HASHMAPSTR_NOT_FOUND;
 
 	size_t length = zpl_string_length(key);
@@ -139,7 +131,7 @@ uint32_t HashMapStrFind(HashMapStr* map, const zpl_string key)
 	u32 probeLength = 0;
 	while (true)
 	{
-		HashStrSlot slot = map->Slots[idx];
+		HashStrSlot slot = map->Buckets[idx];
 		if (!slot.IsUsed || probeLength > slot.ProbeLength)
 			return HASHMAPSTR_NOT_FOUND;
 		else if (slot.Hash == hash && zpl_string_are_equal(key, slot.String))
@@ -167,11 +159,11 @@ HashMapStrGet(HashMapStr* map, const zpl_string key)
 
 bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
 {
-	SASSERT(map);
-	SASSERT(key);
-	SASSERT(IsAllocatorValid(map->Alloc));
+	SAssert(map);
+	SAssert(key);
+	SAssert(IsAllocatorValid(map->Alloc));
 
-	if (!map->Slots || map->Count == 0)
+	if (!map->Buckets || map->Count == 0)
 		return false;
 
 	size_t length = zpl_string_length(key);
@@ -179,7 +171,7 @@ bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
 	u32 idx = hash & (map->Capacity - 1);
 	while (true)
 	{
-		HashStrSlot slot = map->Slots[idx];
+		HashStrSlot slot = map->Buckets[idx];
 		if (!slot.IsUsed)
 		{
 			return false;
@@ -193,19 +185,19 @@ bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
 				if (idx == map->Capacity)
 					idx = 0;
 
-				HashStrSlot nextSlot = map->Slots[idx];
+				HashStrSlot nextSlot = map->Buckets[idx];
 				if (!nextSlot.IsUsed || nextSlot.ProbeLength == 0) // No more entires to move
 				{
-					map->Slots[lastIdx].ProbeLength = 0;
-					map->Slots[lastIdx].IsUsed = 0;
+					map->Buckets[lastIdx].ProbeLength = 0;
+					map->Buckets[lastIdx].IsUsed = 0;
 					--map->Count;
 					return true;
 				}
 				else
 				{
-					map->Slots[lastIdx].String = nextSlot.String;
-					map->Slots[lastIdx].Hash = nextSlot.Hash;
-					map->Slots[lastIdx].ProbeLength = nextSlot.ProbeLength - 1;
+					map->Buckets[lastIdx].String = nextSlot.String;
+					map->Buckets[lastIdx].Hash = nextSlot.Hash;
+					map->Buckets[lastIdx].ProbeLength = nextSlot.ProbeLength - 1;
 					memcpy(IndexValue(map, lastIdx), IndexValue(map, idx), map->ValueStride);
 				}
 			}
@@ -217,32 +209,32 @@ bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
 				idx = 0; // continue searching till 0 or found equals key
 		}
 	}
-	SASSERT_MSG(false, "shouldn't be called");
+	SAssertMsg(false, "shouldn't be called");
 	return false;
 }
 
 internal HashMapStrSetResults
 HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 {
-	SASSERT(map);
-	SASSERT(key);
-	SASSERT(IsAllocatorValid(map->Alloc));
-	SASSERT(map->ValueStride > 0);
+	SAssert(map);
+	SAssert(key);
+	SAssert(IsAllocatorValid(map->Alloc));
+	SAssert(map->ValueStride > 0);
 
 	if (map->Count >= map->MaxCount)
 	{
 		HashMapStrReserve(map, map->Capacity * DEFAULT_RESIZE);
 	}
 
-	SASSERT(map->Slots);
+	SAssert(map->Buckets);
 
 	HashStrSlot swapSlot = {};
 	swapSlot.String = key;
 	swapSlot.IsUsed = true;
 
-	SASSERT(map->ValueStride < Kilobytes(16));
+	SAssert(map->ValueStride < Kilobytes(16));
 	void* swapValue = _alloca(map->ValueStride);
-	SASSERT(swapValue);
+	SAssert(swapValue);
 
 	if (value)
 	{
@@ -264,7 +256,7 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 	u32 probeLength = 0;
 	while (true)
 	{
-		HashStrSlot* slot = &map->Slots[idx];
+		HashStrSlot* slot = &map->Buckets[idx];
 		if (!slot->IsUsed) // Bucket is not used
 		{
 			*slot = swapSlot;
@@ -287,7 +279,7 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 				if (res.Index == HASHMAPSTR_NOT_FOUND)
 					res.Index = idx;
 
-				swapSlot.ProbeLength = probeLength;
+				swapSlot.ProbeLength = (u16)probeLength;
 				probeLength = slot->ProbeLength;
 				Swap(swapSlot, *slot, HashStrSlot);
 				{
@@ -308,7 +300,7 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 			if (idx == map->Capacity)
 				idx = 0;
 
-			SASSERT_MSG(probeLength <= 127, "probeLength is > 127, using bad hash?");
+			SAssertMsg(probeLength <= 127, "probeLength is > 127, using bad hash?");
 		}
 	}
 	return res;

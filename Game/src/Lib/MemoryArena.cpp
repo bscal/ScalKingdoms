@@ -179,8 +179,8 @@ InsertMemNode(MemArena* memArena, AllocList* list, MemNode* node, bool is_bucket
 
 MemArena MemArenaCreate(void* _RESTRICT_ buf, size_t size)
 {
-    SASSERT(buf);
-    SASSERT(size > 0);
+    SAssert(buf);
+    SAssert(size > 0);
 
     MemArena memArena = { 0 };
 
@@ -200,7 +200,7 @@ MemArena MemArenaCreate(void* _RESTRICT_ buf, size_t size)
 
 void* MemArenaGetBasePtr(MemArena* memArena)
 {
-    SASSERT(memArena);
+    SAssert(memArena);
     if (memArena)
     {
         return (void*)memArena->Mem;
@@ -213,7 +213,7 @@ void* MemArenaGetBasePtr(MemArena* memArena)
 
 void* MemArenaAlloc(MemArena* memArena, size_t size)
 {
-    SASSERT(memArena);
+    SAssert(memArena);
     if ((size == 0) || (size > memArena->Size))
     {
         return nullptr;
@@ -222,7 +222,7 @@ void* MemArenaAlloc(MemArena* memArena, size_t size)
     {
         MemNode* new_mem = nullptr;
         size_t allocSize = AlignSize(size + sizeof(*new_mem), MEMARENA_ALIGNMENT);
-        SASSERT(allocSize >= MEMARENA_ALIGNMENT);
+        SAssert(allocSize >= MEMARENA_ALIGNMENT);
 
         // If the size is small enough, let's check if our buckets has a fitting memory block.
         if (allocSize > MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1])
@@ -247,9 +247,9 @@ void* MemArenaAlloc(MemArena* memArena, size_t size)
             case(MEMARENA_SIZES[7]): bucketSlot = 7; break;
             default: SError("Invalid memory size for bucket!");  return nullptr;
             }
-            SASSERT(bucketSlot < MEMARENA_BUCKET_SIZE);
-            SASSERT(allocSize == MEMARENA_SIZES[bucketSlot]);
-            SASSERT(allocSize <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
+            SAssert(bucketSlot < MEMARENA_BUCKET_SIZE);
+            SAssert(allocSize == MEMARENA_SIZES[bucketSlot]);
+            SAssert(allocSize <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
             new_mem = FindMemNode(&memArena->Buckets[bucketSlot], allocSize);
         }
 
@@ -291,7 +291,7 @@ void* MemArenaAlloc(MemArena* memArena, size_t size)
 
 void* MemArenaRealloc(MemArena* _RESTRICT_ memArena, void* ptr, size_t size)
 {
-    SASSERT(memArena);
+    SAssert(memArena);
     if (size > memArena->Size) return nullptr;
     else if (ptr == nullptr) return MemArenaAlloc(memArena, size);
     else if ((uintptr_t)ptr - sizeof(MemNode) < memArena->Mem)return nullptr;
@@ -316,8 +316,8 @@ void* MemArenaRealloc(MemArena* _RESTRICT_ memArena, void* ptr, size_t size)
 
 void MemArenaFree(MemArena* _RESTRICT_ memArena, void* ptr)
 {
-    SASSERT(memArena);
-    SASSERT(ptr);
+    SAssert(memArena);
+    SAssert(ptr);
 
     uintptr_t p = (uintptr_t)ptr;
 
@@ -357,9 +357,9 @@ void MemArenaFree(MemArena* _RESTRICT_ memArena, void* ptr)
             case(MEMARENA_SIZES[6]): bucketSlot = 6; break;
             case(MEMARENA_SIZES[7]): bucketSlot = 7; break;
             }
-            SASSERT(bucketSlot < MEMARENA_BUCKET_SIZE);
-            SASSERT(mem_node->size == MEMARENA_SIZES[bucketSlot]);
-            SASSERT(mem_node->size <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
+            SAssert(bucketSlot < MEMARENA_BUCKET_SIZE);
+            SAssert(mem_node->size == MEMARENA_SIZES[bucketSlot]);
+            SAssert(mem_node->size <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
             InsertMemNode(memArena, &memArena->Buckets[bucketSlot], mem_node, true);
         }
         else
@@ -371,8 +371,8 @@ void MemArenaFree(MemArena* _RESTRICT_ memArena, void* ptr)
 
 void MemArenaCleanUp(MemArena* _RESTRICT_ memArena, void** ptrref)
 {
-    SASSERT(ptrref);
-    SASSERT(*ptrref);
+    SAssert(ptrref);
+    SAssert(*ptrref);
     MemArenaFree(memArena, *ptrref);
     *ptrref = nullptr;
 }
@@ -395,7 +395,7 @@ size_t MemArenaGetFreeMemory(MemArena memArena)
 
 void MemArenaReset(MemArena* memArena)
 {
-    SASSERT(memArena);
+    SAssert(memArena);
 
     memArena->Large.Head = memArena->Large.Tail = nullptr;
     memArena->Large.Length = 0;

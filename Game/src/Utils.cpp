@@ -5,12 +5,12 @@ TextSplitBuffered(const char* text, char delimiter, int* _RESTRICT_ count,
 	char* _RESTRICT_ buffer, int bufferLength,
 	char** _RESTRICT_ splitBuffer, int splitBufferLength)
 {
-	SASSERT(text);
-	SASSERT(count);
-	SASSERT(buffer);
-	SASSERT(bufferLength > 0);
-	SASSERT(splitBuffer);
-	SASSERT(splitBufferLength > 0);
+	SAssert(text);
+	SAssert(count);
+	SAssert(buffer);
+	SAssert(bufferLength > 0);
+	SAssert(splitBuffer);
+	SAssert(splitBufferLength > 0);
 	
 	splitBuffer[0] = buffer;
 	int counter = 0;
@@ -92,7 +92,7 @@ Str2UInt(u32* out, const char* s, int base)
 int 
 FastAtoi(const char* str)
 {
-	SASSERT(str);
+	SAssert(str);
 	int val = 0;
 	for (; *str; ++str)
 	{

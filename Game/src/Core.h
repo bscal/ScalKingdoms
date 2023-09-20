@@ -38,7 +38,7 @@ typedef Vector2 Vec2;
 typedef zpl_string String;
 
 #define internal static
-#define local_persistent static
+#define local_static static
 #define global_var static
 
 #if defined(__clang__) || defined(__GNUC__)
@@ -111,18 +111,18 @@ typedef zpl_string String;
 
 #if SCAL_DEBUG
 	#if _MSC_VER
-		#define DEBUG_BREAK(void) __debugbreak()
+		#define DebugBreak(void) __debugbreak()
 	#else
-		#define DEBUG_BREAK(void) __builtin_trap()
+		#define DebugBreak(void) __builtin_trap()
 	#endif
-	#define SASSERT(expr) if (!(expr)) { TraceLog(LOG_ERROR, "Assertion Failure: %s\nMessage: % s\n  File : % s, Line : % d\n", #expr, "", __FILE__, __LINE__); DEBUG_BREAK(void); } 
-	#define SASSERT_MSG(expr, msg) if (!(expr)) { TraceLog(LOG_ERROR, "Assertion Failure: %s\nMessage: % s\n  File : % s, Line : % d\n", #expr, msg, __FILE__, __LINE__); DEBUG_BREAK(void); }
+	#define SAssert(expr) if (!(expr)) { TraceLog(LOG_ERROR, "Assertion Failure: %s\nMessage: % s\n  File : % s, Line : % d\n", #expr, "", __FILE__, __LINE__); DebugBreak(void); } 
+	#define SAssertMsg(expr, msg) if (!(expr)) { TraceLog(LOG_ERROR, "Assertion Failure: %s\nMessage: % s\n  File : % s, Line : % d\n", #expr, msg, __FILE__, __LINE__); DebugBreak(void); }
 	#define STraceLog(msg, ...) TraceLog(LOG_TRACE, msg, __VA__ARGS__)
 	#define SDebugLog(msg, ...) TraceLog(LOG_DEBUG, msg, __VA_ARGS__)
 #else
-	#define DEBUG_BREAK(void)
-	#define SASSERT(expr)
-	#define SASSERT_MSG(expr, msg)
+	#define DebugBreak(void)
+	#define SAssert(expr)
+	#define SAssertMsg(expr, msg)
 	#define STraceLog(msg, ...)
 	#define SDebugLog(msg, ...)
 #endif
@@ -133,12 +133,12 @@ typedef zpl_string String;
 
 #define SError(msg, ...) \
 	TraceLog(LOG_ERROR, msg, __VA_ARGS__); \
-	DEBUG_BREAK(void) \
+	DebugBreak(void) \
 
 #define SFatal(msg, ...) \
 	TraceLog(LOG_ERROR, msg, __VA_ARGS__); \
 	TraceLog(LOG_FATAL, "Fatal error detected, program crashed! File: %s, Line: %s", __FILE__, __LINE__); \
-	DEBUG_BREAK(void) \
+	DebugBreak(void) \
 
 #define CALL_CONSTRUCTOR(object) new (object)
 

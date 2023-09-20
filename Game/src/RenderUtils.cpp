@@ -59,8 +59,8 @@ LoadRenderTextureEx(Vec2i resolution, PixelFormat format, bool useDepth)
 void
 DrawSprite(Texture2D* texture, Rectangle source, Rectangle dest, Vec2 origin, Color tint, bool flipX)
 {
-	SASSERT(texture);
-	SASSERT(IsTextureReady(*texture));
+	SAssert(texture);
+	SAssert(IsTextureReady(*texture));
 
     float width = (float)texture->width;
     float height = (float)texture->height;
@@ -152,8 +152,8 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 {
 	#define MAX_BUFFER_SIZE     256
 
-	SASSERT(fileName);
-	SASSERT(fontTexture);
+	SAssert(fileName);
+	SAssert(fontTexture);
 	
 	if (!FileExists(fileName))
 	{
@@ -284,9 +284,9 @@ void
 DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 	Vector2 position, float fontSize, float spacing, Color tint)
 {
-	SASSERT(font);
-	SASSERT(text);
-	SASSERT(fontSize > 0);
+	SAssert(font);
+	SAssert(text);
+	SAssert(fontSize > 0);
 
 	if (font->texture.id == 0)
 	{
@@ -317,7 +317,7 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 			// If no } is found in length, then abort.
 			int end = -1;
 			char input[32] = {};
-			for (size_t c = 0; c < ArrayLength(input); ++c)
+			for (int c = 0; c < ArrayLength(input); ++c)
 			{
 				char val = keywordStart[c];
 				if (val == '}')
@@ -337,15 +337,15 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 
 			int params = 0;
 			const char** split = TextSplit(input, ',', &params);
-			SASSERT(params > 0);
-			SASSERT(strlen(split[0]) == 1);
+			SAssert(params > 0);
+			SAssert(strlen(split[0]) == 1);
 
 			int type = FastAtoi(split[0]);
 			switch (type)
 			{
 			case(RICHTEXT_COLOR):
 			{
-				SASSERT(params == 2);
+				SAssert(params == 2);
 				uint32_t colorInt;
 				Str2UInt(&colorInt, split[1], 16);
 				tint = IntToColor(colorInt);
@@ -354,7 +354,7 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 
 			case(RICHTEXT_IMG):
 			{
-				SASSERT(params == 4);
+				SAssert(params == 4);
 				//int id = FastAtoi(split[1]);
 				int w = FastAtoi(split[2]);
 				int h = FastAtoi(split[3]);
@@ -369,7 +369,7 @@ DrawRichText(const Font* _RESTRICT_ font, const char* _RESTRICT_ text,
 
 			case(RICHTEXT_TOOLTIP):
 			{
-				SASSERT(params >= 2);
+				SAssert(params >= 2);
 				// Seach spaces until we find space
 				Rectangle wordRect;
 				wordRect.x = position.x + textOffsetX;
@@ -450,7 +450,7 @@ NewRichTextColor(int color)
 {
 	char* buffer = {};
 	zpl_alloc_str_len(ZplAllocatorFrame, buffer, RICH_TEXT_MAX_LENGTH + 2);
-	SASSERT(buffer);
+	SAssert(buffer);
 	SClear(buffer, RICH_TEXT_MAX_LENGTH + 2);
 
 	int pos = 0;

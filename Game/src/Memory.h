@@ -67,7 +67,7 @@ GameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize,
 
 #if SCAL_DEBUG
 	if (allocatorType != ALLOCATOR_TYPE_FREE)
-		SASSERT( res);
+		SAssert( res);
 #endif
 
 	return res;
@@ -104,7 +104,7 @@ FrameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize
 
 #if SCAL_DEBUG
 	if (allocatorType != ALLOCATOR_TYPE_FREE)
-		SASSERT(res);
+		SAssert(res);
 #endif
 
 	return res;
@@ -141,7 +141,7 @@ MallocAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSiz
 
 #if SCAL_DEBUG
 	if (allocatorType != ALLOCATOR_TYPE_FREE)
-		SASSERT(res);
+		SAssert(res);
 #endif
 
 	return res;
@@ -159,7 +159,7 @@ static_assert(ArrayLength(Allocators) == (int)Allocator::MaxAllocators,
 #if SCAL_DEBUG
 inline AllocatorFunction DebugIndexAllocator(int allocatorIdx)
 {
-	SASSERT(allocatorIdx >= 0 && allocatorIdx < (int)Allocator::MaxAllocators);
+	SAssert(allocatorIdx >= 0 && allocatorIdx < (int)Allocator::MaxAllocators);
 	return Allocators[allocatorIdx];
 }
 #define IndexAllocators(allocatorIdx) DebugIndexAllocator(allocatorIdx)
@@ -167,13 +167,13 @@ inline AllocatorFunction DebugIndexAllocator(int allocatorIdx)
 #define IndexAllocators(allocatorIdx) Allocators[allocatorIdx]
 #endif
 
-#define GameMalloc(allocator, size) \
+#define SMalloc(allocator, size) \
 	IndexAllocators((int)allocator)(ALLOCATOR_TYPE_MALLOC, nullptr, size, 0, 16, __FILE__, __FUNCTION__, __LINE__)
 
-#define GameRealloc(allocator, ptr, size, oldSize) \
+#define SRealloc(allocator, ptr, size, oldSize) \
 	IndexAllocators((int)allocator)(ALLOCATOR_TYPE_REALLOC, ptr, size, oldSize, 16, __FILE__, __FUNCTION__, __LINE__)
 
-#define GameFree(allocator, ptr) \
+#define SFree(allocator, ptr) \
 	IndexAllocators((int)allocator)(ALLOCATOR_TYPE_FREE, ptr, 0, 0, 16, __FILE__, __FUNCTION__, __LINE__)
 
 #define SClear(ptr, size) zpl_memset(ptr, 0, size)

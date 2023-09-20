@@ -15,7 +15,7 @@ struct ArrayListHeader
 
 #define ArrayListGetHeader(a) ((ArrayListHeader*)(a)-1)
 
-#define ArrayListFree(_alloc, a) ((a) ? GameFree(_alloc, ArrayListGetHeader(a)) : 0)
+#define ArrayListFree(_alloc, a) ((a) ? SFree(_alloc, ArrayListGetHeader(a)) : 0)
 #define ArrayListPush(_alloc, a, value) (ArrayListMaybeGrow_Internal(_alloc, a, 1), (a)[ArrayListGetHeader(a)->Count++] = (value))
 #define ArrayListCount(a) ((a) ? ArrayListGetHeader(a)->Count : 0)
 #define ArrayListAdd(_alloc, a, num) (ArrayListMaybeGrow_Internal(_alloc, a, num), ArrayListGetHeader(a)->Count += (num), &(a)[ArrayListGetHeader(a)->Count - (num)])
@@ -49,7 +49,7 @@ ArrayListGrow(Allocator alloc, void* arr, int increment, int itemsize)
 
     size_t oldSize = (arr) ? (size_t)itemsize * (size_t)oldCapacity + sizeof(ArrayListHeader) : 0;
     size_t size = (size_t)itemsize * (size_t)capacity + sizeof(ArrayListHeader);
-    ArrayListHeader* p = (ArrayListHeader*)GameRealloc(alloc, arr ? ArrayListGetHeader(arr) : 0, size, oldSize);
+    ArrayListHeader* p = (ArrayListHeader*)SRealloc(alloc, arr ? ArrayListGetHeader(arr) : 0, size, oldSize);
 
     if (p)
     {

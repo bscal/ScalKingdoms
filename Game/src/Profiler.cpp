@@ -16,9 +16,9 @@ struct ThreadedProfiler
 	{
 		Buffer.length = Megabytes(1);
 		Buffer.data = zpl_alloc(zpl_heap_allocator(), Buffer.length);
-		SASSERT(Buffer.data);
+		SAssert(Buffer.data);
 		bool spallBufferInit = spall_buffer_init(&SpallCtx, &Buffer);
-		SASSERT(spallBufferInit);
+		SAssert(spallBufferInit);
 		if (spallBufferInit)
 		{
 			ThreadId = zpl_thread_current_id();

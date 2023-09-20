@@ -5,11 +5,11 @@
 #include <stdarg.h>
 
 #define BoundsCheck(data, idx, size) \
-SASSERT(idx < size); \
+SAssert(idx < size); \
 T* dataPtr = (T*)data; \
 T* dataOffsetPtr = (T*)(data) + idx; \
-SASSERT(dataOffsetPtr >= (T*)dataPtr); \
-SASSERT(dataOffsetPtr < (T*)dataPtr + size); \
+SAssert(dataOffsetPtr >= (T*)dataPtr); \
+SAssert(dataOffsetPtr < (T*)dataPtr + size); \
 
 template<typename T, size_t ElementCount>
 struct StaticArray
@@ -47,15 +47,15 @@ struct DynamicArray
 
 	void Initialize(size_t capacity, void*(*allocator)(size_t))
 	{
-		SASSERT(capacity > 0);
-		SASSERT(allocator);
+		SAssert(capacity > 0);
+		SAssert(allocator);
 		Count = capacity
 		Memory = (T*)allocator(Count * sizeof(T));
 	}
 
 	void Free(void(*free)(void*))
 	{
-		SASSERT(free);
+		SAssert(free);
 		if (Memory)
 		{
 			Memory = free(Memory);

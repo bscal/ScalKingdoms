@@ -10,8 +10,8 @@
 
 SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 {
-	SASSERT(dirPath);
-	SASSERT(atlasFile);
+	SAssert(dirPath);
+	SAssert(atlasFile);
 
 	const char* atlasFiles[2] = { dirPath, atlasFile };
 	const char* filepath = TextJoin(atlasFiles, 2, 0);
@@ -25,13 +25,13 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 	}
 
 	char* atlasData = LoadFileText(filepath);
-	SASSERT(atlasData);
+	SAssert(atlasData);
 
 	int count = 0;
 	int bufferSize = Kilobytes(10);
-	char* buffer = (char*)GameMalloc(Allocator::Frame, bufferSize);
+	char* buffer = (char*)SMalloc(Allocator::Frame, bufferSize);
 	int splitBufferSize = Kilobytes(1);
-	char** split = (char**)GameMalloc(Allocator::Frame, splitBufferSize * sizeof(char*));
+	char** split = (char**)SMalloc(Allocator::Frame, splitBufferSize * sizeof(char*));
 	TextSplitBuffered(atlasData, '\n', &count, buffer, bufferSize, split, splitBufferSize);
 
 	// 1st line empty
@@ -97,10 +97,10 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 			RemoveWhitespace(s0);
 			err = Str2Int(&x, s0, 10);
-			SASSERT(err == STR2INT_SUCCESS);
+			SAssert(err == STR2INT_SUCCESS);
 			RemoveWhitespace(s1);
 			err = Str2Int(&y, s1, 10);
-			SASSERT(err == STR2INT_SUCCESS);
+			SAssert(err == STR2INT_SUCCESS);
 
 		}
 
@@ -117,10 +117,10 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 			RemoveWhitespace(s0);
 			err = Str2Int(&w, s0, 10);
-			SASSERT(err == STR2INT_SUCCESS);
+			SAssert(err == STR2INT_SUCCESS);
 			RemoveWhitespace(s1);
 			err = Str2Int(&h, s1, 10);
-			SASSERT(err == STR2INT_SUCCESS);
+			SAssert(err == STR2INT_SUCCESS);
 		}
 
 		Rect16 r;

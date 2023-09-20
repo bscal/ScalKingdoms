@@ -7,30 +7,6 @@
 
 global_var NuklearUserData UserData;
 
-internal float
-CalculateTextWidth(nk_handle handle, float height, const char* text, int len)
-{
-	if (len == 0) return
-		0.0f;
-
-	SASSERT(handle.ptr);
-	SASSERT(height > 0.0f);
-	SASSERT(text);
-
-	Font* font = (Font*)handle.ptr;
-
-	float baseSize = (float)font->baseSize;
-	if (height < baseSize)
-		height = baseSize;
-
-	float spacing = height / baseSize;
-
-	const char* subtext = TextSubtext(text, 0, len);
-
-	Vector2 textSize = MeasureTextEx(*font, subtext, height, spacing);
-	return textSize.x;
-}
-
 bool 
 InitializeGUI(GameState* gameState, Font* guiFont)
 {
@@ -45,7 +21,7 @@ InitializeGUI(GameState* gameState, Font* guiFont)
 	gameState->GUIState.Ctx.clip.userdata	= nk_handle_ptr(0);
 
 	size_t guiMemorySize = Megabytes(2);
-	void* guiMemory = GameMalloc(Allocator::Malloc, guiMemorySize);
+	void* guiMemory = SMalloc(Allocator::Malloc, guiMemorySize);
 
 	if (!nk_init_fixed(&gameState->GUIState.Ctx, guiMemory, guiMemorySize, &gameState->GUIState.Font))
 	{
@@ -90,4 +66,28 @@ DrawGUI(GameState* gameState)
 	nk_context* ctx = &gameState->GUIState.Ctx;
 
 	DrawNuklear(ctx);
+}
+
+float
+CalculateTextWidth(nk_handle handle, float height, const char* text, int len)
+{
+	if (len == 0) return
+		0.0f;
+
+	SAssert(handle.ptr);
+	SAssert(height > 0.0f);
+	SAssert(text);
+
+	Font* font = (Font*)handle.ptr;
+
+	float baseSize = (float)font->baseSize;
+	if (height < baseSize)
+		height = baseSize;
+
+	float spacing = height / baseSize;
+
+	const char* subtext = TextSubtext(text, 0, len);
+
+	Vector2 textSize = MeasureTextEx(*font, subtext, height, spacing);
+	return textSize.x;
 }

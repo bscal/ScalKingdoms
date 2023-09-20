@@ -55,9 +55,9 @@ static void sx__bheap_heapify_max(BHeap* bh, int index)
 BHeap* BHeapCreate(Allocator alloc, CompareFunc compareFunc, int capacity)
 {
     size_t total_sz = sizeof(BHeap) + sizeof(BHeapItem) * capacity;
-    BHeap* bh = (BHeap*)GameMalloc(alloc, total_sz);
+    BHeap* bh = (BHeap*)SMalloc(alloc, total_sz);
 
-    SASSERT(bh);
+    SAssert(bh);
 
     bh->CompareFunc = compareFunc;
     bh->Items = (BHeapItem*)(bh + 1);
@@ -69,15 +69,15 @@ BHeap* BHeapCreate(Allocator alloc, CompareFunc compareFunc, int capacity)
 
 void BHeapDestroy(BHeap* bh, Allocator alloc)
 {
-    SASSERT(bh);
+    SAssert(bh);
 
-    GameFree(alloc, bh);
+    SFree(alloc, bh);
 }
 
 
 void BHeapPushMin(BHeap* bh, void* key, void* user)
 {
-    SASSERT_MSG(bh->Count < bh->Capacity, "BinaryHeap's capacity exceeded");
+    SAssertMsg(bh->Count < bh->Capacity, "BinaryHeap's capacity exceeded");
 
     // Put the value at the bottom the tree and traverse up
     int index = bh->Count;
@@ -106,7 +106,7 @@ void BHeapPushMin(BHeap* bh, void* key, void* user)
 
 BHeapItem BHeapPopMin(BHeap* bh)
 {
-    SASSERT(bh && bh->Count > 0);
+    SAssert(bh && bh->Count > 0);
 
     // Root is the value we want
     BHeapItem result = bh->Items[0];
@@ -122,7 +122,7 @@ BHeapItem BHeapPopMin(BHeap* bh)
 
 void BHeapPushMax(BHeap* bh, void* key, void* user)
 {
-    SASSERT_MSG(bh->Count < bh->Capacity, "BinaryHeap's capacity exceeded");
+    SAssertMsg(bh->Count < bh->Capacity, "BinaryHeap's capacity exceeded");
 
     // Put the value at the bottom the tree and traverse up
     int index = bh->Count;
@@ -151,7 +151,7 @@ void BHeapPushMax(BHeap* bh, void* key, void* user)
 
 BHeapItem BHeapPopMax(BHeap* bh)
 {
-    SASSERT(bh && bh->Count > 0);
+    SAssert(bh && bh->Count > 0);
 
     // Root is the value we want
     BHeapItem result = bh->Items[0];

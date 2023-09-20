@@ -9,7 +9,7 @@
 
 void ActionMgrInitialize(ActionMgr* actionMgr)
 {
-	SASSERT(actionMgr);
+	SAssert(actionMgr);
 
 	zpl_array_init(actionMgr->ActionTypes, zpl_heap_allocator());
 
@@ -63,7 +63,7 @@ void SystemUpdateActions(ecs_iter_t* it)
 
 				// Applies next action
 				ActionType* nextActionType = &actionMgr->ActionTypes[nextAction];
-				SASSERT(nextActionType->OnInitAction);
+				SAssert(nextActionType->OnInitAction);
 				nextActionType->OnInitAction(&action->CurrectAction, it->entities[i], nextAction);
 			}
 			else  // Update Action
@@ -79,7 +79,7 @@ void SystemUpdateActions(ecs_iter_t* it)
 			{
 				// Applies next action if found 1
 				ActionType* nextActionType = &actionMgr->ActionTypes[nextAction];
-				SASSERT(nextActionType->OnInitAction);
+				SAssert(nextActionType->OnInitAction);
 				nextActionType->OnInitAction(&action->CurrectAction, it->entities[i], nextAction);
 			}
 		}

@@ -48,15 +48,15 @@ struct SList
 
 	_FORCE_INLINE_ T* At(size_t idx)
 	{
-		SASSERT(idx < Count);
-		SASSERT(IsAllocated());
+		SAssert(idx < Count);
+		SAssert(IsAllocated());
 		return &Memory[idx];
 	}
 
 	_FORCE_INLINE_ T AtCopy(size_t idx)
 	{
-		SASSERT(idx < Count);
-		SASSERT(IsAllocated());
+		SAssert(idx < Count);
+		SAssert(IsAllocated());
 		return Memory[idx];
 	}
 
@@ -70,7 +70,7 @@ struct SList
 
 	_FORCE_INLINE_ T* Last() const
 	{
-		SASSERT(Memory);
+		SAssert(Memory);
 		return &Memory[LastIndex()];
 	}
 };
@@ -90,9 +90,9 @@ void SList<T>::EnsureSize(uint32_t ensuredCount)
 	}
 	Count = ensuredCount;
 
-	SASSERT(ensuredCount <= Count);
-	SASSERT(ensuredCount <= Capacity);
-	SASSERT(Count <= Capacity);
+	SAssert(ensuredCount <= Count);
+	SAssert(ensuredCount <= Capacity);
+	SAssert(Count <= Capacity);
 }
 
 template<typename T>
@@ -112,10 +112,10 @@ void SList<T>::Reserve(uint32_t newCapacity)
 
 	size_t newSize = newCapacity * sizeof(T);
 	size_t oldSize = MemUsed();
-	Memory = (T*)GameRealloc(Alloc, Memory, newSize, oldSize);
+	Memory = (T*)SRealloc(Alloc, Memory, newSize, oldSize);
 	Capacity = newCapacity;
-	SASSERT(Memory);
-	SASSERT(Count <= newCapacity);
+	SAssert(Memory);
+	SAssert(Count <= newCapacity);
 }
 
 template<typename T>
@@ -133,8 +133,8 @@ void SList<T>::Resize()
 template<typename T>
 void SList<T>::Push(const T* valueSrc)
 {
-	SASSERT(valueSrc);
-	SASSERT(Count <= Capacity);
+	SAssert(valueSrc);
+	SAssert(Count <= Capacity);
 	if (Count == Capacity)
 	{
 		Resize();
@@ -146,8 +146,8 @@ void SList<T>::Push(const T* valueSrc)
 template<typename T>
 void SList<T>::PushWithAlloc(Allocator allocator, const T* valueSrc)
 {
-	SASSERT(valueSrc);
-	SASSERT(Count <= Capacity);
+	SAssert(valueSrc);
+	SAssert(Count <= Capacity);
 	Alloc = allocator;
 	if (Count == Capacity)
 	{
@@ -160,7 +160,7 @@ void SList<T>::PushWithAlloc(Allocator allocator, const T* valueSrc)
 template<typename T>
 T* SList<T>::PushNew()
 {
-	SASSERT(Count <= Capacity);
+	SAssert(Count <= Capacity);
 	if (Count == Capacity)
 	{
 		Resize();
@@ -175,8 +175,8 @@ T* SList<T>::PushNew()
 template<typename T>
 void SList<T>::PushAt(uint32_t index, const T* valueSrc)
 {
-	SASSERT(index < Count);
-	SASSERT(valueSrc);
+	SAssert(index < Count);
+	SAssert(valueSrc);
 
 	if (Count == Capacity)
 	{
@@ -197,9 +197,9 @@ void SList<T>::PushAt(uint32_t index, const T* valueSrc)
 template<typename T>
 void SList<T>::PushAtFast(uint32_t index, const T* valueSrc)
 {
-	SASSERT(index < Count);
-	SASSERT(valueSrc);
-	SASSERT(Count <= Capacity);
+	SAssert(index < Count);
+	SAssert(valueSrc);
+	SAssert(Count <= Capacity);
 	if (Count == Capacity)
 	{
 		Resize();
@@ -239,9 +239,9 @@ bool SList<T>::PushAtFastUnique(uint32_t index, const T* valueSrc)
 template<typename T>
 void SList<T>::Pop(T* valueDest)
 {
-	SASSERT(Memory);
-	SASSERT(Count > 0);
-	SASSERT(Count <= Capacity);
+	SAssert(Memory);
+	SAssert(Count > 0);
+	SAssert(Count <= Capacity);
 	SCopy(valueDest, Memory + LastIndex(), sizeof(T));
 	--Count;
 }
@@ -249,10 +249,10 @@ void SList<T>::Pop(T* valueDest)
 template<typename T>
 void SList<T>::PopAt(uint32_t index, T* valueDest)
 {
-	SASSERT(Memory);
-	SASSERT(Count > 0);
-	SASSERT(index < Count);
-	SASSERT(Count <= Capacity);
+	SAssert(Memory);
+	SAssert(Count > 0);
+	SAssert(index < Count);
+	SAssert(Count <= Capacity);
 	SCopy(valueDest, Memory + index, sizeof(T));
 	if (index != LastIndex())
 	{
@@ -267,10 +267,10 @@ void SList<T>::PopAt(uint32_t index, T* valueDest)
 template<typename T>
 void SList<T>::PopAtFast(uint32_t index, T* valueDest)
 {
-	SASSERT(Memory);
-	SASSERT(Count > 0);
-	SASSERT(index < Count);
-	SASSERT(Count <= Capacity);
+	SAssert(Memory);
+	SAssert(Count > 0);
+	SAssert(index < Count);
+	SAssert(Count <= Capacity);
 	SMemCopy(valueDest, Memory + index, sizeof(T));
 	if (index != LastIndex())
 	{
@@ -282,16 +282,16 @@ void SList<T>::PopAtFast(uint32_t index, T* valueDest)
 template<typename T>
 void SList<T>::Remove()
 {
-	SASSERT(Memory);
-	SASSERT(Count > 0);
+	SAssert(Memory);
+	SAssert(Count > 0);
 	--Count;
 }
 
 template<typename T>
 bool SList<T>::RemoveAt(uint32_t index)
 {
-	SASSERT(Memory);
-	SASSERT(Count > 0);
+	SAssert(Memory);
+	SAssert(Count > 0);
 	--Count;
 	if (index != Count)
 	{
@@ -308,9 +308,9 @@ bool SList<T>::RemoveAt(uint32_t index)
 template<typename T>
 bool SList<T>::RemoveAtFast(uint32_t index)
 {
-	SASSERT(Memory);
-	SASSERT(Count > 0);
-	SASSERT(index < Count);
+	SAssert(Memory);
+	SAssert(Count > 0);
+	SAssert(index < Count);
 
 	bool wasLastSwapped = false;
 
@@ -334,8 +334,8 @@ void SList<T>::Set(uint32_t index, const T* data)
 template<typename T>
 void SList<T>::Copy(T* arr, uint32_t count)
 {
-	SASSERT(arr);
-	SASSERT(count > 0);
+	SAssert(arr);
+	SAssert(count > 0);
 
 	EnsureSize(count);
 	memcpy(Memory, arr, count * sizeof(T));
@@ -344,7 +344,7 @@ void SList<T>::Copy(T* arr, uint32_t count)
 template<typename T>
 bool SList<T>::Contains(const T* value) const
 {
-	SASSERT(value);
+	SAssert(value);
 	for (uint32_t i = 0; i < Count; ++i)
 	{
 		if (Memory[i] == *value)
@@ -356,7 +356,7 @@ bool SList<T>::Contains(const T* value) const
 template<typename T>
 uint32_t SList<T>::Find(const T* value) const
 {
-	SASSERT(value);
+	SAssert(value);
 	for (uint32_t i = 0; i < Count; ++i)
 	{
 		if (Memory[i] == *value)
