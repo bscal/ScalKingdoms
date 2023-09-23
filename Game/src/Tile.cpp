@@ -6,13 +6,13 @@ struct TileMgr
 	zpl_array(TileInfo) TileDefinitions;
 };
 
-global_var TileMgr TileManager;
+global TileMgr TileManager;
 
 void TileMgrInitialize(Texture2D* tileSetTexture)
 {
 	TileManager.TileSetTexture = tileSetTexture;
 
-	zpl_array_init_reserve(TileManager.TileDefinitions, zpl_heap_allocator(), 64);
+	zpl_array_init_reserve(TileManager.TileDefinitions, ZplAllocatorArena, 64);
 
 	TileInfo empty = {};
 	empty.Src = CoordToRec(1, 0);

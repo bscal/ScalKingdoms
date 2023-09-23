@@ -2,6 +2,8 @@
 
 #include "Core.h"
 
+#include <raylib/src/raymath.h>
+
 _FORCE_INLINE_ double GetMicroTime()
 {
 	return GetTime() * 1000000.0;
@@ -131,3 +133,27 @@ STR2INT Str2UInt(u32* out, const char* s, int base);
 int FastAtoi(const char* str);
 
 Color IntToColor(int color);
+
+//
+// Vector2 operator overloads
+//
+static inline Vector2 operator+(Vector2 left, Vector2 right)
+{
+	return Vector2Add(left, right);
+}
+
+static inline Vector2 operator-(Vector2 left, Vector2 right)
+{
+	return Vector2Subtract(left, right);
+}
+
+static inline Vector2 operator*(Vector2 left, Vector2 right)
+{
+	return Vector2Multiply(left, right);
+}
+
+static inline Vector2 operator/(Vector2 left, Vector2 right)
+{
+	return Vector2Divide(left, right);
+}
+

@@ -2,6 +2,18 @@
 
 #include "Core.h"
 
+#ifndef StackAlloc
+#if defined(__clang__) || defined(__GNUC__)
+#include <alloca.h>
+#define StackAlloc(size) alloca(size)
+#elif defined(_MSC_VER)
+#include <malloc.h>
+#define StackAlloc(size) _malloca(size)
+#else
+#define StackAlloc(size) static_assert(false, "StackAlloc is not supported")
+#endif
+#endif
+
 enum class Allocator : int
 {
 	Arena = 0,
@@ -33,7 +45,7 @@ extern zpl_allocator GetFrameAllocator();
 inline bool
 IsAllocatorValid(Allocator allocator)
 {
-	return ((int)allocator >= 0 && (int)allocator < (int)Allocator::MaxAllocators);
+	return ((int)allocator >= 0 && (int)allocator < (int)Allocator::MaxAllocators && Allocators[(int)allocator];
 }
 
 inline void*
@@ -147,7 +159,7 @@ MallocAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSiz
 	return res;
 }
 
-constexpr global_var AllocatorFunction Allocators[] =
+constexpr global AllocatorFunction Allocators[] =
 {
 	GameAllocator_Internal,
 	FrameAllocator_Internal,

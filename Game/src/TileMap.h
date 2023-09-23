@@ -11,9 +11,9 @@
 
 struct GameState;
 
-constexpr global_var int LAYER_BACKGROUND	= 0;
-constexpr global_var int LAYER_FOREGROUND	= 1;
-constexpr global_var int LAYER_WALL			= 2;
+constexpr global int LAYER_BACKGROUND	= 0;
+constexpr global int LAYER_FOREGROUND	= 1;
+constexpr global int LAYER_WALL			= 2;
 
 enum TileFlags : uint8_t 
 {

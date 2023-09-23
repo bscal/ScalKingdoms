@@ -10,6 +10,7 @@ project "raylib"
     files
     {
         "raylib/src/*.c",
+        "raylib/src/raylib.h"
     }
 
     includedirs

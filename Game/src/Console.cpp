@@ -6,10 +6,10 @@
 #include "Structures/Queue.h"
 #include "Structures/HashMapStr.h"
 
-constexpr global_var int CONSOLE_ENTRY_LENGTH = 60;
-constexpr global_var int CONSOLE_MAX_ENTRIES = 128;
-constexpr global_var int CONSOLE_MAX_SUGGESTIONS = 4;
-constexpr global_var int CONSOLE_NUM_SUGGESTIONS_ARGS = 6;
+constexpr global int CONSOLE_ENTRY_LENGTH = 60;
+constexpr global int CONSOLE_MAX_ENTRIES = 128;
+constexpr global int CONSOLE_MAX_SUGGESTIONS = 4;
+constexpr global int CONSOLE_NUM_SUGGESTIONS_ARGS = 6;
 
 #define ENABLE_CONSOLE_LOGGING 1
 
@@ -37,19 +37,29 @@ struct Console
 	int NumOfSuggestions;
 };
 
-global_var struct Console Console;
+global struct Console Console;
 
 void ConsoleInit()
 {
-	zpl_allocator allocator = ZplAllocatorMalloc;
+	HashMapStrInitialize(&Console.Commands, sizeof(Command), 32, Allocator::Arena);
+	Console.Entries.Init(Allocator::Arena, CONSOLE_MAX_ENTRIES);
 
-	HashMapStrInitialize(&Console.Commands, sizeof(Command), 32, Allocator::Malloc);
-	Console.Entries.Init(Allocator::Malloc, CONSOLE_MAX_ENTRIES);
-
+	zpl_allocator allocator = ZplAllocatorArena;
 	for (size_t i = 0; i < CONSOLE_MAX_ENTRIES; ++i)
 	{
 		Console.Entries.Memory[i] = zpl_string_make_reserve(allocator, CONSOLE_ENTRY_LENGTH);
 	}
+
+	// Commands
+	Command cmd = {};
+	cmd.ArgumentString = zpl_string_make(ZplAllocatorArena, "Testing args");
+	cmd.OnCommand = [](zpl_string cmd, const char** arg, int argCount)
+	{
+		SInfoLog("Command executed! %s, %d", cmd, argCount);
+
+		return 0;
+	};
+	ConsoleRegisterCommand(zpl_string_make(ZplAllocatorArena, "TestCommand"), &cmd);
 }
 
 void ConsoleRegisterCommand(zpl_string cmdName, Command* cmd)

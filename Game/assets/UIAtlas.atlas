@@ -1,0 +1,27 @@
+
+UIAtlas.png
+size: 1024, 512
+format: RGBA8888
+filter: Nearest, Nearest
+repeat: none
+GUI0
+  rotate: false
+  xy: 2, 20
+  size: 256, 304
+  orig: 256, 304
+  offset: 0, 0
+  index: -1
+Silver
+  rotate: false
+  xy: 260, 68
+  size: 256, 256
+  orig: 256, 256
+  offset: 0, 0
+  index: 0
+TileSprite
+  rotate: false
+  xy: 2, 2
+  size: 16, 16
+  orig: 16, 16
+  offset: 0, 0
+  index: -1

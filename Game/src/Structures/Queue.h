@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Memory.h"
 
+// Simple FIFO circular queue. Meant for single thread use.
 template<typename T>
 struct Queue
 {
@@ -47,6 +48,7 @@ struct Queue
 	{
 		SAssert(value);
 		SAssert(Memory);
+		SAssert(Capacity > 0);
 		SAssert(IsAllocatorValid(Allocator));
 
 		if (IsFull())
@@ -69,6 +71,7 @@ struct Queue
 		else
 		{
 			SAssert(Memory);
+			SAssert(Capacity > 0);
 			return &Memory[First];
 		}
 	}
@@ -89,6 +92,8 @@ struct Queue
 	{
 		if (!IsEmpty())
 		{
+			SAssert(Memory);
+			SAssert(Count > 0);
 			--Count;
 			++First;
 			if (First == Capacity)

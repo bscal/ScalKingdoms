@@ -52,7 +52,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 		return {};
 	}
 
-	zpl_array_init_reserve(atlas.Rects, zpl_heap_allocator(), length);
+	zpl_array_init_reserve(atlas.Rects, ZplAllocatorArena, length);
 	zpl_array_resize(atlas.Rects, length);
 
 	HashMapStrInitialize(&atlas.NameToIndex, sizeof(u16), length, Allocator::Malloc);
@@ -79,7 +79,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 		line += 7;
 
-		zpl_string str = zpl_string_make(ZplAllocatorMalloc, name);
+		zpl_string str = zpl_string_make(ZplAllocatorArena, name);
 		HashMapStrSet(&atlas.NameToIndex, str, &entryCounter);
 
 		int err;

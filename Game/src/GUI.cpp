@@ -5,7 +5,7 @@
 
 #include "GameState.h"
 
-global_var NuklearUserData UserData;
+global NuklearUserData UserData;
 
 bool 
 InitializeGUI(GameState* gameState, Font* guiFont)
@@ -45,19 +45,6 @@ UpdateGUI(GameState* gameState)
 	nk_context* ctx = &gameState->GUIState.Ctx;
 
 	UpdateNuklear(ctx);
-
-	ctx->style.window.fixed_background.data.color = {};
-	if (nk_begin(ctx, "Game", { 2, 2, 256, 64 }, NK_WINDOW_NO_SCROLLBAR))
-	{
-		nk_layout_row_dynamic(ctx, 32, 1);
-
-		const char* updateTime = TextFormat("UpdateTime: %.3fms", Client.UpdateTime * 1000.0);
-		nk_label(ctx, updateTime, 1);
-		
-		const char* frameTime = TextFormat("  DrawTime: %.3fms", GetDrawTime() * 1000.0);
-		nk_label(ctx, frameTime, 1);
-	}
-	nk_end(ctx);
 }
 
 void 

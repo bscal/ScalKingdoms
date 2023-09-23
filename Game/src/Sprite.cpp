@@ -1,5 +1,7 @@
 #include "Sprite.h"
 
+#include "Memory.h"
+
 //#define STB_RECT_PACK_IMPLEMENTATION
 //#include "stb/stb_rect_pack.h"
 
@@ -8,12 +10,20 @@ struct SpriteMgr
 	zpl_array(Sprite) Sprites;
 };
 
-global_var SpriteMgr SpriteManager;
+global SpriteMgr SpriteManager;
 
-uint16_t SpriteRegister(SpriteRect rect, Vector2 origin)
+void 
+SpritesInitialize()
 {
-	if (!SpriteManager.Sprites)
-		zpl_array_init_reserve(SpriteManager.Sprites, zpl_heap_allocator(), 64);
+	zpl_array_init_reserve(SpriteManager.Sprites, ZplAllocatorArena, 64);
+
+	Sprites::PLAYER = SpriteRegister({ 0, 0, 16, 16 }, { 8, 8 });
+}
+
+uint16_t 
+SpriteRegister(SpriteRect rect, Vector2 origin)
+{
+	SAssertMsg(SpriteManager.Sprites, "SpritesInitialize not called");
 
 	zpl_isize id = zpl_array_count(SpriteManager.Sprites);
 	

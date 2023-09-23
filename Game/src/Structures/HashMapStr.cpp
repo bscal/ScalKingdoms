@@ -2,9 +2,9 @@
 
 #include "Utils.h"
 
-constexpr global_var u32 DEFAULT_CAPACITY = 2;
-constexpr global_var u32 DEFAULT_RESIZE = 2;
-constexpr global_var float DEFAULT_LOADFACTOR = .85f;
+constexpr global u32 DEFAULT_CAPACITY = 2;
+constexpr global u32 DEFAULT_RESIZE = 2;
+constexpr global float DEFAULT_LOADFACTOR = .85f;
 
 #define ToIdx(hash, cap) ((u32)((hash) & (u64)((cap) - 1)))
 #define IndexArray(arr, idx, stride) (((u8*)(arr)) + ((idx) * (stride)))
@@ -144,6 +144,7 @@ uint32_t HashMapStrFind(HashMapStr* map, const zpl_string key)
 				idx = 0;
 		}
 	}
+	SAssertMsg(false, "Shouldn't be run");
 	return HASHMAPSTR_NOT_FOUND;
 }
 
@@ -232,8 +233,12 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 	swapSlot.String = key;
 	swapSlot.IsUsed = true;
 
+	size_t length = zpl_string_length(key);
+	u32 hash = zpl_fnv32a(key, length);
+	swapSlot.Hash = hash;
+	u32 idx = hash & (map->Capacity - 1);;
 	SAssert(map->ValueStride < Kilobytes(16));
-	void* swapValue = _alloca(map->ValueStride);
+	void* swapValue = StackAlloc(map->ValueStride);
 	SAssert(swapValue);
 
 	if (value)
@@ -249,19 +254,16 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 	res.Index = HASHMAPSTR_NOT_FOUND;
 	res.Contained = false;
 
-	size_t length = zpl_string_length(key);
-	u32 hash = zpl_fnv32a(key, length);
-	swapSlot.Hash = hash;
-	u32 idx = hash & (map->Capacity - 1);
-	u32 probeLength = 0;
+	u16 probeLength = 0;
 	while (true)
 	{
 		HashStrSlot* slot = &map->Buckets[idx];
 		if (!slot->IsUsed) // Bucket is not used
 		{
+			// Found an open spot. Insert and stops searching
 			*slot = swapSlot;
+			slot->ProbeLength = probeLength;
 			memcpy(IndexValue(map, idx), swapValue, map->ValueStride);
-
 			++map->Count;
 
 			if (res.Index == HASHMAPSTR_NOT_FOUND)
@@ -271,7 +273,7 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 		}
 		else
 		{
-			if (slot->Hash == hash && zpl_string_are_equal(key, slot->String))
+			if (slot->Hash == swapSlot.Hash && zpl_string_are_equal(swapSlot.String, slot->String))
 				return { idx, true };
 
 			if (probeLength > slot->ProbeLength)
@@ -279,8 +281,8 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 				if (res.Index == HASHMAPSTR_NOT_FOUND)
 					res.Index = idx;
 
-				swapSlot.ProbeLength = (u16)probeLength;
-				probeLength = slot->ProbeLength;
+				// Swap probe lengths and buckets
+				Swap(slot->ProbeLength, probeLength, u16);
 				Swap(swapSlot, *slot, HashStrSlot);
 				{
 					// Swaps byte by byte from current value to

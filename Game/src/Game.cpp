@@ -10,6 +10,8 @@ ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 	ecs_world_t* world = gamestate->World;
 
 	ecs_entity_t entity = ecs_new_id(world);
+	// TODO handle name
+	//ecs_set_name(world, entity, "PlayerName");
 
 	CTransform transform = {};
 	transform.Pos = TileToWorldCenter(tile);

@@ -8,6 +8,7 @@
 #include "Actions.h"
 #include "Pathfinder.h"
 #include "GUI.h"
+#include "TextureAtlas.h"
 
 #include "Structures/SList.h"
 #include "Structures/ArrayList.h"
@@ -20,9 +21,9 @@ struct AssetMgr
 {
 	Texture2D TileSpriteSheet;
 	Texture2D EntitySpriteSheet;
-	Texture2D GUISpriteSheet;
 
 	Font MainFont;
+	SpriteAtlas UIAtlas;
 };
 
 struct GameState
@@ -68,6 +69,7 @@ struct GameClient
 	ArrayList(Vec2i) DebugPathfinder;
 
 	bool IsConsoleOpen;
+	bool IsDebugWindowOpen;
 	bool IsDebugMode;
 };
 

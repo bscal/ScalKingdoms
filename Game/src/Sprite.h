@@ -21,11 +21,14 @@ struct Sprite
     }
 };
 
+void SpritesInitialize();
+
 uint16_t SpriteRegister(SpriteRect rect, Vector2 origin);
 
 Sprite* SpriteGet(uint16_t id);
 
+#define SpriteDef inline u16
 namespace Sprites
 {
-    inline uint16_t PLAYER = SpriteRegister({ 0, 0, 16, 16 }, { 8, 8 });
+    SpriteDef PLAYER;
 }

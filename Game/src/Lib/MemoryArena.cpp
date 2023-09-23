@@ -4,9 +4,9 @@
 
 #include <stdlib.h>
 
-constexpr global_var size_t MEMARENA_ALIGNMENT = 16;
-constexpr global_var size_t MEM_SPLIT_THRESHOLD = MEMARENA_ALIGNMENT * 4;
-constexpr global_var size_t MEMARENA_SIZES[MEMARENA_BUCKET_SIZE] =
+constexpr global size_t MEMARENA_ALIGNMENT = 16;
+constexpr global size_t MEM_SPLIT_THRESHOLD = MEMARENA_ALIGNMENT * 4;
+constexpr global size_t MEMARENA_SIZES[MEMARENA_BUCKET_SIZE] =
 {
     16, 32, 64, 128, 256, 512, 1024, 2048
 };

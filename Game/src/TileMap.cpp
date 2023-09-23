@@ -12,7 +12,7 @@
 
 #define Vec2iHash(vec) zpl_fnv64a(&vec, sizeof(Vec2i));
 
-constexpr global_var int MAX_CHUNKS_TO_PROCESS = 12;
+constexpr global int MAX_CHUNKS_TO_PROCESS = 12;
 
 internal zpl_isize ChunkThreadFunc(zpl_thread* thread);
 
@@ -47,18 +47,24 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 
 	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS;
 
-	zpl_array_init_reserve(tilemap->ChunkLoader.ChunkPool, zpl_heap_allocator(), VIEW_DISTANCE_TOTAL_CHUNKS);
+	zpl_array_init_reserve(tilemap->ChunkLoader.ChunkPool, ZplAllocatorArena, VIEW_DISTANCE_TOTAL_CHUNKS);
+	SAssert(tilemap->ChunkLoader.ChunkPool);
 
 	for (int i = 0; i < VIEW_DISTANCE_TOTAL_CHUNKS; ++i)
 	{
-		Chunk* chunk = (Chunk*)zpl_alloc(zpl_heap_allocator(), sizeof(Chunk));
+		Chunk* chunk = (Chunk*)zpl_alloc(ZplAllocatorArena, sizeof(Chunk));
+		SAssert(chunk);
+
 		SClear(chunk, sizeof(Chunk));
 
 		Vec2i reso = { CHUNK_SIZE_PIXELS, CHUNK_SIZE_PIXELS };
 		chunk->RenderTexture = LoadRenderTextureEx(reso, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, false);
 
+		SAssert(chunk->RenderTexture.id != 0);
+
 		zpl_array_append(tilemap->ChunkLoader.ChunkPool, chunk);
 	}
+	SAssert(zpl_array_count(tilemap->ChunkLoader.ChunkPool) == VIEW_DISTANCE_TOTAL_CHUNKS);
 
 	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, Allocator::Arena);
 
@@ -69,8 +75,8 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	tilemap->ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
 
 	zpl_semaphore_init(&tilemap->ChunkLoader.Signal);
-	zpl_array_init_reserve(tilemap->ChunkLoader.ChunksToAdd, zpl_heap_allocator(), MAX_CHUNKS_TO_PROCESS);
-	zpl_array_init_reserve(tilemap->ChunkLoader.ChunkToRemove, zpl_heap_allocator(), MAX_CHUNKS_TO_PROCESS);
+	zpl_array_init_reserve(tilemap->ChunkLoader.ChunksToAdd, ZplAllocatorArena, MAX_CHUNKS_TO_PROCESS);
+	zpl_array_init_reserve(tilemap->ChunkLoader.ChunkToRemove, ZplAllocatorArena, MAX_CHUNKS_TO_PROCESS);
 
 	zpl_thread_init_nowait(&tilemap->ChunkThread);
 	zpl_thread_start(&tilemap->ChunkThread, ChunkThreadFunc, tilemap);
@@ -83,6 +89,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 void
 TileMapFree(TileMap* tilemap)
 {
+	SAssert(tilemap);
 	SInfoLog("Waiting for chunk thread to shutdown...");
 	// Waits for thread to shutdown;
 	tilemap->ChunkLoader.ShouldShutdown = true;
@@ -108,15 +115,20 @@ TileMapFree(TileMap* tilemap)
 	for (int i = 0; i < zpl_array_count(tilemap->ChunkLoader.ChunkPool); ++i)
 	{
 		UnloadRenderTexture(tilemap->ChunkLoader.ChunkPool[i]->RenderTexture);
-		zpl_free(zpl_heap_allocator(), tilemap->ChunkLoader.ChunkPool[i]);
+		zpl_free(ZplAllocatorArena, tilemap->ChunkLoader.ChunkPool[i]);
 	}
 
 	zpl_array_free(tilemap->ChunkLoader.ChunkPool);
+	zpl_array_free(tilemap->ChunkLoader.ChunksToAdd);
+	zpl_array_free(tilemap->ChunkLoader.ChunkToRemove);
 }
 
 void 
 TileMapUpdate(GameState* gameState, TileMap* tilemap)
 {
+	SAssert(gameState);
+	SAssert(tilemap);
+
 	ChunkLoaderState* chunkLoader = &tilemap->ChunkLoader;
 	chunkLoader->TargetPosition = gameState->Camera.target;
 
@@ -148,7 +160,7 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 
 	// Loops over loaded chunks, Unloads out of range, handles chunks waiting for RenderTexture,
 	// handles dirty chunks, and updates chunks.
-	for (zpl_isize i = 0; i < tilemap->ChunkMap.Capacity; ++i)
+	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 	{
 		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
 			continue;
@@ -172,11 +184,11 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 void 
 TileMapDraw(TileMap* tilemap, Rectangle screenRect)
 {
-	for (zpl_isize i = 0; i < tilemap->ChunkMap.Capacity; ++i)
+	SAssert(tilemap);
+	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 	{
 		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
 			continue;
-
 
 		Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
 		if (CheckCollisionRecs(chunk->BoundingBox, screenRect))
@@ -188,6 +200,7 @@ TileMapDraw(TileMap* tilemap, Rectangle screenRect)
 				CHUNK_SIZE_PIXELS,
 				-CHUNK_SIZE_PIXELS
 			};
+			SAssert(chunk->RenderTexture.texture.id != 0);
 			DrawTexturePro(chunk->RenderTexture.texture, src, chunk->BoundingBox, {}, 0, WHITE);
 		}
 	}
@@ -196,6 +209,8 @@ TileMapDraw(TileMap* tilemap, Rectangle screenRect)
 internal Chunk*
 InternalChunkLoad(TileMap* tilemap, Vec2i coord)
 {
+	SAssert(tilemap);
+
 	if (!IsChunkInBounds(tilemap, coord))
 		return nullptr;
 
@@ -383,6 +398,7 @@ GetLocalTileIdx(Vec2i tile)
 Chunk*
 GetChunk(TileMap* tilemap, Vec2i tile)
 {
+	SAssert(tilemap);
 	Vec2i chunkCoord = TileToChunk(tile);
 	if (chunkCoord == tilemap->LastChunkCoord)
 		return tilemap->LastChunk;
@@ -390,6 +406,7 @@ GetChunk(TileMap* tilemap, Vec2i tile)
 	Chunk** chunkPtr = HashMapTGet(&tilemap->ChunkMap, &chunkCoord);
 	if (chunkPtr)
 	{
+		SAssert(*chunkPtr);
 		tilemap->LastChunkCoord = chunkCoord;
 		tilemap->LastChunk = *chunkPtr;
 		return *chunkPtr;
@@ -403,20 +420,28 @@ GetChunk(TileMap* tilemap, Vec2i tile)
 Chunk* 
 GetChunkByCoordNoCache(TileMap* tilemap, Vec2i chunkCoord)
 {
+	SAssert(tilemap);
 	Chunk** chunkPtr = HashMapTGet(&tilemap->ChunkMap, &chunkCoord);
 	if (chunkPtr)
+	{
+		SAssert(*chunkPtr);
 		return *chunkPtr;
+	}
 	else
+	{
 		return nullptr;
+	}
 }
 
 Tile*
 GetTile(TileMap* tilemap, Vec2i tileCoord)
 {
+	SAssert(tilemap);
 	Chunk* chunk = GetChunk(tilemap, tileCoord);
 	if (chunk)
 	{
 		size_t idx = GetLocalTileIdx(tileCoord);
+		SAssert(idx < CHUNK_AREA);
 		Tile* tile = &chunk->TileArray[idx];
 		SAssert(tile);
 		return tile;
@@ -430,6 +455,7 @@ GetTile(TileMap* tilemap, Vec2i tileCoord)
 TileFindResult
 FindTile(TileMap* tilemap, Vec2i coord)
 {
+	SAssert(tilemap);
 	TileFindResult result;
 	result.Chunk = GetChunk(tilemap, coord);
 	result.Index = (result.Chunk) ? GetLocalTileIdx(coord) : 0;
@@ -473,7 +499,10 @@ SetTileId(Chunk* chunk, size_t idx, u16 tile, short layer)
 		} break;
 
 		default:
-			SWarn("SetTile using invalid layer."); break;
+		{
+			SWarn("SetTile using invalid layer.");
+			SAssertMsg(false, "SetTile using invalid layer.");
+		} break;
 		}
 	}
 }
@@ -500,13 +529,23 @@ internal zpl_isize
 ChunkThreadFunc(zpl_thread* thread)
 {
 	TileMap* tilemap = (TileMap*)thread->user_data;
+	SAssert(tilemap);
 	ChunkLoaderState* chunkLoader = &tilemap->ChunkLoader;
+	SAssert(chunkLoader);
 	while (true)
 	{
 		zpl_semaphore_wait(&chunkLoader->Signal);
 
 		if (chunkLoader->ShouldShutdown)
-			break;
+			return 0;
+
+		SAssert(chunkLoader->ChunksToAdd);
+		SAssert(chunkLoader->ChunkToRemove);
+		if (!tilemap->ChunkMap.Buckets)
+		{
+			SAssertMsg(false, "Chunk thread, ChunkMap, is NULL");
+			return 1;
+		}
 
 		Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
 

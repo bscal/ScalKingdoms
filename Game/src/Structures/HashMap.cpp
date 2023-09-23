@@ -2,9 +2,9 @@
 
 #include "Utils.h"
 
-constexpr global_var u32 DEFAULT_CAPACITY = 2;
-constexpr global_var u32 DEFAULT_RESIZE = 2;
-constexpr global_var float DEFAULT_LOADFACTOR = .85f;
+constexpr global u32 DEFAULT_CAPACITY = 2;
+constexpr global u32 DEFAULT_RESIZE = 2;
+constexpr global float DEFAULT_LOADFACTOR = .85f;
 
 #define Compare(hashmap, v0, v1) (hashmap->CompareFunc(v0, v1))
 
@@ -253,12 +253,12 @@ HashMapSet_Internal(HashMap* map, const void* key, const void* value)
 
 	SAssert(map->Slots);
 
-    void* swapKey = _alloca(map->KeyStride);
+    void* swapKey = StackAlloc(map->KeyStride);
     SAssert(swapKey);
 
     memcpy(swapKey, key, map->KeyStride);
 
-    void* swapValue = _alloca(map->ValueStride);
+    void* swapValue = StackAlloc(map->ValueStride);
 	SAssert(swapValue);
 
 	if (value)

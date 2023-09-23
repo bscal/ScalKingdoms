@@ -6,13 +6,15 @@
 #include "Sprite.h"
 #include "Systems.h"
 #include "Console.h"
+#include "Debug.h"
+#include "RenderUtils.h"
 
 #define COMPONENT_DECLARATION
 #include "Components.h"
 
 #include <raylib/src/raymath.h>
 
-global_var struct GameState State;
+global struct GameState State;
 
 struct GameClient Client;
 
@@ -29,34 +31,48 @@ internal Vec2i ScreenToTile(Vec2 pos);
 
 ECS_SYSTEM_DECLARE(DrawEntities);
 
+internal void* RlMallocOverride(size_t sz)
+{
+	return MemArenaAlloc(&GetGameState()->GameMemory, sz);
+}
+
+internal void* RlReallocOverride(void* ptr, size_t sz)
+{
+	return MemArenaRealloc(&GetGameState()->GameMemory, ptr, sz);
+}
+
+internal void RlFreeOverride(void* ptr)
+{
+	if (!ptr)
+		return;
+	else 
+		MemArenaFree(&GetGameState()->GameMemory, ptr);
+}
+#include "Structures/PoolArray.h"
 int 
 GameInitialize()
 {
 	size_t gameMemorySize = Megabytes(16);
-	void* gameMemory = zpl_alloc_align(zpl_heap_allocator(), gameMemorySize, 64);
+	void* gameMemory = zpl_alloc_align(ZplAllocatorMalloc, gameMemorySize, 64);
 	State.GameMemory = MemArenaCreate(gameMemory, gameMemorySize);
 
-	zpl_arena_init_from_allocator(&State.FrameMemory, zpl_heap_allocator(), Megabytes(32));
+	zpl_arena_init_from_allocator(&State.FrameMemory, ZplAllocatorMalloc, Megabytes(16));
 
-	//zpl_affinity affinity;
-	//zpl_affinity_init(&affinity);
+	zpl_affinity affinity;
+	zpl_affinity_init(&affinity);
 
 	//int threadCount = (affinity.thread_count > 4) ? 4 : 2;
-	//zpl_jobs_init(&State.Jobs, zpl_heap_allocator(), threadCount);
+	//zpl_jobs_init(&State.Jobs, ZplAllocatorArena, threadCount);
 	//SInfoLog("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
 	//	, threadCount, affinity.thread_count, affinity.core_count);
 
+	Test();
+
 	ConsoleInit();
 
-	Command cmd = {};
-	cmd.ArgumentString = zpl_string_make(ZplAllocatorMalloc, "Testing args");
-	cmd.OnCommand = [](zpl_string cmd, const char** arg, int argCount)
-	{
-		SInfoLog("Command executed! %s, %d", cmd, argCount);
-
-		return 0;
-	};
-	ConsoleRegisterCommand(zpl_string_make(ZplAllocatorMalloc, "TestCommand"), &cmd);
+	SetMallocCallBack(RlMallocOverride);
+	SetReallocCallBack(RlReallocOverride);
+	SetFreeCallBack(RlFreeOverride);
 
 	InitWindow(WIDTH, HEIGHT, TITLE);
 	SetTraceLogLevel(LOG_ALL);
@@ -75,6 +91,8 @@ GameInitialize()
 	HashMapTInitialize(&State.EntityMap, 64, Allocator::Arena);
 
 	zpl_random_init(&State.Random);
+
+	SpritesInitialize();
 
 	TileMgrInitialize(&State.AssetMgr.TileSpriteSheet);
 
@@ -166,12 +184,16 @@ GameRun()
 			, { 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() }
 			, {}, 0, WHITE);
 
-		ConsoleDraw(&Client, &State.GUIState);
-		DrawGUI(&State);
-
 		BeginMode2D(State.Camera);
 		DrawRegions();
 		EndMode2D();
+
+		ConsoleDraw(&Client, &State.GUIState);
+		DrawDebugWindow(&Client, &State, &State.GUIState);
+
+		DrawGUI(&State);
+
+
 
 		EndDrawing();
 
@@ -334,6 +356,11 @@ void InputUpdate()
 	{
 		Client.IsConsoleOpen = !Client.IsConsoleOpen;
 	}
+	if (IsKeyPressed(KEY_EQUAL))
+	{
+		Client.IsDebugWindowOpen = !Client.IsDebugWindowOpen;
+	}
+
 }
 
 void
@@ -354,7 +381,19 @@ LoadAssets(GameState* gameState)
 	#define ASSET_DIR "Game/assets/"
 	gameState->AssetMgr.TileSpriteSheet = LoadTexture(ASSET_DIR "16x16.bmp");
 	gameState->AssetMgr.EntitySpriteSheet = LoadTexture(ASSET_DIR "SpriteSheet.png");
-	gameState->AssetMgr.MainFont = LoadFont(ASSET_DIR "Silver.ttf");
+	gameState->AssetMgr.UIAtlas = SpriteAtlasLoad(ASSET_DIR, "UIAtlas.atlas");
+
+	#define FONT_NAME "Silver"
+
+	Rectangle fontRect = SpriteAtlasGet(&gameState->AssetMgr.UIAtlas, FONT_NAME);
+	if (fontRect.width == 0 || fontRect.height == 0)
+	{
+		SAssertMsg(false, "Could not find font in ui atlas");
+		return;
+	}
+	Vec2 offset = { fontRect.x, fontRect.y };
+	gameState->AssetMgr.MainFont = LoadBMPFontFromTexture(ASSET_DIR FONT_NAME ".fnt", &gameState->AssetMgr.UIAtlas.Texture, offset);
+	SAssert(gameState->AssetMgr.MainFont.texture.id > 0);
 }
 
 internal void 
@@ -362,7 +401,8 @@ UnloadAssets(GameState* gameState)
 {
 	UnloadTexture(gameState->AssetMgr.TileSpriteSheet);
 	UnloadTexture(gameState->AssetMgr.EntitySpriteSheet);
-	//UnloadFont(gameState->AssetMgr.MainFont);
+	UnloadBMPFontData(&gameState->AssetMgr.MainFont);
+	SpriteAtlasUnload(&gameState->AssetMgr.UIAtlas);
 }
 
 internal Vec2i 

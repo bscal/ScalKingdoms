@@ -4,7 +4,7 @@
 
 #include <inttypes.h>
 
-constexpr global_var size_t MEMARENA_BUCKET_SIZE = 8;
+constexpr global size_t MEMARENA_BUCKET_SIZE = 8;
 
 struct MemNode;
 

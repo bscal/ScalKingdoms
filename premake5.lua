@@ -1,7 +1,7 @@
 workspace "Kingdoms"
     architecture "x64"
-    toolset "msc-ClangCL"
-    --toolset "msc"
+    --toolset "msc-ClangCL"
+    toolset "msc"
 
     configurations
     {
@@ -138,7 +138,7 @@ project "Game"
         systemversion "latest"
         buildoptions
         {
-            "-std:c++17", "-W4", "-WX", "-wd4100", "-wd4201", "-wd4127",
+            "-std:c++17", "-W4", "-WX", "-wd4100", "-wd4201", "-wd4127", "-wd4701", "-wd4189",
             "-Oi", "-GR", "-GR-", "-EHs-c-", "-D_HAS_EXCEPTIONS=0"
         }
         links { "raylib.lib" }

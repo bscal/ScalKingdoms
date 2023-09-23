@@ -11,6 +11,8 @@ DrawSprite(Texture2D* texture, Rectangle source, Rectangle dest, Vec2 origin, Co
 Font
 LoadBMPFontFromTexture(const char* bmpFontFile, Texture2D* atlas, Vec2 offset);
 
+void UnloadBMPFontData(Font* font);
+
 enum RichTextTypes
 {
 	RICHTEXT_COLOR = 'c',

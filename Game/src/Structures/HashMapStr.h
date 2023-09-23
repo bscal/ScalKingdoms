@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Memory.h"
 
-constexpr global_var u32 HASHMAPSTR_NOT_FOUND = UINT32_MAX;
+constexpr global u32 HASHMAPSTR_NOT_FOUND = UINT32_MAX;
 
 struct HashStrSlot;
 

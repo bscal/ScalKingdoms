@@ -8,8 +8,8 @@
 
 #include "Structures/ArrayList.h"
 
-constexpr global_var int MAX_REGION_SEARCH = 128;
-constexpr global_var int MAX_LOCAL_SEARCH = 256;
+constexpr global int MAX_REGION_SEARCH = 128;
+constexpr global int MAX_LOCAL_SEARCH = 256;
 
 #define AllocNode(T) ((T*)SMalloc(Allocator::Frame, sizeof(T)));
 
@@ -400,11 +400,11 @@ GetRegion(RegionState* regionState, Vec2i tilePos)
 	return (RegionPaths*)HashMapGet(&regionState->RegionMap, &coord);
 }
 
-//global_var BHeap* PortalOpenSet;
-//global_var HashMapT<Vec2i, PortalNode*> PortalOpenSetMap;
-//global_var HashSetT<Vec2i> PortalClosedSet;
-global_var SList<Vec2i> PortalSearchQueue;
-global_var HashMapT<Vec2i, Region> RegionMap;
+//global BHeap* PortalOpenSet;
+//global HashMapT<Vec2i, PortalNode*> PortalOpenSetMap;
+//global HashSetT<Vec2i> PortalClosedSet;
+global SList<Vec2i> PortalSearchQueue;
+global HashMapT<Vec2i, Region> RegionMap;
 
 internal void
 Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end,

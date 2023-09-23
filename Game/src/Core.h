@@ -1,11 +1,15 @@
 #pragma once
 
-#include <stdint.h>
+#define ZPL_HEAP_ANALYSIS
 #include <zpl/zpl.h>
-#include <raylib/src/raylib.h>
 
 #define FLECS_SYSTEM
 #include <flecs/flecs.h>
+
+#include <raylib/src/raylib.h>
+#undef PI
+
+#include <stdint.h>
 
 #include "Vector2i.h"
 
@@ -33,13 +37,13 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+#define internal static
+#define local_static static
+#define global static
+
 typedef Vector2i Vec2i;
 typedef Vector2 Vec2;
 typedef zpl_string String;
-
-#define internal static
-#define local_static static
-#define global_var static
 
 #if defined(__clang__) || defined(__GNUC__)
 #define _RESTRICT_ __restrict__
@@ -86,6 +90,8 @@ typedef zpl_string String;
 #else
 #define SAPI
 #endif
+
+#define Cast(type) static_cast<type>
 
 #define Stringify(x) #x
 #define Expand(x) Stringify(x)
@@ -142,26 +148,29 @@ typedef zpl_string String;
 
 #define CALL_CONSTRUCTOR(object) new (object)
 
-constexpr global_var float TAO = PI * 2.0;
+constexpr global int CACHE_LINE = 64;
 
-constexpr global_var int WIDTH = 1600;
-constexpr global_var int HEIGHT = 900;
+constexpr global float PI = (float)3.14159265358979323846;
+constexpr global float TAO = PI * 2.0;
 
-constexpr global_var const char* TITLE = "Kingdoms";
-constexpr global_var int MAX_FPS = 60;
+constexpr global int WIDTH = 1600;
+constexpr global int HEIGHT = 900;
 
-constexpr global_var int TILE_SIZE = 16;
-constexpr global_var float INVERSE_TILE_SIZE = 1.0f / TILE_SIZE;
-constexpr global_var float HALF_TILE_SIZE = TILE_SIZE / 2.0f;
+constexpr global const char* TITLE = "Kingdoms";
+constexpr global int MAX_FPS = 60;
 
-constexpr global_var int CHUNK_SIZE = 32;
-constexpr global_var float INVERSE_CHUNK_SIZE = 1.0f / (float)CHUNK_SIZE;
-constexpr global_var int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
-constexpr global_var int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
-constexpr global_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+constexpr global int TILE_SIZE = 16;
+constexpr global float INVERSE_TILE_SIZE = 1.0f / TILE_SIZE;
+constexpr global float HALF_TILE_SIZE = TILE_SIZE / 2.0f;
 
-constexpr global_var int VIEW_RADIUS = 3;
-constexpr global_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
+constexpr global int CHUNK_SIZE = 32;
+constexpr global float INVERSE_CHUNK_SIZE = 1.0f / (float)CHUNK_SIZE;
+constexpr global int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
+constexpr global int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
+constexpr global int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+
+constexpr global int VIEW_RADIUS = 3;
+constexpr global int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
 
 enum class Direction : uint8_t
 {
@@ -173,13 +182,13 @@ enum class Direction : uint8_t
 	MAX_TYPES,
 };
 
-constexpr global_var Vector2 VEC2_ZERO = { 0 , 0 };
-constexpr global_var Vector2 VEC2_UP = { 0 , -1 };
-constexpr global_var Vector2 VEC2_RIGHT = { 1 , 0 };
-constexpr global_var Vector2 VEC2_DOWN = { 0 , 1 };
-constexpr global_var Vector2 VEC2_LEFT = { -1 , 0 };
+constexpr global Vector2 VEC2_ZERO = { 0 , 0 };
+constexpr global Vector2 VEC2_UP = { 0 , -1 };
+constexpr global Vector2 VEC2_RIGHT = { 1 , 0 };
+constexpr global Vector2 VEC2_DOWN = { 0 , 1 };
+constexpr global Vector2 VEC2_LEFT = { -1 , 0 };
 
-constexpr global_var float
+constexpr global float
 TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 
 #define FMT_VEC2(v) TextFormat("Vector2(x: %.3f, y: %.3f)", v.x, v.y)
@@ -187,8 +196,6 @@ TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 #define FMT_RECT(rect) TextFormat("Rectangle(x: %.3f, y: %.3f, w: %.3f, h: %.3f)", rect.x, rect.y, rect.width, rect.height)
 #define FMT_BOOL(boolVar) TextFormat("%s", ((boolVar)) ? "true" : "false")
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
-
-#define HashTile(tileVec2) (zpl_fnv64a(&tileVec2, sizeof(Vec2i)))
 
 inline int ScalTestCounter;
 inline int ScalTestPasses;

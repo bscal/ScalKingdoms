@@ -16,10 +16,10 @@ struct Portal;
 struct Node;
 struct Pathfinder;
 
-constexpr global_var int DIVISIONS = 4;
-constexpr global_var int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
+constexpr global int DIVISIONS = 4;
+constexpr global int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
 
-constexpr global_var u8 REGION_SIDE_POINTS[REGION_SIZE] = { 3, 4, 2, 5, 1, 6, 0, 7 };
+constexpr global u8 REGION_SIDE_POINTS[REGION_SIZE] = { 3, 4, 2, 5, 1, 6, 0, 7 };
 
 struct Region;
 

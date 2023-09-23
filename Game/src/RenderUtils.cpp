@@ -223,7 +223,9 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	if (lastSlash != NULL)
 	{
 		// NOTE: We need some extra space to avoid memory corruption on next allocations!
-		imPath = (char*)RL_CALLOC(TextLength(fileName) - TextLength(lastSlash) + TextLength(imFileName) + 4, 1);
+		size_t size = TextLength(fileName) - TextLength(lastSlash) + TextLength(imFileName) + 4;
+		imPath = (char*)SMalloc(Allocator::Frame, size);
+		memset(imPath, 0, size);
 		memcpy(imPath, fileName, TextLength(fileName) - TextLength(lastSlash) + 1);
 		memcpy(imPath + TextLength(fileName) - TextLength(lastSlash) + 1, imFileName, TextLength(imFileName));
 	}
@@ -233,16 +235,14 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 
 	font.texture = *fontTexture;
 
-	if (lastSlash != NULL) RL_FREE(imPath);
-
 	Image imFont = LoadImageFromTexture(font.texture);
 
 	// Fill font characters info data
 	font.baseSize = fontSize;
 	font.glyphCount = glyphCount;
 	font.glyphPadding = 0;
-	font.glyphs = (GlyphInfo*)RL_MALLOC(glyphCount * sizeof(GlyphInfo));
-	font.recs = (Rectangle*)RL_MALLOC(glyphCount * sizeof(Rectangle));
+	font.glyphs = (GlyphInfo*)SMalloc(Allocator::Arena, glyphCount * sizeof(GlyphInfo));
+	font.recs = (Rectangle*)SMalloc(Allocator::Arena, glyphCount * sizeof(Rectangle));
 
 	int charId, charX, charY, charWidth, charHeight, charOffsetX, charOffsetY, charAdvanceX;
 
@@ -278,6 +278,24 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	else TRACELOG(LOG_INFO, "FONT: [%s] Font loaded successfully (%i glyphs)", fileName, font.glyphCount);
 
 	return font;
+}
+
+void
+UnloadBMPFontData(Font* font)
+{
+	SAssert(font);
+	SAssert(font->glyphs);
+
+	if (font && font->glyphs)
+	{
+		for (int i = 0; i < font->glyphCount; i++)
+		{
+			SAssert(font->glyphs[i].image.data);
+			UnloadImage(font->glyphs[i].image);
+		}
+
+		SFree(Allocator::Arena, font->glyphs);
+	}
 }
 
 void 

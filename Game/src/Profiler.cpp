@@ -2,7 +2,7 @@
 
 #if ENABLE_PROFILING
 
-global_var SpallProfile SpallCtx;
+global SpallProfile SpallCtx;
 
 #if USE_THREADS 
 
@@ -43,7 +43,7 @@ thread_local ThreadedProfiler SpallData;
 
 #else
 
-global_var SpallBuffer SpallData;
+global SpallBuffer SpallData;
 
 #endif
 
