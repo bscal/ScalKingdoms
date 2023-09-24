@@ -17,7 +17,7 @@ struct HashMapStrSetResults
 };
 
 internal HashMapStrSetResults
-HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value);
+HashMapStrSet_Internal(HashMapStr* map, const String key, const void* value);
 
 void 
 HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, Allocator alloc)
@@ -25,7 +25,7 @@ HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, Allocator a
 	SAssert(map);
 	SAssert(IsAllocatorValid(alloc));
 	SAssert(valueStride > 0);
-
+	
 	map->Alloc = alloc;
 	map->ValueStride = valueStride;
 	if (capacity > 0)
@@ -96,13 +96,13 @@ void HashMapStrFree(HashMapStr* map)
 }
 
 void
-HashMapStrSet(HashMapStr* map, const zpl_string key, const void* value)
+HashMapStrSet(HashMapStr* map, const String key, const void* value)
 {
 	HashMapStrSet_Internal(map, key, value);
 }
 
 void
-HashMapStrReplace(HashMapStr* map, const zpl_string key, const void* value)
+HashMapStrReplace(HashMapStr* map, const String key, const void* value)
 {
 	HashMapStrSetResults res = HashMapStrSet_Internal(map, key, value);
 	if (res.Contained)
@@ -110,13 +110,13 @@ HashMapStrReplace(HashMapStr* map, const zpl_string key, const void* value)
 }
 
 void*
-HashMapStrSetZeroed(HashMapStr* map, const zpl_string key)
+HashMapStrSetZeroed(HashMapStr* map, const String key)
 {
 	HashMapStrSetResults res = HashMapStrSet_Internal(map, key, nullptr);
 	return IndexValue(map, res.Index);
 }
 
-uint32_t HashMapStrFind(HashMapStr* map, const zpl_string key)
+uint32_t HashMapStrFind(HashMapStr* map, const String key)
 {
 	SAssert(map);
 	SAssert(key);
@@ -125,8 +125,8 @@ uint32_t HashMapStrFind(HashMapStr* map, const zpl_string key)
 	if (!map->Buckets || map->Count == 0)
 		return HASHMAPSTR_NOT_FOUND;
 
-	size_t length = zpl_string_length(key);
-	u32 hash = zpl_fnv32a(key, length);
+	size_t length = string_length(key);
+	u32 hash = FNVHash32(key, length);
 	u32 idx = hash & (map->Capacity - 1);
 	u32 probeLength = 0;
 	while (true)
@@ -134,7 +134,7 @@ uint32_t HashMapStrFind(HashMapStr* map, const zpl_string key)
 		HashStrSlot slot = map->Buckets[idx];
 		if (!slot.IsUsed || probeLength > slot.ProbeLength)
 			return HASHMAPSTR_NOT_FOUND;
-		else if (slot.Hash == hash && zpl_string_are_equal(key, slot.String))
+		else if (slot.Hash == hash && string_are_equal(key, slot.String))
 			return idx;
 		else
 		{
@@ -149,7 +149,7 @@ uint32_t HashMapStrFind(HashMapStr* map, const zpl_string key)
 }
 
 void*
-HashMapStrGet(HashMapStr* map, const zpl_string key)
+HashMapStrGet(HashMapStr* map, const String key)
 {
 	u32 idx = HashMapStrFind(map, key);
 	if (idx == HASHMAPSTR_NOT_FOUND)
@@ -158,7 +158,7 @@ HashMapStrGet(HashMapStr* map, const zpl_string key)
 		return IndexValue(map, idx);
 }
 
-bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
+bool HashMapStrRemove(HashMapStr* map, const String key)
 {
 	SAssert(map);
 	SAssert(key);
@@ -167,8 +167,8 @@ bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
 	if (!map->Buckets || map->Count == 0)
 		return false;
 
-	size_t length = zpl_string_length(key);
-	u32 hash = zpl_fnv32a(key, length);
+	size_t length = string_length(key);
+	u32 hash = FNVHash32(key, length);
 	u32 idx = hash & (map->Capacity - 1);
 	while (true)
 	{
@@ -177,7 +177,7 @@ bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
 		{
 			return false;
 		}
-		else if (slot.Hash == hash && zpl_string_are_equal(key, slot.String))
+		else if (slot.Hash == hash && string_are_equal(key, slot.String))
 		{
 			while (true) // Move any entries after index closer to their ideal probe length.
 			{
@@ -215,7 +215,7 @@ bool HashMapStrRemove(HashMapStr* map, const zpl_string key)
 }
 
 internal HashMapStrSetResults
-HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
+HashMapStrSet_Internal(HashMapStr* map, const String key, const void* value)
 {
 	SAssert(map);
 	SAssert(key);
@@ -233,8 +233,8 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 	swapSlot.String = key;
 	swapSlot.IsUsed = true;
 
-	size_t length = zpl_string_length(key);
-	u32 hash = zpl_fnv32a(key, length);
+	size_t length = string_length(key);
+	u32 hash = FNVHash32(key, length);
 	swapSlot.Hash = hash;
 	u32 idx = hash & (map->Capacity - 1);;
 	SAssert(map->ValueStride < Kilobytes(16));
@@ -273,7 +273,7 @@ HashMapStrSet_Internal(HashMapStr* map, const zpl_string key, const void* value)
 		}
 		else
 		{
-			if (slot->Hash == swapSlot.Hash && zpl_string_are_equal(swapSlot.String, slot->String))
+			if (slot->Hash == swapSlot.Hash && string_are_equal(swapSlot.String, slot->String))
 				return { idx, true };
 
 			if (probeLength > slot->ProbeLength)

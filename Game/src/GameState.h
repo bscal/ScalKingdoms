@@ -14,6 +14,7 @@
 #include "Structures/ArrayList.h"
 #include "Structures/HashMap.h"
 #include "Lib/MemoryArena.h"
+#include "Lib/LinearArena.h"
 
 #include <luajit/src/lua.hpp>
 
@@ -29,8 +30,8 @@ struct AssetMgr
 struct GameState
 {
 	MemArena GameMemory;
-	zpl_arena FrameMemory;
-	zpl_jobs_system Jobs;
+	LinearArena FrameMemory;
+	//zpl_arena Arena;
 
 	RenderTexture2D ScreenTexture;
 
@@ -42,7 +43,6 @@ struct GameState
 
 	Camera2D Camera;
 
-	zpl_random Random;
 	ecs_world_t* World;
 
 	HashMapT<Vec2i, ecs_entity_t> EntityMap;
@@ -51,7 +51,8 @@ struct GameState
 
 	Pathfinder Pathfinder;
 	RegionPathfinder RegionPathfinder;
-	RegionState RegionState;
+
+	bool IsGamePaused;
 };
 
 struct GameClient
@@ -71,6 +72,7 @@ struct GameClient
 	bool IsConsoleOpen;
 	bool IsDebugWindowOpen;
 	bool IsDebugMode;
+	bool IsErrorWindowOpen;
 };
 
 extern struct GameClient Client;
@@ -80,4 +82,3 @@ extern struct GameClient Client;
 GameState* GetGameState();
 
 zpl_allocator GetGameAllocator();
-zpl_allocator GetFrameAllocator();

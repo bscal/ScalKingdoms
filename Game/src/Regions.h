@@ -59,12 +59,6 @@ constexpr u8 DIRECTION_2_REGION_DIR[4][4] =
 	{ 11, 10, 9, 0 }
 };
 
-struct RegionPath
-{
-	Vec2i RegionCoord;
-	RegionDirection Direction;
-};
-
 struct RegionNode
 {
 	Vec2i Pos;
@@ -92,6 +86,12 @@ struct Region
 	ArrayList(Vec2i) Paths[REGION_DIR_MAX];
 };
 
+struct RegionPath
+{
+	Vec2i RegionCoord;
+	RegionDirection Direction;
+};
+
 struct RegionMoveData
 {
 	Vec2i StartRegionTilePos;
@@ -103,37 +103,12 @@ struct RegionMoveData
 	bool NeedToPathfindToEnd;
 };
 
-void RegionInit2(TileMap* tilemap, Chunk* chunk);
+void PathfinderRegionsInit(RegionPathfinder* pathfinder);
+
+void RegionLoad(TileMap* tilemap, Chunk* chunk);
+void RegionUnload(Chunk* chunk);
+
 void PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData);
 void DrawRegions();
 
-struct RegionPaths
-{
-	Vec2i Pos;
-	Vec2i TilePos;
-	bool Sides[4];
-	Vec2i Portals[8];
-};
-
-struct RegionState
-{
-	HashMap RegionMap;
-	BHeap* Open;
-	HashMapT<Vec2i, int> OpenMap;
-	HashSetT<Vec2i> ClosedSet;
-};
-
-void PathfinderRegionsInit(RegionPathfinder* pathfinder);
-
-void RegionStateInit(RegionState* regionState);
-
-void LoadRegionPaths(RegionState* regionState, TileMap* tilemap, Chunk* chunk);
-
-void UnloadRegionPaths(RegionState* regionState, Chunk* chunk);
-
-void FindRegionPath(RegionState* regionState, TileMap* tilemap, Vec2i start, Vec2i end, HashSetT<Vec2i>* regionSet);
-
-void RegionFindLocalPath(RegionState* regionState, Vec2i start, Vec2i end, CMove* moveComponent);
-
-RegionPaths* GetRegion(RegionState* regionState, Vec2i tilePos);
-
+Region* GetRegion(Vec2i tilePos);

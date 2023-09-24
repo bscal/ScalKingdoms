@@ -75,28 +75,30 @@ AlignSize(size_t size, size_t alignment)
 }
 
 _FORCE_INLINE_ constexpr uint64_t
-FNVHash64(const uint8_t* const str, size_t length)
+FNVHash64(const uint8_t* const data, size_t length)
 {
 	constexpr uint64_t OFFSET_BASIS = 0xcbf29ce484222325;
 	constexpr uint64_t PRIME = 0x100000001b3;
+	const u8* const castData = (const u8* const)data;
 	uint64_t val = OFFSET_BASIS;
 	for (size_t i = 0; i < length; ++i)
 	{
-		val ^= str[i];
+		val ^= castData[i];
 		val *= PRIME;
 	}
 	return val;
 }
 
 _FORCE_INLINE_ constexpr uint32_t
-FNVHash32(const uint8_t* const str, size_t length)
+FNVHash32(const void* const data, size_t length)
 {
 	constexpr uint32_t OFFSET_BASIS = 0x811c9dc5;
 	constexpr uint32_t PRIME = 0x1000193;
+	const u8* const castData = (const u8* const)data;
 	uint32_t val = OFFSET_BASIS;
 	for (size_t i = 0; i < length; ++i)
 	{
-		val ^= str[i];
+		val ^= castData[i];
 		val *= PRIME;
 	}
 	return val;

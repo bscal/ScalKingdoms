@@ -34,8 +34,9 @@ void MoveOnAdd(ecs_iter_t* it)
 	for (int i = 0; i < it->count; ++i)
 	{
 		moves[i] = {};
-		zpl_array_init_reserve(moves[i].TilePath, ZplAllocatorArena, 1024);
-		HashSetTInitialize(&moves[i].Regions, 32, Allocator::Arena);
+		ArrayListReserve(Allocator::Arena, moves[i].MoveData.StartPath, REGION_SIZE + 2);
+		ArrayListReserve(Allocator::Arena, moves[i].MoveData.EndPath, REGION_SIZE + 2);
+		ArrayListReserve(Allocator::Arena, moves[i].MoveData.RegionPath, 16);
 	}
 }
 
@@ -44,8 +45,9 @@ void MoveOnRemove(ecs_iter_t* it)
 	CMove* moves = ecs_field(it, CMove, 1);
 	for (int i = 0; i < it->count; ++i)
 	{
-		zpl_array_free(moves[i].TilePath);
-		HashSetTDestroy(&moves[i].Regions);
+		ArrayListFree(Allocator::Arena, moves[i].MoveData.StartPath);
+		ArrayListFree(Allocator::Arena, moves[i].MoveData.EndPath);
+		ArrayListFree(Allocator::Arena, moves[i].MoveData.RegionPath);
 	}
 }
 
@@ -60,6 +62,7 @@ void MoveSystem(ecs_iter_t* it)
 
 	for (int i = 0; i < it->count; ++i)
 	{
+#if 0
 		if (zpl_array_count(moves[i].TilePath) <= 0)
 			continue;
 		else
@@ -90,6 +93,7 @@ void MoveSystem(ecs_iter_t* it)
 				transforms[i].TilePos = travelTilePos;
 			}
 		}
+#endif
 	}
 }
 

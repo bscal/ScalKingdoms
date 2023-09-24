@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Game.h"
 #include "Regions.h"
+#include "Structures/SList.h"
 #include "Structures/BitArray.h"
 #include "Structures/HashMapT.h"
 
@@ -58,13 +59,12 @@ struct ChunkLoaderData
 
 struct ChunkLoaderState
 {
-	fnl_state Noise;
-
 	zpl_semaphore Signal;
-	zpl_array(Chunk*) ChunkPool;
-	zpl_array(ChunkLoaderData) ChunksToAdd;
-	zpl_array(ChunkLoaderData) ChunkToRemove;
 	Vec2 TargetPosition;
+	SList<Chunk*> ChunkPool;
+	SList<ChunkLoaderData> ChunksToAdd;
+	SList<ChunkLoaderData> ChunkToRemove;
+	fnl_state Noise;
 	bool ShouldShutdown;
 	bool ShouldWork;
 };

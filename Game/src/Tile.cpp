@@ -1,9 +1,11 @@
 #include "Tile.h"
 
+#include "Structures/ArrayList.h"
+
 struct TileMgr
 {
 	Texture2D* TileSetTexture;
-	zpl_array(TileInfo) TileDefinitions;
+	ArrayList(TileInfo) TileDefinitions;
 };
 
 global TileMgr TileManager;
@@ -12,7 +14,7 @@ void TileMgrInitialize(Texture2D* tileSetTexture)
 {
 	TileManager.TileSetTexture = tileSetTexture;
 
-	zpl_array_init_reserve(TileManager.TileDefinitions, ZplAllocatorArena, 64);
+	ArrayListReserve(Allocator::Arena, TileManager.TileDefinitions, 64);
 
 	TileInfo empty = {};
 	empty.Src = CoordToRec(1, 0);
@@ -38,9 +40,9 @@ void TileMgrInitialize(Texture2D* tileSetTexture)
 
 u16 TileMgrRegisterTile(const TileInfo* tileInfo)
 {
-	u16 id = (uint16_t)zpl_array_count(TileManager.TileDefinitions);
+	u16 id = (uint16_t)ArrayListCount(TileManager.TileDefinitions);
 
-	zpl_array_append(TileManager.TileDefinitions, *tileInfo);
+	ArrayListPush(Allocator::Arena, TileManager.TileDefinitions, *tileInfo);
 	
 	return id;
 }
@@ -48,8 +50,8 @@ u16 TileMgrRegisterTile(const TileInfo* tileInfo)
 TileInfo* GetTileInfo(u16 id)
 {
 	SAssert(TileManager.TileDefinitions);
-	SAssert(id < zpl_array_count(TileManager.TileDefinitions));
-	if (id >= zpl_array_count(TileManager.TileDefinitions))
+	SAssert(id < ArrayListCount(TileManager.TileDefinitions));
+	if (id >= ArrayListCount(TileManager.TileDefinitions))
 		return &TileManager.TileDefinitions[0];
 
 	return &TileManager.TileDefinitions[id];

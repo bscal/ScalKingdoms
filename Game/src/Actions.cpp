@@ -18,7 +18,7 @@ void ActionMgrInitialize(ActionMgr* actionMgr)
 	ActionType idle = {};
 	idle.OnInitAction = [](Action* action, ecs_entity_t entity, u16 actionId)
 	{
-		SClear(action, sizeof(Action));
+		SZero(action, sizeof(Action));
 	};
 	Append(idle);
 }

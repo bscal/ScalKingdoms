@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 #include "Vector2i.h"
+#include "Debug.h"
 
 /*
 *
@@ -43,7 +44,6 @@ typedef uint64_t u64;
 
 typedef Vector2i Vec2i;
 typedef Vector2 Vec2;
-typedef zpl_string String;
 
 #if defined(__clang__) || defined(__GNUC__)
 #define _RESTRICT_ __restrict__
@@ -91,7 +91,7 @@ typedef zpl_string String;
 #define SAPI
 #endif
 
-#define Cast(type) static_cast<type>
+#define Cast(type) (type)
 
 #define Stringify(x) #x
 #define Expand(x) Stringify(x)
@@ -135,7 +135,9 @@ typedef zpl_string String;
 
 #define SInfoLog(msg, ... ) TraceLog(LOG_INFO, msg, __VA_ARGS__)
 
-#define SWarn(msg, ... ) TraceLog(LOG_WARNING, msg, __VA_ARGS__)
+#define SWarn(msg, ... ) \
+	TraceLog(LOG_WARNING, msg, __VA_ARGS__); \
+	TriggerErrorPopupWindow(true, TextFormat(msg, __VA_ARGS__), __FILE__, __FUNCTION__, __LINE__) \
 
 #define SError(msg, ...) \
 	TraceLog(LOG_ERROR, msg, __VA_ARGS__); \
@@ -218,20 +220,20 @@ struct Timer
 	Timer()
 	{
 		End = 0;
-		Start = zpl_time_rel();
+		Start = GetTime();
 		Name = nullptr;
 	}
 
 	Timer(const char* name)
 	{
 		End = 0;
-		Start = zpl_time_rel();
+		Start = GetTime();
 		Name = name;
 	}
 
 	~Timer()
 	{
-		End = zpl_time_rel() - Start;
+		End = GetTime() - Start;
 		if (Name)
 			SDebugLog("[ Timer ] Timer %s took %d seconds");
 		else

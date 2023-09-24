@@ -21,8 +21,7 @@ struct CRender
 
 struct CMove
 {
-	HashSetT<Vec2i> Regions;
-	zpl_array(Vec2i) TilePath;
+	RegionMoveData MoveData;
 	Vec2 Start;
 	Vec2 Target;
 	float Progress;

@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Memory.h"
+#include "Lib/String.h"
 
 constexpr global u32 HASHMAPSTR_NOT_FOUND = UINT32_MAX;
 
@@ -11,7 +12,7 @@ typedef bool(*HashMapKVCompare)(const void*, const void*);
 
 struct HashStrSlot
 {
-	zpl_string String;
+	String String;
 	u32 Hash;
 	u16 ProbeLength;
 	bool IsUsed;
@@ -37,15 +38,15 @@ void HashMapStrClear(HashMapStr* map);
 
 void HashMapStrFree(HashMapStr* map);
 
-void HashMapStrSet(HashMapStr* map, const zpl_string key, const void* value);
+void HashMapStrSet(HashMapStr* map, const String key, const void* value);
 
-void HashMapStrReplace(HashMapStr* map, const zpl_string key, const void* value);
+void HashMapStrReplace(HashMapStr* map, const String key, const void* value);
 
-void* HashMapStrSetZeroed(HashMapStr* map, const zpl_string key);
+void* HashMapStrSetZeroed(HashMapStr* map, const String key);
 
-u32 HashMapStrFind(HashMapStr* map, const zpl_string key);
+u32 HashMapStrFind(HashMapStr* map, const String key);
 
-void* HashMapStrGet(HashMapStr* map, const zpl_string key);
+void* HashMapStrGet(HashMapStr* map, const String key);
 
-bool HashMapStrRemove(HashMapStr* map, const zpl_string key);
+bool HashMapStrRemove(HashMapStr* map, const String key);
 

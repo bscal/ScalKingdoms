@@ -58,8 +58,6 @@ void MoveEntity(GameState* state, ecs_entity_t id, Vec2i tile)
 			move->Start = transform->Pos;
 			move->Target = {};
 			move->Progress = 0;
-			FindRegionPath(&state->RegionState, &state->TileMap, transform->TilePos, tile, &move->Regions);
-			RegionFindLocalPath(&state->RegionState, transform->TilePos, tile, move);
 			ecs_modified(state->World, id, CMove);
 		}
 	}

@@ -467,9 +467,9 @@ const char*
 NewRichTextColor(int color)
 {
 	char* buffer = {};
-	zpl_alloc_str_len(ZplAllocatorFrame, buffer, RICH_TEXT_MAX_LENGTH + 2);
+	string_make_length(Allocator::Frame, buffer, RICH_TEXT_MAX_LENGTH + 2);
 	SAssert(buffer);
-	SClear(buffer, RICH_TEXT_MAX_LENGTH + 2);
+	SZero(buffer, RICH_TEXT_MAX_LENGTH + 2);
 
 	int pos = 0;
 	const char* colorStr = TextFormat("%d", color);

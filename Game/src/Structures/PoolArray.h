@@ -36,7 +36,7 @@ struct PoolArray
 		SAssert(IsAllocatorValid(Alloc));
 		for (int i = 0; i < BlockCount; ++i)
 		{
-			SFree(Alloc, MemoryBlocks[idx]);
+			SFree(Alloc, MemoryBlocks[i]);
 		}
 		SFree(Alloc, MemoryBlocks);
 	}
@@ -183,6 +183,8 @@ inline int Test()
 	int n3 = pool.GetNext();
 	SAssert(n3 == 2);
 	*pool.At(n3) = 16;
+	
+	pool.Free();
 
 	return 0;
 }

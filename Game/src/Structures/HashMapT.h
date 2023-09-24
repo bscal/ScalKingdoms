@@ -56,6 +56,8 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 
 	if (map->Buckets)
 	{
+		PushMemoryPointer(map->Buckets);
+
 		HashMapT<K, V> tmpMap = {};
 		tmpMap.Alloc = map->Alloc;
 		HashMapTReserve<K, V>(&tmpMap, capacity);
@@ -73,6 +75,8 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 		SAssert(map->Count == tmpMap.Count);
 		SAssert(map->Capacity < tmpMap.Capacity);
 		*map = tmpMap;
+
+		PopMemoryPointer();
 	}
 	else
 	{
@@ -106,9 +110,10 @@ template<typename K, typename V>
 void HashMapTDestroy(HashMapT<K, V>* map)
 {
 	SAssert(map);
+	SAssert(map->Buckets);
+	SAssert(IsAllocatorValid(map->Alloc));
 	SFree(map->Alloc, map->Buckets);
 	map->Capacity = 0;
-	map->Count = 0;
 }
 
 template<typename K, typename V>
@@ -296,11 +301,37 @@ template<typename K, typename V>
 void HashMapTForEach(HashMapT<K, V>* map, void(*Fn)(K*, V*, void*), void* stackMemory)
 {
 	SAssert(Fn);
-	for (uint32_t i = 0; i < map->Capacity; ++i)
+	u32 processedCount = 0;
+	for (u32 i = 0; i < map->Capacity; ++i)
 	{
 		if (map->Buckets[i].IsUsed)
 		{
 			Fn(&map->Buckets[i].Key, &map->Buckets[i].Value, stackMemory);
+			if (++processedCount == map->Count)
+				break;
+		}
+	}
+}
+
+template<typename K, typename V>
+void HashMapTPrint(HashMapT<K, V>* map, const char*(*FmtKey)(K*), const char*(*FmtValue)(V*))
+{
+	SAssert(map);
+	SAssert(FmtKey);
+	SAssert(FmtValue);
+	for (u32 i = 0; i < map->Capacity; ++i)
+	{
+		if (map->Buckets[i].IsUsed)
+		{
+			SDebugLog("\t[%d] %s (probe: %d) = %s",
+				i,
+				FmtKey(&map->Buckets[i].Key),
+				map->Buckets[i].ProbeLength,
+				FmtValue(&map->Buckets[i].Value));
+		}
+		else
+		{
+			SDebugLog("\t[%d] NULL", i);
 		}
 	}
 }

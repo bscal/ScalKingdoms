@@ -30,10 +30,10 @@ struct Console
 	char EntryString[CONSOLE_ENTRY_LENGTH];
 
 	HashMapStr Commands;
-	Queue<zpl_string> Entries;
+	Queue<String> Entries;
 
-	zpl_string* CurrentCommandArgString;
-	zpl_string* Suggestions[CONSOLE_MAX_SUGGESTIONS];
+	String* CurrentCommandArgString;
+	String* Suggestions[CONSOLE_MAX_SUGGESTIONS];
 	int NumOfSuggestions;
 };
 
@@ -41,28 +41,29 @@ global struct Console Console;
 
 void ConsoleInit()
 {
+	PushMemoryIgnoreFree();
 	HashMapStrInitialize(&Console.Commands, sizeof(Command), 32, Allocator::Arena);
 	Console.Entries.Init(Allocator::Arena, CONSOLE_MAX_ENTRIES);
+	PopMemoryIgnoreFree();
 
-	zpl_allocator allocator = ZplAllocatorArena;
 	for (size_t i = 0; i < CONSOLE_MAX_ENTRIES; ++i)
 	{
-		Console.Entries.Memory[i] = zpl_string_make_reserve(allocator, CONSOLE_ENTRY_LENGTH);
+		Console.Entries.Memory[i] = string_make_reserve(Allocator::Arena, CONSOLE_ENTRY_LENGTH);
 	}
 
 	// Commands
 	Command cmd = {};
-	cmd.ArgumentString = zpl_string_make(ZplAllocatorArena, "Testing args");
-	cmd.OnCommand = [](zpl_string cmd, const char** arg, int argCount)
+	cmd.ArgumentString = string_make(Allocator::Arena, "Testing args");
+	cmd.OnCommand = [](const String cmd, const char** arg, int argCount)
 	{
 		SInfoLog("Command executed! %s, %d", cmd, argCount);
 
-		return 0;
+		return COMMAND_SUCCESS;
 	};
-	ConsoleRegisterCommand(zpl_string_make(ZplAllocatorArena, "TestCommand"), &cmd);
+	ConsoleRegisterCommand(string_make(Allocator::Arena, "TestCommand"), &cmd);
 }
 
-void ConsoleRegisterCommand(zpl_string cmdName, Command* cmd)
+void ConsoleRegisterCommand(String cmdName, Command* cmd)
 {
 	HashMapStrSet(&Console.Commands, cmdName, cmd);
 
@@ -134,7 +135,7 @@ void ConsoleDraw(GameClient* client, GUIState* guiState)
 			if (IsKeyPressed(KEY_TAB) && Console.NumOfSuggestions > 0)
 			{
 				memset(Console.EntryString, 0, CONSOLE_ENTRY_LENGTH);
-				Console.EntryLength = (int)zpl_string_length(*Console.Suggestions[0]);
+				Console.EntryLength = (int)string_length(*Console.Suggestions[0]);
 				memcpy(Console.EntryString, *Console.Suggestions[0], Console.EntryLength);
 			}
 
@@ -145,7 +146,7 @@ void ConsoleDraw(GameClient* client, GUIState* guiState)
 				if (Console.Entries.IsFull())
 					Console.Entries.PopFirst();
 
-				zpl_string entryString = Console.Entries.Memory[Console.Entries.Last];
+				String entryString = Console.Entries.Memory[Console.Entries.Last];
 				SAssert(entryString);
 				memcpy(entryString, Console.EntryString, Console.EntryLength);
 				memset(Console.EntryString, 0, CONSOLE_ENTRY_LENGTH);
@@ -223,7 +224,7 @@ ConsoleFillSuggestions()
 	else
 		idx = (int)(firstSpace - (char*)Console.EntryString);
 
-	zpl_string tempString = zpl_string_make_length(ZplAllocatorFrame, Console.EntryString, idx);
+	String tempString = string_make_length(Allocator::Frame, Console.EntryString, idx);
 
 	for (u32 i = 0; i < Console.Commands.Capacity; ++i)
 	{
@@ -259,7 +260,7 @@ ConsoleHandleCommand()
 	else
 		idx = (int)(firstSpace - (char*)Console.EntryString);
 
-	zpl_string tempString = zpl_string_make_length(ZplAllocatorFrame, Console.EntryString, idx);
+	String tempString = string_make_length(Allocator::Frame, Console.EntryString, idx);
 	Command* cmd = (Command*)HashMapStrGet(&Console.Commands, tempString);
 	if (cmd)
 	{
@@ -272,6 +273,8 @@ ConsoleHandleCommand()
 
 		int cmdResult = cmd->OnCommand(tempString, split, argCount);
 		if (cmdResult != 0)
+		{
 			SWarn("[ Commands ] Command (%s) ran with error: %d", tempString, cmdResult);
+		}
 	}
 }

@@ -56,10 +56,14 @@ GameInitialize()
 	void* gameMemory = zpl_alloc_align(ZplAllocatorMalloc, gameMemorySize, 64);
 	State.GameMemory = MemArenaCreate(gameMemory, gameMemorySize);
 
-	zpl_arena_init_from_allocator(&State.FrameMemory, ZplAllocatorMalloc, Megabytes(16));
+	State.FrameMemory = LinearArenaCreate(Allocator::Malloc, Megabytes(16));
 
-	zpl_affinity affinity;
-	zpl_affinity_init(&affinity);
+	InitializeMemoryTracking();
+
+	//zpl_arena_init_from_allocator(&State.Arena, zpl_heap_allocator(), Megabytes(16));
+
+	//zpl_affinity affinity;
+	//zpl_affinity_init(&affinity);
 
 	//int threadCount = (affinity.thread_count > 4) ? 4 : 2;
 	//zpl_jobs_init(&State.Jobs, ZplAllocatorArena, threadCount);
@@ -83,14 +87,14 @@ GameInitialize()
 
 	State.ScreenTexture = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
 
+	PushMemoryIgnoreFree();
+
 	LoadAssets(&State);
 
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
 	SAssert(guiInitialized);
 
 	HashMapTInitialize(&State.EntityMap, 64, Allocator::Arena);
-
-	zpl_random_init(&State.Random);
 
 	SpritesInitialize();
 
@@ -115,7 +119,6 @@ GameInitialize()
 
 	Client.Player = SpawnCreature(&State, 0, { 0, 0 });
 
-	RegionStateInit(&State.RegionState);
 	PathfinderInit(&State.Pathfinder);
 	PathfinderRegionsInit(&State.RegionPathfinder);
 
@@ -124,9 +127,9 @@ GameInitialize()
 	if (Client.IsDebugMode)
 		SInfoLog("[ Game ] Running in DEBUG mode!");
 
-	GameRun();
+	PopMemoryIgnoreFree();
 
-	ecs_fini(State.World);
+	GameRun();
 
 	GameShutdown();
 
@@ -140,7 +143,9 @@ GameRun()
 	{
 		double start = GetTime();
 
-		zpl_arena_snapshot arenaSnapshot = zpl_arena_snapshot_begin(&State.FrameMemory);
+		LinearArenaReset(&State.FrameMemory);
+
+		//zpl_arena_snapshot arenaSnapshot = zpl_arena_snapshot_begin(&State.Arena);
 
 		// Update
 
@@ -148,12 +153,18 @@ GameRun()
 
 		UpdateGUI(&State);
 
-		GameUpdate();
+		ConsoleDraw(&Client, &State.GUIState);
+		DrawDebugWindow(&Client, &State, &State.GUIState);
 
-		ecs_progress(State.World, DeltaTime);
+		if (!State.IsGamePaused)
+		{
+			GameUpdate();
+			ecs_progress(State.World, DeltaTime);
+		}
+
+		DrawErrorPopupWindow(&State);
 
 		// Draw
-
 		Vector2 screenXY = GetScreenToWorld2D({ 0, 0 }, State.Camera);
 		Rectangle screenRect;
 		screenRect.x = screenXY.x;
@@ -188,16 +199,11 @@ GameRun()
 		DrawRegions();
 		EndMode2D();
 
-		ConsoleDraw(&Client, &State.GUIState);
-		DrawDebugWindow(&Client, &State, &State.GUIState);
-
 		DrawGUI(&State);
-
-
-
+		
 		EndDrawing();
 
-		zpl_arena_snapshot_end(arenaSnapshot);
+		//zpl_arena_snapshot_end(arenaSnapshot);
 	}
 }
 
@@ -349,6 +355,10 @@ void InputUpdate()
 			Client.SelectedEntity = *entity;
 			const char* entityInfo = ecs_entity_str(State.World, *entity);
 			SInfoLog("%s", entityInfo);
+
+			HashMapTPrint<Vec2i, ecs_entity_t>(&State.EntityMap
+				, [](Vec2i* key) { Vec2i k = *key; return TextFormat("%s", FMT_VEC2I(k)); }
+				, [](ecs_entity_t* value) { return TextFormat("%u", *value); });
 		}
 	}
 
@@ -366,6 +376,10 @@ void InputUpdate()
 void
 GameShutdown()
 {
+	ecs_fini(State.World);
+
+	HashMapTDestroy(&State.EntityMap);
+
 	UnloadRenderTexture(State.ScreenTexture);
 
 	TileMapFree(&State.TileMap);
@@ -373,6 +387,8 @@ GameShutdown()
 	UnloadAssets(&State);
 
 	CloseWindow();
+
+	ShutdownMemoryTracking();
 }
 
 internal void 
@@ -431,8 +447,8 @@ GetGameAllocator()
 	return MemArenaAllocator(&State.GameMemory);
 }
 
-zpl_allocator
-GetFrameAllocator()
-{
-	return zpl_arena_allocator(&State.FrameMemory);
-}
+//zpl_allocator
+//GetFrameAllocator()
+//{
+//	return zpl_arena_allocator(&State.FrameMemory);
+//}

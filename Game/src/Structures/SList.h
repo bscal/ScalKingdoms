@@ -61,7 +61,7 @@ struct SList
 	}
 
 	_FORCE_INLINE_ size_t MemUsed() const { return Capacity * sizeof(T); }
-	_FORCE_INLINE_ bool IsAllocated() const { return (Memory); }
+	_FORCE_INLINE_ bool IsAllocated() const { return Memory; }
 
 	_FORCE_INLINE_ uint32_t LastIndex() const
 	{
@@ -76,7 +76,6 @@ struct SList
 };
 
 // ********************
-
 template<typename T>
 void SList<T>::EnsureSize(uint32_t ensuredCount)
 {
@@ -98,7 +97,9 @@ void SList<T>::EnsureSize(uint32_t ensuredCount)
 template<typename T>
 void SList<T>::Free()
 {
-	FreeAlign(Allocator, Memory, 16);
+	SAssert(Memory);
+	SAssert(IsAllocatorValid(Alloc));
+	SFree(Alloc, Memory);
 	Memory = nullptr;
 	Capacity = 0;
 	Count = 0;

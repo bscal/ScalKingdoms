@@ -35,10 +35,10 @@ struct ArrayListHeader
 
 #define ArrayListMaybeGrow_Internal(_alloc, a, n) \
     (((!a) || (ArrayListGetHeader(a)->Count) + (n) >= (ArrayListGetHeader(a)->Capacity)) \
-        ? (*((void**)&(a)) = ArrayListGrow((_alloc), (a), (n), sizeof(*(a)))) : 0)
+        ? (*((void**)&(a)) = ArrayListGrow((_alloc), (a), (n), sizeof(*(a)), __FILE__, __FUNCTION__, __LINE__)) : 0)
 
 inline void* 
-ArrayListGrow(Allocator alloc, void* arr, int increment, int itemsize)
+ArrayListGrow(Allocator alloc, void* arr, int increment, int itemsize, const char* file, const char* function, int line)
 {
     ArrayListHeader header = (arr) ? *ArrayListGetHeader(arr) : ArrayListHeader{ };
     int oldCapacity = header.Capacity;
@@ -49,7 +49,10 @@ ArrayListGrow(Allocator alloc, void* arr, int increment, int itemsize)
 
     size_t oldSize = (arr) ? (size_t)itemsize * (size_t)oldCapacity + sizeof(ArrayListHeader) : 0;
     size_t size = (size_t)itemsize * (size_t)capacity + sizeof(ArrayListHeader);
+    
+    PushMemoryAdditionalInfo(file, function, line);
     ArrayListHeader* p = (ArrayListHeader*)SRealloc(alloc, arr ? ArrayListGetHeader(arr) : 0, size, oldSize);
+    PopMemoryAdditionalInfo();
 
     if (p)
     {
