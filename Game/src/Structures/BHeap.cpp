@@ -165,21 +165,6 @@ BHeapItem BHeapPopMax(BHeap* bh)
     return result;
 }
 
-
-//BHeapItem* BHeapGet(BHeap* bh, void* key)
-//{
-//    int i, r = 0;													
-//    BHeapItem* x = bh->Items;											
-//        while (x) {
-//            
-//                i = __kb_getp_aux_##name(x, k, &r);							
-//                if (i >= 0 && r == 0) return &__KB_KEY(key_t, x)[i];		
-//                    if (x->is_internal == 0) return 0;							
-//                        x = __KB_PTR(b, x)[i + 1];									
-//        }																
-//            return 0;
-//}
-
 void BHeapClear(BHeap* bh)
 {
     bh->Count = 0;
@@ -189,3 +174,25 @@ bool BHeapEmpty(BHeap* bh)
 {
     return bh->Count == 0;
 }
+
+/*
+typedef bool(*BHFindEquals)(void* key0, void* key1);
+
+template<BHFindEquals EqualsFunction>
+int BHeapFind(BHeap* bh, void* key)
+{
+    SAssert(bh);
+    SAssert(key);
+
+    for (int count = 0; count < bh->Count; ++count)
+    {
+        void* curKey = bh->Items[count].Key;
+        if (bh->CompareFunc(curKey, key) > 0)
+            return -1;
+
+        if (EqualsFunction(curKey, key))
+            return count;
+    }
+    return -1;
+}
+*/

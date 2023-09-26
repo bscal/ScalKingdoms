@@ -16,6 +16,8 @@
 #include "Lib/MemoryArena.h"
 #include "Lib/LinearArena.h"
 
+#include "Lib/Jobs.h"
+
 #include <luajit/src/lua.hpp>
 
 struct AssetMgr
@@ -31,7 +33,6 @@ struct GameState
 {
 	MemArena GameMemory;
 	LinearArena FrameMemory;
-	//zpl_arena Arena;
 
 	RenderTexture2D ScreenTexture;
 

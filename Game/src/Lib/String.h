@@ -15,32 +15,30 @@ extern "C" {
 
     #define StringHeader(str) (Cast(string_header *)(str) - 1)
 
-    #define DEF extern "C"
+    inline String string_make_reserve(Allocator a, u32 capacity);
+    inline String string_make_length(Allocator a, void const* str, u32 num_bytes);
+    inline String string_sprintf(Allocator a, char* buf, u32 num_bytes, const char* fmt, ...);
+    inline String string_sprintf_buf(Allocator a, const char* fmt, ...); // NOTE: Uses locally persistent buffer
+    inline String string_append_length(Allocator a, String str, void const* other, u32 num_bytes);
+    inline String string_appendc(Allocator a, String str, const char* other);
+    inline String string_join(Allocator a, const char** parts, u32 count, const char* glue);
+    inline String string_set(Allocator a, String str, const char* cstr);
+    inline String string_make_space_for(Allocator a, String str, u32 add_len);
+    inline u32    string_allocation_size(String const str);
+    inline bool32 string_are_equal(String const lhs, String const rhs);
+    inline String string_trim(String str, const char* cut_set);
+    inline String string_append_rune(Allocator a, String str, zpl_rune r);
+    inline String string_append_fmt(Allocator a, String str, const char* fmt, ...);
 
-    DEF String string_make_reserve(Allocator a, u32 capacity);
-    DEF String string_make_length(Allocator a, void const* str, u32 num_bytes);
-    DEF String string_sprintf(Allocator a, char* buf, u32 num_bytes, const char* fmt, ...);
-    DEF String string_sprintf_buf(Allocator a, const char* fmt, ...); // NOTE: Uses locally persistent buffer
-    DEF String string_append_length(Allocator a, String str, void const* other, u32 num_bytes);
-    DEF String string_appendc(Allocator a, String str, const char* other);
-    DEF String string_join(Allocator a, const char** parts, u32 count, const char* glue);
-    DEF String string_set(Allocator a, String str, const char* cstr);
-    DEF String string_make_space_for(Allocator a, String str, u32 add_len);
-    DEF u32    string_allocation_size(String const str);
-    DEF bool32 string_are_equal(String const lhs, String const rhs);
-    DEF String string_trim(String str, const char* cut_set);
-    DEF String string_append_rune(Allocator a, String str, zpl_rune r);
-    DEF String string_append_fmt(Allocator a, String str, const char* fmt, ...);
-
-    DEF String string_make(Allocator a, const char* str);
-    DEF void   string_free(Allocator a, String str);
-    DEF void   string_clear(String str);
-    DEF String string_duplicate(Allocator a, String const str);
-    DEF u32    string_length(String const str);
-    DEF u32    string_capacity(String const str);
-    DEF u32    string_available_space(String const str);
-    DEF String string_append(Allocator a, String str, String const other);
-    DEF String string_trim_space(String str); // Whitespace ` \t\r\n\v\f`
+    inline String string_make(Allocator a, const char* str);
+    inline void   string_free(Allocator a, String str);
+    inline void   string_clear(String str);
+    inline String string_duplicate(Allocator a, String const str);
+    inline u32    string_length(String const str);
+    inline u32    string_capacity(String const str);
+    inline u32    string_available_space(String const str);
+    inline String string_append(Allocator a, String str, String const other);
+    inline String string_trim_space(String str); // Whitespace ` \t\r\n\v\f`
 
     inline void string_set_length(String str, u32 len) { StringHeader(str)->length = len; }
     inline void string_set_capacity(String str, u32 cap) { StringHeader(str)->capacity = cap; }

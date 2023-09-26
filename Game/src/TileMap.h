@@ -66,7 +66,6 @@ struct ChunkLoaderState
 	SList<ChunkLoaderData> ChunkToRemove;
 	fnl_state Noise;
 	bool ShouldShutdown;
-	bool ShouldWork;
 };
 
 struct TileMap

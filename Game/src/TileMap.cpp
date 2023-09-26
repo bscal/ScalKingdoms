@@ -135,9 +135,13 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 	// I think this is all safe. But I didn't wanted to make sure,
 	// if the chunk thread took multiple frames to process, it
 	// wouldn't be reading from it.
-	if (!chunkLoader->ShouldWork)
+	
+	// Move to jobs system
+
+	// Windows returns a timeout error code when try waiting
+	constexpr zpl_i32 SEMAPHORE_FREE = (SCAL_PLATFORM_WINDOWS) ? 0x00000102 : 0;
+	if (zpl_semaphore_trywait(&chunkLoader->Signal) == SEMAPHORE_FREE)
 	{
-		chunkLoader->ShouldWork = true;
 		// Remove unused chunks from map
 		for (u32 i = 0; i < chunkLoader->ChunkToRemove.Count; ++i)
 		{
@@ -607,8 +611,6 @@ ChunkThreadFunc(zpl_thread* thread)
 				}
 			}
 		}
-
-		chunkLoader->ShouldWork = false;
 	}
 	return 0;
 }

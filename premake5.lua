@@ -85,7 +85,7 @@ project "Game"
         SrcDir .. "**.h",
         "Game/vendor/bscal-sx/*.cpp",
         "Game/vendor/bscal-sx/*.h",
-        "Game/vendor/flecs/flecs.c"
+        "Game/vendor/flecs/flecs.c",
     }
 
     defines

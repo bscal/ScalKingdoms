@@ -9,6 +9,8 @@
 #include "Debug.h"
 #include "RenderUtils.h"
 
+#include <Lib/Jobs.h>
+
 #define COMPONENT_DECLARATION
 #include "Components.h"
 
@@ -60,7 +62,6 @@ GameInitialize()
 
 	InitializeMemoryTracking();
 
-	//zpl_arena_init_from_allocator(&State.Arena, zpl_heap_allocator(), Megabytes(16));
 
 	//zpl_affinity affinity;
 	//zpl_affinity_init(&affinity);
@@ -73,6 +74,8 @@ GameInitialize()
 	Test();
 
 	ConsoleInit();
+
+	JobsInitialize(8);
 
 	SetMallocCallBack(RlMallocOverride);
 	SetReallocCallBack(RlReallocOverride);
@@ -128,6 +131,31 @@ GameInitialize()
 		SInfoLog("[ Game ] Running in DEBUG mode!");
 
 	PopMemoryIgnoreFree();
+
+	static zpl_atomic32 val = {};
+	for (int i = 0; i < 10; ++i)
+	{
+		JobHandle ctx = {};
+		JobsExecute(ctx, [](const JobArgs* args)
+			{
+				zpl_atomic32* valPtr = (zpl_atomic32*)args->sharedmemory;
+				int v = zpl_atomic32_fetch_add(valPtr, 1);
+				u32 tid = zpl_thread_current_id();
+				SInfoLog("Thread %d, Printing %d", tid, v);
+			}, &val);
+	}
+
+	for (int i = 0; i < 10; ++i)
+	{
+		JobHandle ctx = {};
+		JobsExecute(ctx, [](const JobArgs* args)
+			{
+				zpl_atomic32* valPtr = (zpl_atomic32*)args->sharedmemory;
+				int v = zpl_atomic32_fetch_add(valPtr, 1);
+				u32 tid = zpl_thread_current_id();
+				SInfoLog("Thread %d, Printing %d", tid, v);
+			}, &val);
+	}
 
 	GameRun();
 
