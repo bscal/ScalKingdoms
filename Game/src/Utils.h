@@ -159,3 +159,6 @@ static inline Vector2 operator/(Vector2 left, Vector2 right)
 	return Vector2Divide(left, right);
 }
 
+#define Min(v0, v1) ((v0 < v1) ? v0 : v1)
+#define Max(v0, v1) ((v0 > v1) ? v0 : v1)
+#define Clamp(v, min, max) Min(max, Max(min, v))

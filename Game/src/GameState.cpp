@@ -136,21 +136,9 @@ GameInitialize()
 	for (int i = 0; i < 10; ++i)
 	{
 		JobHandle ctx = {};
-		JobsExecute(ctx, [](const JobArgs* args)
+		JobsExecute(&ctx, [](const JobArgs* args)
 			{
-				zpl_atomic32* valPtr = (zpl_atomic32*)args->sharedmemory;
-				int v = zpl_atomic32_fetch_add(valPtr, 1);
-				u32 tid = zpl_thread_current_id();
-				SInfoLog("Thread %d, Printing %d", tid, v);
-			}, &val);
-	}
-
-	for (int i = 0; i < 10; ++i)
-	{
-		JobHandle ctx = {};
-		JobsExecute(ctx, [](const JobArgs* args)
-			{
-				zpl_atomic32* valPtr = (zpl_atomic32*)args->sharedmemory;
+				zpl_atomic32* valPtr = (zpl_atomic32*)args->StackMemory;
 				int v = zpl_atomic32_fetch_add(valPtr, 1);
 				u32 tid = zpl_thread_current_id();
 				SInfoLog("Thread %d, Printing %d", tid, v);

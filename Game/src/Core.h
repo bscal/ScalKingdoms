@@ -83,12 +83,12 @@ typedef Vector2 Vec2;
 
 #ifdef SCAL_PLATFORM_WINDOWS
 #ifdef SCAL_BUILD_DLL
-#define SAPI __declspec(dllexport)
+#define API cxtern "C" __declspec(dllexport)
 #else
-#define SAPI __declspec(dllimport)
+#define API extern "C" __declspec(dllimport)
 #endif // SCAL_BUILD_DLL
 #else
-#define SAPI
+#define API extern "C"
 #endif
 
 #define Cast(type) (type)
@@ -148,7 +148,7 @@ typedef Vector2 Vec2;
 	TraceLog(LOG_FATAL, "Fatal error detected, program crashed! File: %s, Line: %s", __FILE__, __LINE__); \
 	DebugBreak(void) \
 
-#define CALL_CONSTRUCTOR(object) new (object)
+#define CALL_CONSTRUCTOR(object, T) new (object) T
 
 constexpr global int CACHE_LINE = 64;
 

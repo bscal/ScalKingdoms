@@ -10,9 +10,12 @@
 
 #include <math.h>
 
+// TODO
+#pragma warning(disable: 4505)
+
 constexpr global int MAX_CHUNKS_TO_PROCESS = 12;
 
-internal ptrdiff_t ChunkThreadFunc(zpl_thread* thread);
+internal void ChunkThreadFunc(const JobArgs* args);
 
 // Internal thread safe chunk management functions
 internal Chunk* InternalChunkLoad(TileMap* tilemap, Vec2i coord);
@@ -66,20 +69,14 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 
 	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, Allocator::Arena);
 
-	SInfoLog("Starting chunk thread...");
+	tilemap->ChunkLoader.Tilemap = tilemap;
 
 	// Init noise
 	tilemap->ChunkLoader.Noise = fnlCreateState();
 	tilemap->ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
 
-	zpl_semaphore_init(&tilemap->ChunkLoader.Signal);
 	tilemap->ChunkLoader.ChunksToAdd.Reserve(MAX_CHUNKS_TO_PROCESS);
 	tilemap->ChunkLoader.ChunkToRemove.Reserve(MAX_CHUNKS_TO_PROCESS);
-
-	zpl_thread_init_nowait(&tilemap->ChunkThread);
-	zpl_thread_start(&tilemap->ChunkThread, ChunkThreadFunc, tilemap);
-
-	SInfoLog("Chunk thread started!");
 
 	SInfoLog("Tilemap Initialized!");
 }
@@ -88,17 +85,6 @@ void
 TileMapFree(TileMap* tilemap)
 {
 	SAssert(tilemap);
-	SInfoLog("Waiting for chunk thread to shutdown...");
-	// Waits for thread to shutdown;
-	tilemap->ChunkLoader.ShouldShutdown = true;
-	zpl_semaphore_post(&tilemap->ChunkLoader.Signal, 1);
-	while (zpl_thread_is_running(&tilemap->ChunkThread))
-	{
-		zpl_sleep_ms(1);
-	}
-	zpl_thread_destroy(&tilemap->ChunkThread);
-	zpl_semaphore_destroy(&tilemap->ChunkLoader.Signal);
-	SInfoLog("Chunk thread shutdown!");
 
 	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 	{
@@ -138,27 +124,30 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 	
 	// Move to jobs system
 
-	// Windows returns a timeout error code when try waiting
-	constexpr zpl_i32 SEMAPHORE_FREE = (SCAL_PLATFORM_WINDOWS) ? 0x00000102 : 0;
-	if (zpl_semaphore_trywait(&chunkLoader->Signal) == SEMAPHORE_FREE)
+	if (!JobHandleIsBusy(&tilemap->ChunkLoaderJobHandle))
 	{
-		// Remove unused chunks from map
-		for (u32 i = 0; i < chunkLoader->ChunkToRemove.Count; ++i)
+		if (!tilemap->ChunkLoader.HasMainThreadUpdated)
 		{
-			OnChunkUnload(gameState, chunkLoader->ChunkToRemove.Memory[i].ChunkPtr);
-			HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunkToRemove.Memory[i].Key);
-		}
-		chunkLoader->ChunkToRemove.Clear();
+			tilemap->ChunkLoader.HasMainThreadUpdated = true;
 
-		// Add unused chunks from map
-		for (u32 i = 0; i < chunkLoader->ChunksToAdd.Count; ++i)
-		{
-			HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunksToAdd.Memory[i].Key, &chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
-			OnChunkLoad(gameState, chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
-		}
-		chunkLoader->ChunksToAdd.Clear();
+			// Remove unused chunks from map
+			for (u32 i = 0; i < chunkLoader->ChunkToRemove.Count; ++i)
+			{
+				OnChunkUnload(gameState, chunkLoader->ChunkToRemove.Memory[i].ChunkPtr);
+				HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunkToRemove.Memory[i].Key);
+			}
+			chunkLoader->ChunkToRemove.Clear();
 
-		zpl_semaphore_post(&chunkLoader->Signal, 1);
+			// Add unused chunks from map
+			for (u32 i = 0; i < chunkLoader->ChunksToAdd.Count; ++i)
+			{
+				HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunksToAdd.Memory[i].Key, &chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
+				OnChunkLoad(gameState, chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
+			}
+			chunkLoader->ChunksToAdd.Clear();
+
+			JobsExecute(&tilemap->ChunkLoaderJobHandle, ChunkThreadFunc, &tilemap->ChunkLoader);
+		}
 	}
 
 	// Loops over loaded chunks, Unloads out of range, handles chunks waiting for RenderTexture,
@@ -528,90 +517,84 @@ bool IsTileInBounds(TileMap* tilemap, Vec2i coord)
 		&& y < tilemap->Dimensions.height);
 }
 
-internal ptrdiff_t
-ChunkThreadFunc(zpl_thread* thread)
+internal void
+ChunkThreadFunc(const JobArgs* args)
 {
-	TileMap* tilemap = (TileMap*)thread->user_data;
-	SAssert(tilemap);
-	ChunkLoaderState* chunkLoader = &tilemap->ChunkLoader;
+	ChunkLoaderState* chunkLoader = (ChunkLoaderState*)args->StackMemory;
 	SAssert(chunkLoader);
-	while (true)
+	TileMap* tilemap = chunkLoader->Tilemap;
+	SAssert(tilemap);
+
+	SAssert(chunkLoader->ChunksToAdd.IsAllocated());
+	SAssert(chunkLoader->ChunkToRemove.IsAllocated());
+	if (!tilemap->ChunkMap.Buckets)
 	{
-		zpl_semaphore_wait(&chunkLoader->Signal);
+		SAssertMsg(false, "Chunk thread, ChunkMap, is NULL");
+		return;
+	}
 
-		if (chunkLoader->ShouldShutdown)
-			return 0;
+	chunkLoader->HasMainThreadUpdated = false;
 
-		SAssert(chunkLoader->ChunksToAdd.IsAllocated());
-		SAssert(chunkLoader->ChunkToRemove.IsAllocated());
-		if (!tilemap->ChunkMap.Buckets)
+	Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
+
+	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
+	{
+		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
+			continue;
+
+		if (chunkLoader->ChunkToRemove.Count >= MAX_CHUNKS_TO_PROCESS)
+			break;
+
+		Vec2i key = tilemap->ChunkMap.Buckets[i].Key;
+		Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
+		float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
+		if (distance > VIEW_DISTANCE_SQR)
 		{
-			SAssertMsg(false, "Chunk thread, ChunkMap, is NULL");
-			return 1;
+			InternalChunkUnload(tilemap, chunk);
+
+			ChunkLoaderData data;
+			data.ChunkPtr = chunk;
+			data.Key = key;
+			chunkLoader->ChunkToRemove.Push(&data);
 		}
+	}
 
-		Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
+	Vec2 chunkPos = position;
+	chunkPos.x *= INVERSE_CHUNK_SIZE;
+	chunkPos.y *= INVERSE_CHUNK_SIZE;
 
-		for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
+	// Checks for chunks needing to be loaded
+	Vec2i start = Vec2ToVec2i(chunkPos) - Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
+	Vec2i end = Vec2ToVec2i(chunkPos) + Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
+	for (int y = start.y; y < end.y; ++y)
+	{
+		for (int x = start.x; x < end.x; ++x)
 		{
-			if (!tilemap->ChunkMap.Buckets[i].IsUsed)
-				continue;
-
-			if (chunkLoader->ChunkToRemove.Count >= MAX_CHUNKS_TO_PROCESS)
+			if (chunkLoader->ChunksToAdd.Count >= MAX_CHUNKS_TO_PROCESS)
 				break;
 
-			Vec2i key = tilemap->ChunkMap.Buckets[i].Key;
-			Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
-			float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
-			if (distance > VIEW_DISTANCE_SQR)
+			Vec2i coord = { x, y };
+			Vec2 center;
+			center.x = (float)coord.x * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
+			center.y = (float)coord.y * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
+			float distance = Vector2DistanceSqr(center, position);
+			if (distance < VIEW_DISTANCE_SQR)
 			{
-				InternalChunkUnload(tilemap, chunk);
-
-				ChunkLoaderData data;
-				data.ChunkPtr = chunk;
-				data.Key = key;
-				chunkLoader->ChunkToRemove.Push(&data);
-			}
-		}
-
-		Vec2 chunkPos = position;
-		chunkPos.x *= INVERSE_CHUNK_SIZE;
-		chunkPos.y *= INVERSE_CHUNK_SIZE;
-
-		// Checks for chunks needing to be loaded
-		Vec2i start = Vec2ToVec2i(chunkPos) - Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
-		Vec2i end = Vec2ToVec2i(chunkPos) + Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
-		for (int y = start.y; y < end.y; ++y)
-		{
-			for (int x = start.x; x < end.x; ++x)
-			{
-				if (chunkLoader->ChunksToAdd.Count >= MAX_CHUNKS_TO_PROCESS)
-					break;
-
-				Vec2i coord = { x, y };
-				Vec2 center;
-				center.x = (float)coord.x * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
-				center.y = (float)coord.y * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
-				float distance = Vector2DistanceSqr(center, position);
-				if (distance < VIEW_DISTANCE_SQR)
+				u32 idx = HashMapTFind(&tilemap->ChunkMap, &coord);
+				if (idx == HashMapT<Vec2i, Chunk*>::NOT_FOUND)
 				{
-					u32 idx = HashMapTFind(&tilemap->ChunkMap, &coord);
-					if (idx == HashMapT<Vec2i, Chunk*>::NOT_FOUND)
-					{
-						ChunkLoaderData data;
-						data.ChunkPtr = InternalChunkLoad(tilemap, coord);
-						data.Key = coord;
+					ChunkLoaderData data;
+					data.ChunkPtr = InternalChunkLoad(tilemap, coord);
+					data.Key = coord;
 
-						if (!data.ChunkPtr)
-							continue;
+					if (!data.ChunkPtr)
+						continue;
 
-						chunkLoader->ChunksToAdd.Push(&data);
-					}
-
+					chunkLoader->ChunksToAdd.Push(&data);
 				}
+
 			}
 		}
 	}
-	return 0;
 }
 

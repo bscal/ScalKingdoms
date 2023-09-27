@@ -1,8 +1,10 @@
 #include "Jobs.h"
 
+#include "Utils.h"
 #include "Structures/ArrayList.h"
+#include "Structures/QueueThreaded.h"
 
-#include <moodycamel/ConcurrentQueue.h>
+//#include <moodycamel/ConcurrentQueue.h>
 
 #ifdef _WIN32
 #include "JobsWin32.h"
@@ -16,24 +18,33 @@ struct Job
 	JobWorkFunc task;
 	void* stack;
 	JobHandle* handle;
-	uint32_t groupID;
+	uint32_t GroupId;
 	uint32_t groupJobOffset;
 	uint32_t groupJobEnd;
 };
 
 struct JobQueue
 {
-	moodycamel::ConcurrentQueue<Job> queue;
+	//moodycamel::ConcurrentQueue<Job> Queue;
 
-	_FORCE_INLINE_ void push_back(const Job& item)
+	QueueThreaded<Job, 256> Queue2;
+
+	//JobQueue()
+	//{
+		//Queue = moodycamel::ConcurrentQueue<Job>(256);
+	//}
+
+	_FORCE_INLINE_ void PushBack(const Job& item)
 	{
-		bool couldEnqueue = queue.try_enqueue(item);
+		//bool couldEnqueue = Queue.try_enqueue(item);
+		bool couldEnqueue = Queue2.Enqueue(&item);
 		SAssert(couldEnqueue);
 	}
 
-	_FORCE_INLINE_ bool pop_front(Job& item)
+	_FORCE_INLINE_ bool PopFront(Job& item)
 	{
-		bool notEmpty = queue.try_dequeue(item);
+		//bool notEmpty = Queue.try_dequeue(item);
+		bool notEmpty = Queue2.Dequeue(&item);
 		return notEmpty;
 	}
 };
@@ -43,67 +54,67 @@ struct JobQueue
 #pragma warning(disable: 4324) // warning for alignments
 struct InternalState
 {
-	uint32_t numCores;
-	uint32_t numThreads;
-	ArrayList(zpl_thread) threads;
-	JobQueue* jobQueuePerThread;
-	zpl_atomic32 alive;
-	alignas(CACHE_LINE) zpl_atomic32 nextQueue;
+	uint32_t NumCores;
+	uint32_t NumThreads;
+	ArrayList(zpl_thread) Threads;
+	JobQueue* JobQueuePerThread;
+	zpl_atomic32 IsAlive;
+	alignas(CACHE_LINE) zpl_atomic32 NextQueueIndex;
 
 	InternalState()
 	{
-		numCores = 0;
-		numThreads = 0;
-		jobQueuePerThread = nullptr;
-		threads = nullptr;
-		alive = {};
-		nextQueue = {};
-		zpl_atomic32_store(&alive, 1);
-		zpl_atomic32_store(&nextQueue, 0);
+		NumCores = 0;
+		NumThreads = 0;
+		JobQueuePerThread = nullptr;
+		Threads = nullptr;
+		IsAlive = {};
+		NextQueueIndex = {};
+		zpl_atomic32_store(&IsAlive, 1);
+		zpl_atomic32_store(&NextQueueIndex, 0);
 
 		SDebugLog("[ Jobs ] Thread state initialized!");
 	}
 
 	~InternalState()
 	{
-		zpl_atomic32_store(&alive, 0); // indicate that new jobs cannot be started from this point
+		zpl_atomic32_store(&IsAlive, 0); // indicate that new jobs cannot be started from this point
 
-		for (int i = 0; i < ArrayListCount(threads); ++i)
+		for (int i = 0; i < ArrayListCount(Threads); ++i)
 		{
-			zpl_semaphore_post(&threads[i].semaphore, 1);
-			zpl_thread_join(&threads[i]);
-			zpl_thread_destroy(&threads[i]);
+			zpl_semaphore_post(&Threads[i].semaphore, 1);
+			zpl_thread_join(&Threads[i]);
+			zpl_thread_destroy(&Threads[i]);
 		}
 
 		SDebugLog("[ Jobs ] Thread state shutdown!");
 	}
-} global internal_state;
+} global JobInternalState;
 
 //	Start working on a job queue
 //	After the job queue is finished, it can switch to an other queue and steal jobs from there
 internal inline void 
 work(uint32_t startingQueue)
 {
-	for (uint32_t i = 0; i < internal_state.numThreads; ++i)
+	for (uint32_t i = 0; i < JobInternalState.NumThreads; ++i)
 	{
 		Job job;
-		JobQueue& job_queue = internal_state.jobQueuePerThread[startingQueue % internal_state.numThreads];
-		while (job_queue.pop_front(job))
+		JobQueue* job_queue = &JobInternalState.JobQueuePerThread[startingQueue % JobInternalState.NumThreads];
+		while (job_queue->PopFront(job))
 		{
 			JobArgs args;
-			args.groupID = job.groupID;
-			args.sharedmemory = job.stack;
+			args.GroupId = job.GroupId;
+			args.StackMemory = job.stack;
 
 			for (uint32_t j = job.groupJobOffset; j < job.groupJobEnd; ++j)
 			{
-				args.jobIndex = j;
-				args.groupIndex = j - job.groupJobOffset;
-				args.isFirstJobInGroup = (j == job.groupJobOffset);
-				args.isLastJobInGroup = (j == job.groupJobEnd - 1);
+				args.JobIndex = j;
+				args.GroupIndex = j - job.groupJobOffset;
+				args.IsFirstJobInGroup = (j == job.groupJobOffset);
+				args.IsLastJobInGroup = (j == job.groupJobEnd - 1);
 				job.task(&args);
 			}
 
-			zpl_atomic32_fetch_add(&job.handle->counter, -1);
+			zpl_atomic32_fetch_add(&job.handle->Counter, -1);
 		}
 		++startingQueue; // go to next queue
 	}
@@ -111,7 +122,7 @@ work(uint32_t startingQueue)
 
 void JobsInitialize(uint32_t maxThreadCount)
 {
-	if (internal_state.numThreads > 0)
+	if (JobInternalState.NumThreads > 0)
 	{
 		SWarn("Job internal state already initialized");
 		return;
@@ -121,7 +132,7 @@ void JobsInitialize(uint32_t maxThreadCount)
 
 	double startTime = GetTime();
 
-	maxThreadCount = std::max(1u, maxThreadCount);
+	maxThreadCount = Max(1u, maxThreadCount);
 
 	zpl_affinity affinity;
 	zpl_affinity_init(&affinity);
@@ -131,34 +142,34 @@ void JobsInitialize(uint32_t maxThreadCount)
 
 	zpl_affinity_destroy(&affinity);
 
-	internal_state.numCores = coreCount;
+	JobInternalState.NumCores = coreCount;
 
 	// Determine how many threads to create.
 	// - 1 so we don't create a ton of threads on small cpu core sizes
-	u32 threadsToCreate = (threadCount <= 4) ? 1 : threadCount - 2;
+	u32 threadsToCreate = (threadCount <= 4) ? 1 : threadCount - 1;
 	// - 1 for main thread
-	internal_state.numThreads = std::min(maxThreadCount, std::max(1u, threadsToCreate - 1));
+	JobInternalState.NumThreads = (u32)Clamp(threadsToCreate - 1, 1, (int)maxThreadCount);
 
-	internal_state.jobQueuePerThread = (JobQueue*)SMalloc(Allocator::Arena, internal_state.numThreads * sizeof(JobQueue));
+	JobInternalState.JobQueuePerThread = (JobQueue*)SMalloc(Allocator::Arena, JobInternalState.NumThreads * sizeof(JobQueue));
 
 	// calls constructors for the concurrent queues
-	for (u32 i = 0; i < internal_state.numThreads; ++i)
-	{
-		CALL_CONSTRUCTOR(&internal_state.jobQueuePerThread[i].queue, moodycamel::ConcurrentQueue<Job>);
-	}
+	//for (u32 i = 0; i < JobInternalState.NumThreads; ++i)
+	//{
+		//CALL_CONSTRUCTOR(&JobInternalState.JobQueuePerThread[i], JobQueue);
+	//}
 
-	ArrayListReserve(Allocator::Arena, internal_state.threads, (int)internal_state.numThreads);
+	ArrayListReserve(Allocator::Arena, JobInternalState.Threads, (int)JobInternalState.NumThreads);
 
-	for (uint32_t threadIdx = 0; threadIdx < internal_state.numThreads; ++threadIdx)
+	for (uint32_t threadIdx = 0; threadIdx < JobInternalState.NumThreads; ++threadIdx)
 	{
-		zpl_thread* thread = &internal_state.threads[threadIdx];
+		zpl_thread* thread = &JobInternalState.Threads[threadIdx];
 		zpl_thread_init(thread);
 
 		zpl_thread_start_with_stack(thread, [](zpl_thread* thread)
 			{
 				u32* threadIdx = (u32*)thread->user_data;
 
-				while (zpl_atomic32_load(&internal_state.alive))
+				while (zpl_atomic32_load(&JobInternalState.IsAlive))
 				{
 					work(*threadIdx);
 
@@ -199,42 +210,44 @@ void JobsInitialize(uint32_t maxThreadCount)
 	const char* infoStr = TextFormat(
 		"[ Jobs ] Initialized in [%.3fms]. Cores: %u, Theads: %d. Created %u threads."
 		, timeEnd * 1000.0
-		, internal_state.numCores
+		, JobInternalState.NumCores
 		, threadCount
-		, internal_state.numThreads);
+		, JobInternalState.NumThreads);
 	SInfoLog(infoStr);
 	
-	SAssert(internal_state.numCores > 0);
-	SAssert(internal_state.numThreads > 0);
+	SAssert(JobInternalState.NumCores > 0);
+	SAssert(JobInternalState.NumThreads > 0);
 }
 
 uint32_t JobsGetThreadCount()
 {
-	return internal_state.numThreads;
+	return JobInternalState.NumThreads;
 }
 
-void JobsExecute(JobHandle& handle, JobWorkFunc task, void* stack)
+void JobsExecute(JobHandle* handle, JobWorkFunc task, void* stack)
 {
+	SAssert(handle);
 	SAssert(task);
 
 	// Context state is updated:
-	zpl_atomic32_fetch_add(&handle.counter, 1);
+	zpl_atomic32_fetch_add(&handle->Counter, 1);
 
 	Job job;
-	job.handle = &handle;
+	job.handle = handle;
 	job.task = task;
 	job.stack = stack;
-	job.groupID = 0;
+	job.GroupId = 0;
 	job.groupJobOffset = 0;
 	job.groupJobEnd = 1;
 
-	zpl_i32 idx = zpl_atomic32_fetch_add(&internal_state.nextQueue, 1) % internal_state.numThreads;
-	internal_state.jobQueuePerThread[idx].push_back(job);
-	zpl_semaphore_post(&internal_state.threads[idx].semaphore, 1);
+	zpl_i32 idx = zpl_atomic32_fetch_add(&JobInternalState.NextQueueIndex, 1) % JobInternalState.NumThreads;
+	JobInternalState.JobQueuePerThread[idx].PushBack(job);
+	zpl_semaphore_post(&JobInternalState.Threads[idx].semaphore, 1);
 }
 
-void JobsDispatch(JobHandle& handle, uint32_t jobCount, uint32_t groupSize, JobWorkFunc task, void* stack)
+void JobsDispatch(JobHandle* handle, uint32_t jobCount, uint32_t groupSize, JobWorkFunc task, void* stack)
 {
+	SAssert(handle);
 	SAssert(task);
 	if (jobCount == 0 || groupSize == 0)
 	{
@@ -244,23 +257,23 @@ void JobsDispatch(JobHandle& handle, uint32_t jobCount, uint32_t groupSize, JobW
 	uint32_t groupCount = JobsDispatchGroupCount(jobCount, groupSize);
 
 	// Context state is updated:
-	zpl_atomic32_fetch_add(&handle.counter, groupCount);
+	zpl_atomic32_fetch_add(&handle->Counter, groupCount);
 
 	Job job;
-	job.handle = &handle;
+	job.handle = handle;
 	job.task = task;
 	job.stack = stack;
 
-	for (uint32_t groupID = 0; groupID < groupCount; ++groupID)
+	for (uint32_t GroupId = 0; GroupId < groupCount; ++GroupId)
 	{
 		// For each group, generate one real job:
-		job.groupID = groupID;
-		job.groupJobOffset = groupID * groupSize;
-		job.groupJobEnd = std::min(job.groupJobOffset + groupSize, jobCount);
-
-		zpl_i32 idx = zpl_atomic32_fetch_add(&internal_state.nextQueue, 1) % internal_state.numThreads;
-		internal_state.jobQueuePerThread[idx].push_back(job);
-		zpl_semaphore_post(&internal_state.threads[idx].semaphore, 1);
+		job.GroupId = GroupId;
+		job.groupJobOffset = GroupId * groupSize;
+		job.groupJobEnd = Min(job.groupJobOffset + groupSize, jobCount);
+		
+		zpl_i32 idx = zpl_atomic32_fetch_add(&JobInternalState.NextQueueIndex, 1) % JobInternalState.NumThreads;
+		JobInternalState.JobQueuePerThread[idx].PushBack(job);
+		zpl_semaphore_post(&JobInternalState.Threads[idx].semaphore, 1);
 	}
 }
 
@@ -270,26 +283,20 @@ uint32_t JobsDispatchGroupCount(uint32_t jobCount, uint32_t groupSize)
 	return (jobCount + groupSize - 1) / groupSize;
 }
 
-bool JobsIsBusy(JobHandle handle)
+void JobHandleWait(const JobHandle* handle)
 {
-	// Whenever the JobHandle label is greater than zero, it means that there is still work that needs to be done
-	return zpl_atomic32_load(&handle.counter) > 0;
-}
-
-void JobsWait(JobHandle handle)
-{
-	if (JobsIsBusy(handle))
+	if (JobHandleIsBusy(handle))
 	{
 		// Wake any threads that might be sleeping:
 		//internal_state.wakeCondition.notify_all();
-		for (u32 threadId = 0 ; threadId < internal_state.numThreads; ++threadId)
-			zpl_semaphore_post(&internal_state.threads[threadId].semaphore, 1);
+		for (u32 threadId = 0 ; threadId < JobInternalState.NumThreads; ++threadId)
+			zpl_semaphore_post(&JobInternalState.Threads[threadId].semaphore, 1);
 
 		// work() will pick up any jobs that are on stand by and execute them on this thread:
-		zpl_i32 idx = zpl_atomic32_fetch_add(&internal_state.nextQueue, 1) % internal_state.numThreads;
+		zpl_i32 idx = zpl_atomic32_fetch_add(&JobInternalState.NextQueueIndex, 1) % JobInternalState.NumThreads;
 		work(idx);
 
-		while (JobsIsBusy(handle))
+		while (JobHandleIsBusy(handle))
 		{
 			// If we are here, then there are still remaining jobs that work() couldn't pick up.
 			//	In this case those jobs are not standing by on a queue but currently executing

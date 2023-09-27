@@ -82,6 +82,7 @@ project "Game"
     files
     {
         SrcDir .. "**.cpp",
+        SrcDir .. "**.c",
         SrcDir .. "**.h",
         "Game/vendor/bscal-sx/*.cpp",
         "Game/vendor/bscal-sx/*.h",

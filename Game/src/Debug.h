@@ -4,7 +4,7 @@ struct GameClient;
 struct GameState;
 struct GUIState;
 
-#define InvalidCodePath (SError("Invalid code path, %s, %s, %d", __FILE__, __FUNCTION__, __LINE__))
+#define InvalidCodePath SError("Invalid code path, %s, %s, %d", __FILE__, __FUNCTION__, __LINE__)
 #define Success(var) (var)
 #define Failure(var) (!(var))
 

@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Game.h"
 #include "Regions.h"
+#include "Lib/Jobs.h"
 #include "Structures/SList.h"
 #include "Structures/BitArray.h"
 #include "Structures/HashMapT.h"
@@ -59,12 +60,13 @@ struct ChunkLoaderData
 
 struct ChunkLoaderState
 {
-	zpl_semaphore Signal;
+	TileMap* Tilemap;
 	Vec2 TargetPosition;
 	SList<Chunk*> ChunkPool;
 	SList<ChunkLoaderData> ChunksToAdd;
 	SList<ChunkLoaderData> ChunkToRemove;
 	fnl_state Noise;
+	bool HasMainThreadUpdated;
 	bool ShouldShutdown;
 };
 
@@ -74,7 +76,7 @@ struct TileMap
 	Chunk* LastChunk;
 	HashMapT<Vec2i, Chunk*> ChunkMap;
 	Rectangle Dimensions;
-	zpl_thread ChunkThread;
+	JobHandle ChunkLoaderJobHandle;
 	ChunkLoaderState ChunkLoader;
 };
 
