@@ -2,20 +2,14 @@
 
 #include "Utils.h"
 
-LinearArena LinearArenaCreate(Allocator allocator, size_t size)
+LinearArena LinearArenaCreate(void* buffer, size_t size)
 {
-    if (!IsAllocatorValid(allocator))
-    {
-        SError("LinearArena allocator is invalid");
-        return {};
-    }
+    SAssert(buffer);
     if (size == 0)
     {
         SError("LinearArena size cannot be 0");
         return {};
     }
-
-    void* buffer = SMalloc(allocator, size);
 
     LinearArena arena;
     arena.Size = size;
@@ -25,17 +19,6 @@ LinearArena LinearArenaCreate(Allocator allocator, size_t size)
 
     SAssert(arena.Memory);
     return arena;
-}
-
-
-void LinearArenaFree(Allocator allocator, LinearArena* arena)
-{
-    SAssert(arena);
-    SAssert(arena->Memory);
-    SAssert(arena->Size > 0);
-    SAssert(IsAllocatorValid(allocator));
-
-    SFree(allocator, (void*)arena->Memory);
 }
 
 [[nodiscard]] void* LinearArenaAlloc(LinearArena* arena, size_t size)

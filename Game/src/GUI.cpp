@@ -5,7 +5,7 @@
 
 #include "GameState.h"
 
-global NuklearUserData UserData;
+internal_var NuklearUserData UserData;
 
 bool 
 InitializeGUI(GameState* gameState, Font* guiFont)

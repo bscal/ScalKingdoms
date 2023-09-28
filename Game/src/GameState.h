@@ -56,8 +56,16 @@ struct GameState
 	bool IsGamePaused;
 };
 
+struct TransientGameState
+{
+	MemArena TransientMemory;
+
+};
+
 struct GameClient
 {
+	Vec2i GameResolution;
+
 	ecs_entity_t Player;
 	ecs_entity_t SelectedEntity;
 
@@ -76,7 +84,8 @@ struct GameClient
 	bool IsErrorWindowOpen;
 };
 
-extern struct GameClient Client;
+global_var struct TransientGameState TransientState;
+global_var struct GameClient Client;
 
 #define DeltaTime GetFrameTime()
 

@@ -4,8 +4,6 @@
 #include "Structures/ArrayList.h"
 #include "Structures/QueueThreaded.h"
 
-//#include <moodycamel/ConcurrentQueue.h>
-
 #ifdef _WIN32
 #include "JobsWin32.h"
 #endif
@@ -13,53 +11,47 @@
 #include <pthread.h>
 #endif
 
+// TODO Should this struct be aligned to cache line?
 struct Job
 {
 	JobWorkFunc task;
 	void* stack;
 	JobHandle* handle;
-	uint32_t GroupId;
-	uint32_t groupJobOffset;
-	uint32_t groupJobEnd;
+	u32 GroupId;
+	u32 groupJobOffset;
+	u32 groupJobEnd;
 };
 
 struct JobQueue
 {
-	//moodycamel::ConcurrentQueue<Job> Queue;
-
-	QueueThreaded<Job, 256> Queue2;
-
-	//JobQueue()
-	//{
-		//Queue = moodycamel::ConcurrentQueue<Job>(256);
-	//}
+	#define JOB_QUEUE_SIZE 128
+	QueueThreaded<Job, JOB_QUEUE_SIZE> HighPriorityQueue;
+	// TODO possibly implement low prio queue
+	//QueueThreaded<Job, JOB_QUEUE_SIZE> LowPriorityQueue;
 
 	_FORCE_INLINE_ void PushBack(const Job& item)
 	{
-		//bool couldEnqueue = Queue.try_enqueue(item);
-		bool couldEnqueue = Queue2.Enqueue(&item);
+		bool couldEnqueue = HighPriorityQueue.Enqueue(&item);
 		SAssert(couldEnqueue);
 	}
 
 	_FORCE_INLINE_ bool PopFront(Job& item)
 	{
-		//bool notEmpty = Queue.try_dequeue(item);
-		bool notEmpty = Queue2.Dequeue(&item);
+		bool notEmpty = HighPriorityQueue.Dequeue(&item);
 		return notEmpty;
 	}
 };
 
 // Manages internal state and thread management. Will handle joining and destroying threads
 // when finished.
-#pragma warning(disable: 4324) // warning for alignments
 struct InternalState
 {
-	uint32_t NumCores;
-	uint32_t NumThreads;
+	u32 NumCores;
+	u32 NumThreads;
 	ArrayList(zpl_thread) Threads;
 	JobQueue* JobQueuePerThread;
 	zpl_atomic32 IsAlive;
-	alignas(CACHE_LINE) zpl_atomic32 NextQueueIndex;
+	zpl_atomic32 NextQueueIndex;
 
 	InternalState()
 	{
@@ -70,7 +62,6 @@ struct InternalState
 		IsAlive = {};
 		NextQueueIndex = {};
 		zpl_atomic32_store(&IsAlive, 1);
-		zpl_atomic32_store(&NextQueueIndex, 0);
 
 		SDebugLog("[ Jobs ] Thread state initialized!");
 	}
@@ -88,39 +79,39 @@ struct InternalState
 
 		SDebugLog("[ Jobs ] Thread state shutdown!");
 	}
-} global JobInternalState;
+} internal_var JobInternalState;
 
 //	Start working on a job queue
 //	After the job queue is finished, it can switch to an other queue and steal jobs from there
-internal inline void 
-work(uint32_t startingQueue)
+internal void 
+work(u32 startingQueue)
 {
-	for (uint32_t i = 0; i < JobInternalState.NumThreads; ++i)
+	for (u32 i = 0; i < JobInternalState.NumThreads; ++i)
 	{
 		Job job;
 		JobQueue* job_queue = &JobInternalState.JobQueuePerThread[startingQueue % JobInternalState.NumThreads];
 		while (job_queue->PopFront(job))
 		{
-			JobArgs args;
-			args.GroupId = job.GroupId;
-			args.StackMemory = job.stack;
+			SAssert(job.task);
 
-			for (uint32_t j = job.groupJobOffset; j < job.groupJobEnd; ++j)
+			for (u32 j = job.groupJobOffset; j < job.groupJobEnd; ++j)
 			{
+				JobArgs args;
+				args.GroupId = job.GroupId;
+				args.StackMemory = job.stack;
 				args.JobIndex = j;
 				args.GroupIndex = j - job.groupJobOffset;
 				args.IsFirstJobInGroup = (j == job.groupJobOffset);
 				args.IsLastJobInGroup = (j == job.groupJobEnd - 1);
 				job.task(&args);
 			}
-
 			zpl_atomic32_fetch_add(&job.handle->Counter, -1);
 		}
 		++startingQueue; // go to next queue
 	}
 }
 
-void JobsInitialize(uint32_t maxThreadCount)
+void JobsInitialize(u32 maxThreadCount)
 {
 	if (JobInternalState.NumThreads > 0)
 	{
@@ -143,24 +134,14 @@ void JobsInitialize(uint32_t maxThreadCount)
 	zpl_affinity_destroy(&affinity);
 
 	JobInternalState.NumCores = coreCount;
-
-	// Determine how many threads to create.
-	// - 1 so we don't create a ton of threads on small cpu core sizes
-	u32 threadsToCreate = (threadCount <= 4) ? 1 : threadCount - 1;
-	// - 1 for main thread
-	JobInternalState.NumThreads = (u32)Clamp(threadsToCreate - 1, 1, (int)maxThreadCount);
+	// Uses coreCount instead of threadCount, -1 for main thread
+	JobInternalState.NumThreads = (u32)Clamp(coreCount - 1, 1, (int)maxThreadCount);
 
 	JobInternalState.JobQueuePerThread = (JobQueue*)SMalloc(Allocator::Arena, JobInternalState.NumThreads * sizeof(JobQueue));
 
-	// calls constructors for the concurrent queues
-	//for (u32 i = 0; i < JobInternalState.NumThreads; ++i)
-	//{
-		//CALL_CONSTRUCTOR(&JobInternalState.JobQueuePerThread[i], JobQueue);
-	//}
-
 	ArrayListReserve(Allocator::Arena, JobInternalState.Threads, (int)JobInternalState.NumThreads);
 
-	for (uint32_t threadIdx = 0; threadIdx < JobInternalState.NumThreads; ++threadIdx)
+	for (u32 threadIdx = 0; threadIdx < JobInternalState.NumThreads; ++threadIdx)
 	{
 		zpl_thread* thread = &JobInternalState.Threads[threadIdx];
 		zpl_thread_init(thread);
@@ -219,7 +200,7 @@ void JobsInitialize(uint32_t maxThreadCount)
 	SAssert(JobInternalState.NumThreads > 0);
 }
 
-uint32_t JobsGetThreadCount()
+u32 JobsGetThreadCount()
 {
 	return JobInternalState.NumThreads;
 }
@@ -245,7 +226,7 @@ void JobsExecute(JobHandle* handle, JobWorkFunc task, void* stack)
 	zpl_semaphore_post(&JobInternalState.Threads[idx].semaphore, 1);
 }
 
-void JobsDispatch(JobHandle* handle, uint32_t jobCount, uint32_t groupSize, JobWorkFunc task, void* stack)
+void JobsDispatch(JobHandle* handle, u32 jobCount, u32 groupSize, JobWorkFunc task, void* stack)
 {
 	SAssert(handle);
 	SAssert(task);
@@ -254,7 +235,7 @@ void JobsDispatch(JobHandle* handle, uint32_t jobCount, uint32_t groupSize, JobW
 		return;
 	}
 
-	uint32_t groupCount = JobsDispatchGroupCount(jobCount, groupSize);
+	u32 groupCount = JobsDispatchGroupCount(jobCount, groupSize);
 
 	// Context state is updated:
 	zpl_atomic32_fetch_add(&handle->Counter, groupCount);
@@ -264,7 +245,7 @@ void JobsDispatch(JobHandle* handle, uint32_t jobCount, uint32_t groupSize, JobW
 	job.task = task;
 	job.stack = stack;
 
-	for (uint32_t GroupId = 0; GroupId < groupCount; ++GroupId)
+	for (u32 GroupId = 0; GroupId < groupCount; ++GroupId)
 	{
 		// For each group, generate one real job:
 		job.GroupId = GroupId;
@@ -277,7 +258,7 @@ void JobsDispatch(JobHandle* handle, uint32_t jobCount, uint32_t groupSize, JobW
 	}
 }
 
-uint32_t JobsDispatchGroupCount(uint32_t jobCount, uint32_t groupSize)
+u32 JobsDispatchGroupCount(u32 jobCount, u32 groupSize)
 {
 	// Calculate the amount of job groups to dispatch (overestimate, or "ceil"):
 	return (jobCount + groupSize - 1) / groupSize;

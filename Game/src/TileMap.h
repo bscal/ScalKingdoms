@@ -13,9 +13,9 @@
 
 struct GameState;
 
-constexpr global int LAYER_BACKGROUND	= 0;
-constexpr global int LAYER_FOREGROUND	= 1;
-constexpr global int LAYER_WALL			= 2;
+constant_var int LAYER_BACKGROUND	= 0;
+constant_var int LAYER_FOREGROUND	= 1;
+constant_var int LAYER_WALL			= 2;
 
 enum TileFlags : uint8_t 
 {
@@ -66,8 +66,6 @@ struct ChunkLoaderState
 	SList<ChunkLoaderData> ChunksToAdd;
 	SList<ChunkLoaderData> ChunkToRemove;
 	fnl_state Noise;
-	bool HasMainThreadUpdated;
-	bool ShouldShutdown;
 };
 
 struct TileMap

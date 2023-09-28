@@ -16,9 +16,7 @@
 
 #include <raylib/src/raymath.h>
 
-global struct GameState State;
-
-struct GameClient Client;
+internal_var struct GameState State;
 
 internal void GameRun();
 internal void GameUpdate();
@@ -29,7 +27,7 @@ internal void InputUpdate();
 internal void LoadAssets(GameState* gameState);
 internal void UnloadAssets(GameState* gameState);
 
-internal Vec2i ScreenToTile(Vec2 pos);
+internal Vec2i ScreenToTile();
 
 ECS_SYSTEM_DECLARE(DrawEntities);
 
@@ -58,39 +56,34 @@ GameInitialize()
 	void* gameMemory = zpl_alloc_align(ZplAllocatorMalloc, gameMemorySize, 64);
 	State.GameMemory = MemArenaCreate(gameMemory, gameMemorySize);
 
-	State.FrameMemory = LinearArenaCreate(Allocator::Malloc, Megabytes(16));
+	size_t frameMemorySize = Megabytes(16);
+	void* frameMemory = zpl_alloc_align(ZplAllocatorMalloc, frameMemorySize, 64);
+	State.FrameMemory = LinearArenaCreate(frameMemory, frameMemorySize);
 
 	InitializeMemoryTracking();
-
-
-	//zpl_affinity affinity;
-	//zpl_affinity_init(&affinity);
-
-	//int threadCount = (affinity.thread_count > 4) ? 4 : 2;
-	//zpl_jobs_init(&State.Jobs, ZplAllocatorArena, threadCount);
-	//SInfoLog("[ Jobs ] Initialized Jobs with %d threads. CPU thread count: %d threads, %d cores"
-	//	, threadCount, affinity.thread_count, affinity.core_count);
-
-	Test();
+	
+	PushMemoryIgnoreFree();
+	
+	JobsInitialize(7);
 
 	ConsoleInit();
-
-	JobsInitialize(8);
-
+	
 	SetMallocCallBack(RlMallocOverride);
 	SetReallocCallBack(RlReallocOverride);
 	SetFreeCallBack(RlFreeOverride);
 
 	InitWindow(WIDTH, HEIGHT, TITLE);
+	SetWindowState(FLAG_WINDOW_RESIZABLE);
 	SetTraceLogLevel(LOG_ALL);
 	SetTargetFPS(60);
 
+	Client.GameResolution.x = GAME_WIDTH;
+	Client.GameResolution.y = GAME_HEIGHT;
+
 	State.Camera.zoom = 1.0f;
-	State.Camera.offset = { (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
+	State.Camera.offset = { (float)Client.GameResolution.x / 2, (float)Client.GameResolution.y / 2 };
 
-	State.ScreenTexture = LoadRenderTexture(GetScreenWidth(), GetScreenHeight());
-
-	PushMemoryIgnoreFree();
+	State.ScreenTexture = LoadRenderTexture(Client.GameResolution.x, Client.GameResolution.y);
 
 	LoadAssets(&State);
 
@@ -136,7 +129,7 @@ GameInitialize()
 	for (int i = 0; i < 10; ++i)
 	{
 		JobHandle ctx = {};
-		JobsExecute(&ctx, [](const JobArgs* args)
+		JobsExecute(&ctx, [](JobArgs* args)
 			{
 				zpl_atomic32* valPtr = (zpl_atomic32*)args->StackMemory;
 				int v = zpl_atomic32_fetch_add(valPtr, 1);
@@ -160,8 +153,6 @@ GameRun()
 		double start = GetTime();
 
 		LinearArenaReset(&State.FrameMemory);
-
-		//zpl_arena_snapshot arenaSnapshot = zpl_arena_snapshot_begin(&State.Arena);
 
 		// Update
 
@@ -198,6 +189,8 @@ GameRun()
 
 		GameLateUpdate();
 
+		DrawRegions();
+
 		EndMode2D();
 		EndTextureMode();
 
@@ -207,19 +200,13 @@ GameRun()
 		ClearBackground(BLACK);
 
 		DrawTexturePro(State.ScreenTexture.texture
-			, { 0, 0, (float)GetScreenWidth(), -(float)GetScreenHeight() }
+			, { 0, 0, (float)Client.GameResolution.x, -(float)Client.GameResolution.y }
 			, { 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() }
 			, {}, 0, WHITE);
-
-		BeginMode2D(State.Camera);
-		DrawRegions();
-		EndMode2D();
 
 		DrawGUI(&State);
 		
 		EndDrawing();
-
-		//zpl_arena_snapshot_end(arenaSnapshot);
 	}
 }
 
@@ -281,6 +268,7 @@ void GameLateUpdate()
 
 void InputUpdate()
 {
+
 	Vector2 movement = VEC2_ZERO;
 	if (IsKeyDown(KEY_W))
 	{
@@ -330,7 +318,7 @@ void InputUpdate()
 
 	if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 	{
-		Vec2i tile = ScreenToTile(GetMousePosition());
+		Vec2i tile = ScreenToTile();
 		SInfoLog("Tile: %s", FMT_VEC2I(tile));
 
 		SList<Vec2i> next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
@@ -347,7 +335,7 @@ void InputUpdate()
 
 	if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
 	{
-		Vec2i tile = ScreenToTile(GetMousePosition());
+		Vec2i tile = ScreenToTile();
 
 		struct PathFindStack
 		{
@@ -363,7 +351,7 @@ void InputUpdate()
 
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
 	{
-		Vec2i tile = ScreenToTile(GetMousePosition());
+		Vec2i tile = ScreenToTile();
 
 		ecs_entity_t* entity = HashMapTGet(&State.EntityMap, &tile);
 		if (entity)
@@ -438,10 +426,14 @@ UnloadAssets(GameState* gameState)
 }
 
 internal Vec2i 
-ScreenToTile(Vec2 pos)
+ScreenToTile()
 {
-	Vec2 worldPos = GetScreenToWorld2D(pos, State.Camera);
-	worldPos = Vector2Multiply(worldPos, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
+	Camera2D screenCamera = State.Camera;
+	screenCamera.offset = Vec2{ (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
+	Vec2 worldPos = GetScreenToWorld2D(GetMousePosition(), screenCamera);
+	worldPos = worldPos / Vec2{ (float)GetScreenWidth(), (float)GetScreenHeight() };
+	worldPos = worldPos * Vec2{ 1600, 900 };
+	worldPos = worldPos * Vec2{ INVERSE_TILE_SIZE, INVERSE_TILE_SIZE };
 	return Vec2ToVec2i(worldPos);
 }
 

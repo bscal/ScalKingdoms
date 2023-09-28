@@ -17,7 +17,7 @@ struct Debugger
 	bool ErrorPopupWindowIsWarning;
 };
 
-global struct Debugger Debugger;
+internal_var struct Debugger Debugger;
 
 void DrawDebugWindow(GameClient* client, GameState* gameState, GUIState* guiState)
 {

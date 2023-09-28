@@ -4,7 +4,7 @@
 
 #include "Core.h"
 
-void JobsInitialize(u32 maxThreadCount = ~0u);
+void JobsInitialize(u32 maxThreadCount);
 
 struct JobArgs
 {
@@ -24,7 +24,7 @@ struct JobHandle
 	zpl_atomic32 Counter;
 };
 
-typedef void(*JobWorkFunc)(const JobArgs* args);
+typedef void(*JobWorkFunc)(JobArgs* args);
 
 // Add a task to execute asynchronously. Any idle thread will execute this.
 void JobsExecute(JobHandle* handle, JobWorkFunc task, void* stack);

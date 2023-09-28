@@ -132,7 +132,7 @@ extern "C" {
     }
 
     inline String string_sprintf_buf(Allocator a, const char* fmt, ...) {
-        local_static thread_local char buf[ZPL_PRINTF_MAXLEN] = { 0 };
+        local_persist thread_local char buf[ZPL_PRINTF_MAXLEN] = { 0 };
         va_list va;
         va_start(va, fmt);
         zpl_snprintf_va(buf, ZPL_PRINTF_MAXLEN, fmt, va);

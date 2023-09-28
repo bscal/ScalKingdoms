@@ -60,7 +60,7 @@ void*
 MallocUntrackedAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
 	const char* file, const char* func, u32 line);
 
-constexpr global AllocatorFunction Allocators[] =
+constexpr internal_var AllocatorFunction Allocators[] =
 {
 	GameAllocator_Internal,
 	FrameAllocator_Internal,
@@ -70,7 +70,7 @@ constexpr global AllocatorFunction Allocators[] =
 static_assert(ArrayLength(Allocators) == (int)Allocator::MaxAllocators,
 	"AllocatorFunction array is not length of Allocators::MaxAllocators");
 
-constexpr global const char* AllocatorNames[] =
+constexpr internal_var const char* AllocatorNames[] =
 {
 	"Arena",
 	"Frame",

@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Memory.h"
 
-constexpr global uint32_t SLIST_NO_FOUND = UINT32_MAX;
+constexpr internal_var uint32_t SLIST_NO_FOUND = UINT32_MAX;
 
 enum class SListResizeType
 {

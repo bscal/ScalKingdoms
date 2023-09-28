@@ -2,9 +2,9 @@
 
 #include "Utils.h"
 
-constexpr global u32 DEFAULT_CAPACITY = 2;
-constexpr global u32 DEFAULT_RESIZE = 2;
-constexpr global float DEFAULT_LOADFACTOR = .85f;
+constexpr internal_var u32 DEFAULT_CAPACITY = 2;
+constexpr internal_var u32 DEFAULT_RESIZE = 2;
+constexpr internal_var float DEFAULT_LOADFACTOR = .85f;
 
 #define ToIdx(hash, cap) ((u32)((hash) & (u64)((cap) - 1)))
 #define IndexArray(arr, idx, stride) (((u8*)(arr)) + ((idx) * (stride)))

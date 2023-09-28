@@ -39,8 +39,10 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 
 #define internal static
-#define local_static static
-#define global static
+#define internal_var static
+#define global_var inline
+#define constant_var constexpr static
+#define local_persist static
 
 typedef Vector2i Vec2i;
 typedef Vector2 Vec2;
@@ -150,29 +152,32 @@ typedef Vector2 Vec2;
 
 #define CALL_CONSTRUCTOR(object, T) new (object) T
 
-constexpr global int CACHE_LINE = 64;
+constant_var int CACHE_LINE = 64;
 
-constexpr global float PI = (float)3.14159265358979323846;
-constexpr global float TAO = PI * 2.0;
+constant_var float PI = (float)3.14159265358979323846;
+constant_var float TAO = PI * 2.0;
 
-constexpr global int WIDTH = 1600;
-constexpr global int HEIGHT = 900;
 
-constexpr global const char* TITLE = "Kingdoms";
-constexpr global int MAX_FPS = 60;
+constant_var int WIDTH = 1920;
+constant_var int HEIGHT = 1080;
+constant_var int GAME_WIDTH = 1600;
+constant_var int GAME_HEIGHT = 900;
 
-constexpr global int TILE_SIZE = 16;
-constexpr global float INVERSE_TILE_SIZE = 1.0f / TILE_SIZE;
-constexpr global float HALF_TILE_SIZE = TILE_SIZE / 2.0f;
+constant_var const char* TITLE = "Kingdoms";
+constant_var int MAX_FPS = 60;
 
-constexpr global int CHUNK_SIZE = 32;
-constexpr global float INVERSE_CHUNK_SIZE = 1.0f / (float)CHUNK_SIZE;
-constexpr global int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
-constexpr global int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
-constexpr global int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+constant_var int TILE_SIZE = 16;
+constant_var float INVERSE_TILE_SIZE = 1.0f / TILE_SIZE;
+constant_var float HALF_TILE_SIZE = TILE_SIZE / 2.0f;
 
-constexpr global int VIEW_RADIUS = 3;
-constexpr global int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
+constant_var int CHUNK_SIZE = 32;
+constant_var float INVERSE_CHUNK_SIZE = 1.0f / (float)CHUNK_SIZE;
+constant_var int CHUNK_SIZE_PIXELS = CHUNK_SIZE * TILE_SIZE;
+constant_var int CHUNK_SIZE_PIXELS_HALF = CHUNK_SIZE_PIXELS / 2;
+constant_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
+
+constant_var int VIEW_RADIUS = 3;
+constant_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
 
 enum class Direction : uint8_t
 {
@@ -184,13 +189,13 @@ enum class Direction : uint8_t
 	MAX_TYPES,
 };
 
-constexpr global Vector2 VEC2_ZERO = { 0 , 0 };
-constexpr global Vector2 VEC2_UP = { 0 , -1 };
-constexpr global Vector2 VEC2_RIGHT = { 1 , 0 };
-constexpr global Vector2 VEC2_DOWN = { 0 , 1 };
-constexpr global Vector2 VEC2_LEFT = { -1 , 0 };
+constant_var Vector2 VEC2_ZERO = { 0 , 0 };
+constant_var Vector2 VEC2_UP = { 0 , -1 };
+constant_var Vector2 VEC2_RIGHT = { 1 , 0 };
+constant_var Vector2 VEC2_DOWN = { 0 , 1 };
+constant_var Vector2 VEC2_LEFT = { -1 , 0 };
 
-constexpr global float
+constant_var float
 TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 
 #define FMT_VEC2(v) TextFormat("Vector2(x: %.3f, y: %.3f)", v.x, v.y)

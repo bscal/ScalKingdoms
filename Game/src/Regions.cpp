@@ -8,12 +8,12 @@
 
 #include "Structures/ArrayList.h"
 
-constexpr global int MAX_REGION_SEARCH = 128;
-constexpr global int MAX_LOCAL_SEARCH = 256;
+constexpr internal_var int MAX_REGION_SEARCH = 128;
+constexpr internal_var int MAX_LOCAL_SEARCH = 256;
 
 #define AllocNode(T) ((T*)SMalloc(Allocator::Frame, sizeof(T)));
 
-global HashMapT<Vec2i, Region> RegionMap;
+internal_var HashMapT<Vec2i, Region> RegionMap;
 
 internal _FORCE_INLINE_ Vec2i
 TileCoordToRegionCoord(Vec2i tile)

@@ -8,7 +8,7 @@ struct TileMgr
 	ArrayList(TileInfo) TileDefinitions;
 };
 
-global TileMgr TileManager;
+internal_var TileMgr TileManager;
 
 void TileMgrInitialize(Texture2D* tileSetTexture)
 {

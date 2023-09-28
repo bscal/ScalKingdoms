@@ -4,9 +4,9 @@
 
 #include <stdlib.h>
 
-constexpr global size_t MEMARENA_ALIGNMENT = 16;
-constexpr global size_t MEM_SPLIT_THRESHOLD = MEMARENA_ALIGNMENT * 4;
-constexpr global size_t MEMARENA_SIZES[MEMARENA_BUCKET_SIZE] =
+constant_var size_t MEMARENA_ALIGNMENT = 16;
+constant_var size_t MEM_SPLIT_THRESHOLD = MEMARENA_ALIGNMENT * 4;
+constant_var size_t MEMARENA_SIZES[MEMARENA_BUCKET_SIZE] =
 {
     16, 32, 64, 128, 256, 512, 1024, 2048
 };
@@ -234,23 +234,23 @@ void* MemArenaAlloc(MemArena* memArena, size_t size)
             if (!IsPowerOf2(allocSize))
                 allocSize = AlignPowTwo64Ceil(allocSize);
 
-            size_t bucketSlot;
+            AllocList* bucketList;
+            static_assert(ArrayLength(memArena->Buckets) == 8, "arena buckets count is not 8");
             switch (allocSize)
             {
-            case(MEMARENA_SIZES[0]): bucketSlot = 0; break;
-            case(MEMARENA_SIZES[1]): bucketSlot = 1; break;
-            case(MEMARENA_SIZES[2]): bucketSlot = 2; break;
-            case(MEMARENA_SIZES[3]): bucketSlot = 3; break;
-            case(MEMARENA_SIZES[4]): bucketSlot = 4; break;
-            case(MEMARENA_SIZES[5]): bucketSlot = 5; break;
-            case(MEMARENA_SIZES[6]): bucketSlot = 6; break;
-            case(MEMARENA_SIZES[7]): bucketSlot = 7; break;
+            case(MEMARENA_SIZES[0]): bucketList = memArena->Buckets + 0; break;
+            case(MEMARENA_SIZES[1]): bucketList = memArena->Buckets + 1; break;
+            case(MEMARENA_SIZES[2]): bucketList = memArena->Buckets + 2; break;
+            case(MEMARENA_SIZES[3]): bucketList = memArena->Buckets + 3; break;
+            case(MEMARENA_SIZES[4]): bucketList = memArena->Buckets + 4; break;
+            case(MEMARENA_SIZES[5]): bucketList = memArena->Buckets + 5; break;
+            case(MEMARENA_SIZES[6]): bucketList = memArena->Buckets + 6; break;
+            case(MEMARENA_SIZES[7]): bucketList = memArena->Buckets + 7; break;
             default: SError("Invalid memory size for bucket!");  return nullptr;
             }
-            SAssert(bucketSlot < MEMARENA_BUCKET_SIZE);
-            SAssert(allocSize == MEMARENA_SIZES[bucketSlot]);
-            SAssert(allocSize <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
-            new_mem = FindMemNode(&memArena->Buckets[bucketSlot], allocSize);
+            SAssert(bucketList);
+            new_mem = FindMemNode(bucketList, allocSize);
+            SAssert(new_mem);
         }
 
         if (new_mem == nullptr)
@@ -345,22 +345,22 @@ void MemArenaFree(MemArena* _RESTRICT_ memArena, void* ptr)
         }
         else if (mem_node->size <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1])
         {
-            size_t bucketSlot;
+            AllocList* bucketList;
+            static_assert(ArrayLength(memArena->Buckets) == 8, "arena buckets count is not 8");
             switch (mem_node->size)
             {
-            case(MEMARENA_SIZES[0]): bucketSlot = 0; break;
-            case(MEMARENA_SIZES[1]): bucketSlot = 1; break;
-            case(MEMARENA_SIZES[2]): bucketSlot = 2; break;
-            case(MEMARENA_SIZES[3]): bucketSlot = 3; break;
-            case(MEMARENA_SIZES[4]): bucketSlot = 4; break;
-            case(MEMARENA_SIZES[5]): bucketSlot = 5; break;
-            case(MEMARENA_SIZES[6]): bucketSlot = 6; break;
-            case(MEMARENA_SIZES[7]): bucketSlot = 7; break;
+            case(MEMARENA_SIZES[0]): bucketList = memArena->Buckets + 0; break;
+            case(MEMARENA_SIZES[1]): bucketList = memArena->Buckets + 1; break;
+            case(MEMARENA_SIZES[2]): bucketList = memArena->Buckets + 2; break;
+            case(MEMARENA_SIZES[3]): bucketList = memArena->Buckets + 3; break;
+            case(MEMARENA_SIZES[4]): bucketList = memArena->Buckets + 4; break;
+            case(MEMARENA_SIZES[5]): bucketList = memArena->Buckets + 5; break;
+            case(MEMARENA_SIZES[6]): bucketList = memArena->Buckets + 6; break;
+            case(MEMARENA_SIZES[7]): bucketList = memArena->Buckets + 7; break;
+            default: SError("Invalid memory size for bucket!");  return;
             }
-            SAssert(bucketSlot < MEMARENA_BUCKET_SIZE);
-            SAssert(mem_node->size == MEMARENA_SIZES[bucketSlot]);
-            SAssert(mem_node->size <= MEMARENA_SIZES[MEMARENA_BUCKET_SIZE - 1]);
-            InsertMemNode(memArena, &memArena->Buckets[bucketSlot], mem_node, true);
+            SAssert(bucketList);
+            InsertMemNode(memArena, bucketList, mem_node, true);
         }
         else
         {

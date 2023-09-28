@@ -2,9 +2,9 @@
 
 #include "Utils.h"
 
-constexpr global u32 DEFAULT_CAPACITY = 2;
-constexpr global u32 DEFAULT_RESIZE = 2;
-constexpr global float DEFAULT_LOADFACTOR = .85f;
+constexpr internal_var u32 DEFAULT_CAPACITY = 2;
+constexpr internal_var u32 DEFAULT_RESIZE = 2;
+constexpr internal_var float DEFAULT_LOADFACTOR = .85f;
 
 #define Compare(hashmap, v0, v1) (hashmap->CompareFunc(v0, v1))
 

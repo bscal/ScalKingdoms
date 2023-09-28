@@ -25,7 +25,7 @@ struct MemoryInfoState
 	int IsIgnoringFree;
 	bool IsInitialized;
 };
-global MemoryInfoState MemoryState;
+internal_var MemoryInfoState MemoryState;
 
 #endif
 

@@ -4,7 +4,7 @@
 #include "Memory.h"
 #include "Lib/String.h"
 
-constexpr global u32 HASHMAPSTR_NOT_FOUND = UINT32_MAX;
+constexpr internal_var u32 HASHMAPSTR_NOT_FOUND = UINT32_MAX;
 
 struct HashStrSlot;
 

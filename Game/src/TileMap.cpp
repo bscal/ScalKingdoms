@@ -13,9 +13,9 @@
 // TODO
 #pragma warning(disable: 4505)
 
-constexpr global int MAX_CHUNKS_TO_PROCESS = 12;
+constexpr internal_var int MAX_CHUNKS_TO_PROCESS = 12;
 
-internal void ChunkThreadFunc(const JobArgs* args);
+internal void ChunkThreadFunc(JobArgs* args);
 
 // Internal thread safe chunk management functions
 internal Chunk* InternalChunkLoad(TileMap* tilemap, Vec2i coord);
@@ -117,37 +117,28 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 	ChunkLoaderState* chunkLoader = &tilemap->ChunkLoader;
 	chunkLoader->TargetPosition = gameState->Camera.target;
 
-	// Note: Chunk thread will set to false when it finishes it work,
-	// I think this is all safe. But I didn't wanted to make sure,
-	// if the chunk thread took multiple frames to process, it
-	// wouldn't be reading from it.
-	
-	// Move to jobs system
-
 	if (!JobHandleIsBusy(&tilemap->ChunkLoaderJobHandle))
 	{
-		if (!tilemap->ChunkLoader.HasMainThreadUpdated)
+		// Sync chunkloader
+
+		// Remove unused chunks from map
+		for (u32 i = 0; i < chunkLoader->ChunkToRemove.Count; ++i)
 		{
-			tilemap->ChunkLoader.HasMainThreadUpdated = true;
-
-			// Remove unused chunks from map
-			for (u32 i = 0; i < chunkLoader->ChunkToRemove.Count; ++i)
-			{
-				OnChunkUnload(gameState, chunkLoader->ChunkToRemove.Memory[i].ChunkPtr);
-				HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunkToRemove.Memory[i].Key);
-			}
-			chunkLoader->ChunkToRemove.Clear();
-
-			// Add unused chunks from map
-			for (u32 i = 0; i < chunkLoader->ChunksToAdd.Count; ++i)
-			{
-				HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunksToAdd.Memory[i].Key, &chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
-				OnChunkLoad(gameState, chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
-			}
-			chunkLoader->ChunksToAdd.Clear();
-
-			JobsExecute(&tilemap->ChunkLoaderJobHandle, ChunkThreadFunc, &tilemap->ChunkLoader);
+			OnChunkUnload(gameState, chunkLoader->ChunkToRemove.Memory[i].ChunkPtr);
+			HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunkToRemove.Memory[i].Key);
 		}
+		chunkLoader->ChunkToRemove.Clear();
+
+		// Add unused chunks from map
+		for (u32 i = 0; i < chunkLoader->ChunksToAdd.Count; ++i)
+		{
+			HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunksToAdd.Memory[i].Key, &chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
+			OnChunkLoad(gameState, chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
+		}
+		chunkLoader->ChunksToAdd.Clear();
+
+		// Threaded chunk loading
+		JobsExecute(&tilemap->ChunkLoaderJobHandle, ChunkThreadFunc, &tilemap->ChunkLoader);
 	}
 
 	// Loops over loaded chunks, Unloads out of range, handles chunks waiting for RenderTexture,
@@ -518,7 +509,7 @@ bool IsTileInBounds(TileMap* tilemap, Vec2i coord)
 }
 
 internal void
-ChunkThreadFunc(const JobArgs* args)
+ChunkThreadFunc(JobArgs* args)
 {
 	ChunkLoaderState* chunkLoader = (ChunkLoaderState*)args->StackMemory;
 	SAssert(chunkLoader);
@@ -532,8 +523,6 @@ ChunkThreadFunc(const JobArgs* args)
 		SAssertMsg(false, "Chunk thread, ChunkMap, is NULL");
 		return;
 	}
-
-	chunkLoader->HasMainThreadUpdated = false;
 
 	Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
 

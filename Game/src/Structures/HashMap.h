@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "Memory.h"
 
-constexpr global u32 HASHMAPKV_NOT_FOUND = UINT32_MAX;
+constexpr internal_var u32 HASHMAPKV_NOT_FOUND = UINT32_MAX;
 
 struct HashMapSlot
 {

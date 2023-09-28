@@ -13,9 +13,7 @@ struct LinearArena
     size_t Size;
 };
 
-LinearArena LinearArenaCreate(Allocator allocator, size_t size);
-
-void LinearArenaFree(Allocator allocator, LinearArena* arena);
+LinearArena LinearArenaCreate(void* buffer, size_t size);
 
 [[nodiscard]] void* LinearArenaAlloc(LinearArena* arena, size_t size);
 

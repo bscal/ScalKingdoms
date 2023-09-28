@@ -11,7 +11,7 @@ struct SpriteMgr
 	ArrayList(Sprite) Sprites;
 };
 
-global SpriteMgr SpriteManager;
+internal_var SpriteMgr SpriteManager;
 
 void 
 SpritesInitialize()

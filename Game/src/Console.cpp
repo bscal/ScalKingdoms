@@ -6,10 +6,10 @@
 #include "Structures/Queue.h"
 #include "Structures/HashMapStr.h"
 
-constexpr global int CONSOLE_ENTRY_LENGTH = 60;
-constexpr global int CONSOLE_MAX_ENTRIES = 128;
-constexpr global int CONSOLE_MAX_SUGGESTIONS = 4;
-constexpr global int CONSOLE_NUM_SUGGESTIONS_ARGS = 6;
+constexpr internal_var int CONSOLE_ENTRY_LENGTH = 60;
+constexpr internal_var int CONSOLE_MAX_ENTRIES = 128;
+constexpr internal_var int CONSOLE_MAX_SUGGESTIONS = 4;
+constexpr internal_var int CONSOLE_NUM_SUGGESTIONS_ARGS = 6;
 
 #define ENABLE_CONSOLE_LOGGING 1
 
@@ -37,7 +37,7 @@ struct Console
 	int NumOfSuggestions;
 };
 
-global struct Console Console;
+internal_var struct Console Console;
 
 void ConsoleInit()
 {
@@ -75,9 +75,9 @@ void ConsoleDraw(GameClient* client, GUIState* guiState)
 	SAssert(client);
 	SAssert(guiState);
 
-	local_static float HeightAnimValue;			// Height of frame when opening the console
-	local_static float SuggestionPanelSize;		// There can be X amount of suggetions
-	local_static bool WasConsoleAlreadyOpen;
+	local_persist float HeightAnimValue;			// Height of frame when opening the console
+	local_persist float SuggestionPanelSize;		// There can be X amount of suggetions
+	local_persist bool WasConsoleAlreadyOpen;
 
 	if (client->IsConsoleOpen)
 	{
