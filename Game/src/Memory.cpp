@@ -3,8 +3,6 @@
 #include "GameState.h"
 #include "Structures/HashMapT.h"
 
-
-
 #if TRACK_MEMORY
 struct MemoryInfo
 {
@@ -12,12 +10,13 @@ struct MemoryInfo
 	const char* File;
 	const char* Function;
 	int Line;
+	int ResizeTracker;
 	bool IsIgnoringFree;
 };
 
 struct MemoryInfoState
 {
-	HashMapT<void*, MemoryInfo> AllocationMap[(int)Allocator::MaxAllocators];
+	HashMapT<void*, MemoryInfo> AllocationMap[(int)SAllocatorId::Max];
 	const char* AdditionalFile;
 	const char* AdditionalFunction;
 	int AdditionalLine;
@@ -26,6 +25,14 @@ struct MemoryInfoState
 	bool IsInitialized;
 };
 internal_var MemoryInfoState MemoryState;
+
+constant_var const char* ALLOCATOR_NAMES[] =
+{
+	"General Purpose",
+	"Frame",
+	"Malloc",
+	"Arena"
+};
 
 #endif
 
@@ -37,12 +44,12 @@ void InitializeMemoryTracking()
 		SError("MemoryState already initialized");
 	}
 
-	for (int i = 0; i < (int)Allocator::MaxAllocators; ++i)
+	for (int i = 0; i < (int)SAllocatorId::Max; ++i)
 	{
-		if (i == (int)Allocator::Frame || i == (int)Allocator::MallocUntracked)
+		if (i == (int)SAllocatorId::Frame)
 			continue;
 
-		HashMapTInitialize(&MemoryState.AllocationMap[i], 1024, Allocator::MallocUntracked);
+		HashMapTInitialize(&MemoryState.AllocationMap[i], 1024, SAllocatorMalloc());
 	}
 	MemoryState.IsInitialized = true;
 #endif
@@ -61,26 +68,89 @@ void ShutdownMemoryTracking()
 		SError("MemoryState.IsIgnoreingFree stack value is not 0!");
 	}
 
-	for (int i = 0; i < (int)Allocator::MaxAllocators; ++i)
+	MemoryState.IsInitialized = false;
+
+	for (int i = 0; i < (int)SAllocatorId::Max; ++i)
 	{
-		if (i == (int)Allocator::Frame || i == (int)Allocator::MallocUntracked)
+		if (i == (int)SAllocatorId::Frame)
 			continue;
 
 		HashMapTForEach<void*, MemoryInfo>(&MemoryState.AllocationMap[i], [](void** key, MemoryInfo* info, void* stack)
-			{
-				const char* allocatorName = (const char*)stack;
-				if (!info->IsIgnoringFree)
-				{
-					SDebugLog("[ Memory ] Possible memory leak detected.\n \tType: %s\n \tAddress: %p\n \tSize(bytes): %d\n"
-						"\tFile: %s\n \tFunction: %s\n \tLine#: %d\n"
-						, allocatorName, *key, info->Size, info->File, info->Function, info->Line);
-				}
-			}, (void*)AllocatorNames[i]);
+										   {
+											   const char* SAllocatorName = (const char*)stack;
+											   if (!info->IsIgnoringFree)
+											   {
+												   SDebugLog("[ Memory ] Possible memory leak detected.\n \tType: %s\n \tAddress: %p\n \tSize(bytes): %d\n"
+															 "\tFile: %s\n \tFunction: %s\n \tLine#: %d\n"
+															 , SAllocatorName, *key, info->Size, info->File, info->Function, info->Line);
+											   }
+										   }, (void*)ALLOCATOR_NAMES[i]);
 
-		HashMapTDestroy(&MemoryState.AllocationMap[i]);
+		//HashMapTDestroy(&MemoryState.AllocationMap[i]);
 	}
-	MemoryState.IsInitialized = false;
 #endif
+}
+
+internal void
+HandleMemoryTracking(int allocatorId, SAllocatorType allocatorType, void* oldPtr, size_t oldSize,
+					 void* newPtr, size_t newSize, const char* file, const char* function, int line)
+{
+	if (MemoryState.IsInitialized)
+	{
+		// Free we just remove from map
+		if (allocatorType == ALLOCATOR_TYPE_FREE)
+		{
+			SAssert(oldPtr);
+			HashMapTRemove(&MemoryState.AllocationMap[allocatorId], &oldPtr);
+		}
+		else
+		{
+			MemoryInfo memInfo;	// Info to insert
+			MemoryInfo* oldInfo = nullptr; // Was any old entry found
+			if (oldPtr)
+			{
+				oldInfo = HashMapTGet(&MemoryState.AllocationMap[allocatorId], &oldPtr);
+				if (oldInfo)
+				{
+					memInfo = *oldInfo;
+					// Remove old info
+					HashMapTRemove(&MemoryState.AllocationMap[allocatorId], &oldPtr);
+				}
+			}
+			// NOTE: Certain reallocations may not free realloc and instead alloc then free later,
+			// in this case we want to search for previous allocations and also not remove any old allocations.
+			// HashMap::Resize is a function that does this.
+			else if (MemoryState.SearchMemoryAddress)
+			{
+				oldInfo = HashMapTGet(&MemoryState.AllocationMap[allocatorId], &MemoryState.SearchMemoryAddress);
+				// Handles the case where the hashmap for storing allocations resizes
+				// since those hashmaps don't exist yet to store their own allocation
+				if (!oldInfo) 
+					return;
+				else
+					memInfo = *oldInfo;
+			}
+
+			if (!oldInfo)
+				memInfo = {};
+
+			memInfo.Size = newSize;
+			if (!oldInfo)
+			{
+				memInfo.File = file;
+				memInfo.Function = function;
+				memInfo.Line = line;
+				memInfo.IsIgnoringFree = MemoryState.IsIgnoringFree;
+				memInfo.ResizeTracker = 0;
+			}
+			else 
+			{
+				// Already exists just reuse it's data.
+				memInfo.ResizeTracker += 1;
+			}
+			HashMapTSet(&MemoryState.AllocationMap[allocatorId], &newPtr, &memInfo);
+		}
+	}
 }
 
 void Internal_PushMemoryIgnoreFree()
@@ -141,9 +211,17 @@ void Internal_PopMemoryPointer()
 #endif
 }
 
-inline void*
-GameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
-	const char* file, const char* func, u32 line)
+FreeListAllocator* GetGeneralAllocatorObject()
+{
+	return &GetGameState()->GameMemory;
+}
+
+LinearArena* GetFrameAllocatorObject()
+{
+	return &GetGameState()->FrameMemory;
+}
+
+SAllocatorProc(GameAllocatorProc)
 {
 	void* res;
 
@@ -151,22 +229,22 @@ GameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize,
 	{
 	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = zpl_alloc_align(GetGameAllocator(), newSize, align);
+		res = FreelistAlloc(&GetGameState()->GameMemory, newSize);
 	} break;
 
 	case (ALLOCATOR_TYPE_REALLOC):
 	{
-		res = zpl_resize_align(GetGameAllocator(), ptr, oldSize, newSize, align);
+		res = FreelistRealloc(&GetGameState()->GameMemory, ptr, newSize);
 	} break;
 
 	case (ALLOCATOR_TYPE_FREE):
 	{
-		zpl_free(GetGameAllocator(), ptr);
+		FreelistFree(&GetGameState()->GameMemory, ptr);
 		res = nullptr;
 	} break;
 
 	default:
-		SError("Invalid allocator type");
+		SError("Invalid SAllocator type");
 		res = nullptr;
 	}
 
@@ -176,58 +254,13 @@ GameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize,
 #endif
 
 #if TRACK_MEMORY
-	if (MemoryState.IsInitialized)
-	{
-		int allocatorIndex = (int)Allocator::Arena;
-		if (allocatorType == ALLOCATOR_TYPE_FREE)
-		{
-			SAssert(ptr);
-			HashMapTRemove(&MemoryState.AllocationMap[allocatorIndex], &ptr);
-		}
-		else
-		{
-			MemoryInfo* oldInfo = nullptr;
-			if (ptr)
-			{
-				oldInfo = HashMapTGet(&MemoryState.AllocationMap[allocatorIndex], &ptr);
-				if (oldInfo)
-				{
-					HashMapTRemove(&MemoryState.AllocationMap[allocatorIndex], &ptr);
-				}
-			}
-			else if (MemoryState.SearchMemoryAddress)
-			{
-				oldInfo = HashMapTGet(&MemoryState.AllocationMap[allocatorIndex], &MemoryState.SearchMemoryAddress);
-			}
-			
-			MemoryInfo memInfo = (oldInfo) ? *oldInfo : MemoryInfo{};
-			memInfo.Size = newSize;
-			if (!oldInfo)
-			{
-				memInfo.File = file;
-				memInfo.Function = func;
-				memInfo.Line = line;
-				memInfo.IsIgnoringFree = MemoryState.IsIgnoringFree;
-			}
-
-			if (MemoryState.AdditionalFile)
-			{
-				memInfo.File = MemoryState.AdditionalFile;
-				memInfo.Function = MemoryState.AdditionalFunction;
-				memInfo.Line = MemoryState.AdditionalLine;
-			}
-
-			HashMapTSet(&MemoryState.AllocationMap[allocatorIndex], &res, &memInfo);
-		}
-	}
+	HandleMemoryTracking((int)SAllocatorId::General, allocatorType, ptr, oldSize, res, newSize, file, func, line);
 #endif
 
 	return res;
 }
 
-void*
-FrameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
-	const char* file, const char* func, u32 line)
+SAllocatorProc(FrameAllocatorProc)
 {
 	void* res;
 
@@ -249,12 +282,12 @@ FrameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize
 
 	case (ALLOCATOR_TYPE_FREE):
 	{
-		// Frame allocator frees at end of frame
+		// Frame SAllocator frees at end of frame
 		res = nullptr;
 	} break;
 
 	default:
-		SError("Invalid allocator type");
+		SError("Invalid SAllocator type");
 		res = nullptr;
 	}
 
@@ -268,9 +301,7 @@ FrameAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize
 	return res;
 }
 
-inline void*
-MallocAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
-	const char* file, const char* func, u32 line)
+SAllocatorProc(MallocAllocatorProc)
 {
 	void* res;
 
@@ -278,22 +309,22 @@ MallocAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSiz
 	{
 	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = zpl_alloc_align(zpl_heap_allocator(), newSize, align);
+		res = _aligned_malloc(newSize, align);
 	} break;
 
 	case (ALLOCATOR_TYPE_REALLOC):
 	{
-		res = zpl_resize_align(zpl_heap_allocator(), ptr, oldSize, newSize, align);
+		res = _aligned_realloc(ptr, newSize, align);
 	} break;
 
 	case (ALLOCATOR_TYPE_FREE):
 	{
-		zpl_free(zpl_heap_allocator(), ptr);
+		_aligned_free(ptr);
 		res = nullptr;
 	} break;
 
 	default:
-		SError("Invalid allocator type");
+		SError("Invalid SAllocator type");
 		res = nullptr;
 	}
 
@@ -303,87 +334,7 @@ MallocAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSiz
 #endif
 
 #if TRACK_MEMORY
-	if (MemoryState.IsInitialized)
-	{
-		int allocatorIndex = (int)Allocator::Malloc;
-		if (allocatorType == ALLOCATOR_TYPE_FREE)
-		{
-			SAssert(ptr);
-			HashMapTRemove(&MemoryState.AllocationMap[allocatorIndex], &ptr);
-		}
-		else
-		{
-			MemoryInfo* oldInfo = nullptr;
-			if (ptr)
-			{
-				oldInfo = HashMapTGet(&MemoryState.AllocationMap[allocatorIndex], &ptr);
-				if (allocatorType == ALLOCATOR_TYPE_REALLOC && oldInfo)
-				{
-					HashMapTRemove(&MemoryState.AllocationMap[allocatorIndex], &ptr);
-				}
-			}
-			else if (MemoryState.SearchMemoryAddress)
-			{
-				oldInfo = HashMapTGet(&MemoryState.AllocationMap[allocatorIndex], &MemoryState.SearchMemoryAddress);
-			}
-
-
-			MemoryInfo memInfo = (oldInfo) ? *oldInfo : MemoryInfo{};
-			memInfo.Size = newSize;
-			if (!oldInfo)
-			{
-				memInfo.File = file;
-				memInfo.Function = func;
-				memInfo.Line = line;
-				memInfo.IsIgnoringFree = MemoryState.IsIgnoringFree;
-			}
-
-			if (MemoryState.AdditionalFile)
-			{
-				memInfo.File = MemoryState.AdditionalFile;
-				memInfo.Function = MemoryState.AdditionalFunction;
-				memInfo.Line = MemoryState.AdditionalLine;
-			}
-			HashMapTSet(&MemoryState.AllocationMap[allocatorIndex], &res, &memInfo);
-		}
-	}
-#endif
-
-	return res;
-}
-
-void*
-MallocUntrackedAllocator_Internal(AllocatorAction allocatorType, void* ptr, size_t newSize, size_t oldSize, u32 align,
-	const char* file, const char* func, u32 line)
-{
-	void* res;
-
-	switch (allocatorType)
-	{
-	case (ALLOCATOR_TYPE_MALLOC):
-	{
-		res = zpl_alloc_align(zpl_heap_allocator(), newSize, align);
-	} break;
-
-	case (ALLOCATOR_TYPE_REALLOC):
-	{
-		res = zpl_resize_align(zpl_heap_allocator(), ptr, oldSize, newSize, align);
-	} break;
-
-	case (ALLOCATOR_TYPE_FREE):
-	{
-		zpl_free(zpl_heap_allocator(), ptr);
-		res = nullptr;
-	} break;
-
-	default:
-		SError("Invalid allocator type");
-		res = nullptr;
-	}
-
-#if SCAL_DEBUG
-	if (allocatorType != ALLOCATOR_TYPE_FREE)
-		SAssert(res);
+	HandleMemoryTracking((int)SAllocatorId::Malloc, allocatorType, ptr, oldSize, res, newSize, file, func, line);
 #endif
 
 	return res;

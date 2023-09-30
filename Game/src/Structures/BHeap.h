@@ -37,8 +37,8 @@ struct BHeap
     int Capacity;
 };
 
-BHeap* BHeapCreate(Allocator alloc, CompareFunc compareFunc, int capacity);
-void BHeapDestroy(BHeap* bh, Allocator alloc);
+BHeap* BHeapCreate(SAllocator alloc, CompareFunc compareFunc, int capacity);
+void BHeapDestroy(BHeap* bh, SAllocator alloc);
 
 void BHeapPushMin(BHeap* bh, void* key, void* user);
 BHeapItem BHeapPopMin(BHeap* bh);

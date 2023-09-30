@@ -25,11 +25,11 @@ struct HashMapT
 	u32 Capacity;
 	u32 Count;
 	u32 MaxCount;
-	Allocator Alloc;
+	SAllocator Alloc;
 };
 
 template<typename K, typename V>
-void HashMapTInitialize(HashMapT<K, V>* map, uint32_t capacity, Allocator alloc)
+void HashMapTInitialize(HashMapT<K, V>* map, uint32_t capacity, SAllocator alloc)
 {
 	SAssert(map);
 	SAssert(IsAllocatorValid(alloc));
@@ -88,7 +88,7 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 		
 		size_t size = sizeof(HashMapTBucket<K, V>) * map->Capacity;
 		SAssert(size > 0);
-		map->Buckets = (HashMapTBucket<K, V>*)SMalloc(map->Alloc, size);
+		map->Buckets = (HashMapTBucket<K, V>*)SAlloc(map->Alloc, size);
 		SAssert(map->Buckets);
 		memset(map->Buckets, 0, size);
 	}

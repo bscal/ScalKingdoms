@@ -33,12 +33,12 @@ ECS_SYSTEM_DECLARE(DrawEntities);
 
 internal void* RlMallocOverride(size_t sz)
 {
-	return MemArenaAlloc(&GetGameState()->GameMemory, sz);
+	return FreelistAlloc(&GetGameState()->GameMemory, sz);
 }
 
 internal void* RlReallocOverride(void* ptr, size_t sz)
 {
-	return MemArenaRealloc(&GetGameState()->GameMemory, ptr, sz);
+	return FreelistRealloc(&GetGameState()->GameMemory, ptr, sz);
 }
 
 internal void RlFreeOverride(void* ptr)
@@ -46,22 +46,23 @@ internal void RlFreeOverride(void* ptr)
 	if (!ptr)
 		return;
 	else 
-		MemArenaFree(&GetGameState()->GameMemory, ptr);
+		FreelistFree(&GetGameState()->GameMemory, ptr);
 }
 #include "Structures/PoolArray.h"
 int 
 GameInitialize()
 {
 	size_t gameMemorySize = Megabytes(16);
-	void* gameMemory = zpl_alloc_align(ZplAllocatorMalloc, gameMemorySize, 64);
-	State.GameMemory = MemArenaCreate(gameMemory, gameMemorySize);
+	void* gameMemory = _aligned_malloc(gameMemorySize, 64);
+	State.GameMemory = FreelistCreateFromBuffer(gameMemory, gameMemorySize);
 
 	size_t frameMemorySize = Megabytes(16);
-	void* frameMemory = zpl_alloc_align(ZplAllocatorMalloc, frameMemorySize, 64);
+	void* frameMemory = _aligned_malloc(frameMemorySize, 64);
 	State.FrameMemory = LinearArenaCreate(frameMemory, frameMemorySize);
 
+
 	InitializeMemoryTracking();
-	
+
 	PushMemoryIgnoreFree();
 	
 	JobsInitialize(7);
@@ -90,7 +91,7 @@ GameInitialize()
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
 	SAssert(guiInitialized);
 
-	HashMapTInitialize(&State.EntityMap, 64, Allocator::Arena);
+	HashMapTInitialize(&State.EntityMap, 64, SAllocatorGeneral());
 
 	SpritesInitialize();
 
@@ -189,7 +190,7 @@ GameRun()
 
 		GameLateUpdate();
 
-		DrawRegions();
+		//DrawRegions();
 
 		EndMode2D();
 		EndTextureMode();
@@ -268,7 +269,6 @@ void GameLateUpdate()
 
 void InputUpdate()
 {
-
 	Vector2 movement = VEC2_ZERO;
 	if (IsKeyDown(KEY_W))
 	{
@@ -398,6 +398,8 @@ GameShutdown()
 internal void 
 LoadAssets(GameState* gameState)
 {
+	#define SPRITE_MISS(name) SError("[ Assets ] Could not find sprite in spriteatlas: %s", name)
+
 	#define ASSET_DIR "Game/assets/"
 	gameState->AssetMgr.TileSpriteSheet = LoadTexture(ASSET_DIR "16x16.bmp");
 	gameState->AssetMgr.EntitySpriteSheet = LoadTexture(ASSET_DIR "SpriteSheet.png");
@@ -405,15 +407,27 @@ LoadAssets(GameState* gameState)
 
 	#define FONT_NAME "Silver"
 
-	Rectangle fontRect = SpriteAtlasGet(&gameState->AssetMgr.UIAtlas, FONT_NAME);
-	if (fontRect.width == 0 || fontRect.height == 0)
+	SpriteAtlasGetResult fontResult = SpriteAtlasGet(&gameState->AssetMgr.UIAtlas, FONT_NAME);
+	if (!fontResult.WasFound)
 	{
-		SAssertMsg(false, "Could not find font in ui atlas");
-		return;
+		SPRITE_MISS(FONT_NAME);
 	}
-	Vec2 offset = { fontRect.x, fontRect.y };
+
+	Vec2 offset = { fontResult.Rect.x, fontResult.Rect.y };
 	gameState->AssetMgr.MainFont = LoadBMPFontFromTexture(ASSET_DIR FONT_NAME ".fnt", &gameState->AssetMgr.UIAtlas.Texture, offset);
 	SAssert(gameState->AssetMgr.MainFont.texture.id > 0);
+
+	const char* SHAPES_TEXTURE_NAME = "TileSprite";
+	SpriteAtlasGetResult tileResult = SpriteAtlasGet(&gameState->AssetMgr.UIAtlas, SHAPES_TEXTURE_NAME);
+	if (!tileResult.WasFound)
+	{
+		SPRITE_MISS(SHAPES_TEXTURE_NAME);
+	}
+	else
+	{
+		SetShapesTexture(gameState->AssetMgr.UIAtlas.Texture, tileResult.Rect);
+	}
+	
 }
 
 internal void 
@@ -428,6 +442,8 @@ UnloadAssets(GameState* gameState)
 internal Vec2i 
 ScreenToTile()
 {
+	// Creates a new camera that uses size of screen.
+	// Than convert from screen to game draw resolution
 	Camera2D screenCamera = State.Camera;
 	screenCamera.offset = Vec2{ (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
 	Vec2 worldPos = GetScreenToWorld2D(GetMousePosition(), screenCamera);
@@ -442,21 +458,3 @@ GetGameState()
 {
 	return &State;
 }
-
-GameClient* 
-GetClient()
-{
-	return &Client;
-}
-
-zpl_allocator 
-GetGameAllocator()
-{
-	return MemArenaAllocator(&State.GameMemory);
-}
-
-//zpl_allocator
-//GetFrameAllocator()
-//{
-//	return zpl_arena_allocator(&State.FrameMemory);
-//}

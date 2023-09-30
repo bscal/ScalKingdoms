@@ -13,7 +13,7 @@
 #include "Structures/SList.h"
 #include "Structures/ArrayList.h"
 #include "Structures/HashMap.h"
-#include "Lib/MemoryArena.h"
+#include "Lib/FreeList.h"
 #include "Lib/LinearArena.h"
 
 #include "Lib/Jobs.h"
@@ -24,6 +24,7 @@ struct AssetMgr
 {
 	Texture2D TileSpriteSheet;
 	Texture2D EntitySpriteSheet;
+	Texture2D ShapesTexture;
 
 	Font MainFont;
 	SpriteAtlas UIAtlas;
@@ -31,7 +32,7 @@ struct AssetMgr
 
 struct GameState
 {
-	MemArena GameMemory;
+	FreeListAllocator GameMemory;
 	LinearArena FrameMemory;
 
 	RenderTexture2D ScreenTexture;
@@ -58,7 +59,7 @@ struct GameState
 
 struct TransientGameState
 {
-	MemArena TransientMemory;
+	FreeListAllocator TransientMemory;
 
 };
 
@@ -90,5 +91,3 @@ global_var struct GameClient Client;
 #define DeltaTime GetFrameTime()
 
 GameState* GetGameState();
-
-zpl_allocator GetGameAllocator();

@@ -23,17 +23,17 @@ struct HashSetT
 	uint32_t Capacity;
 	uint32_t Count;
 	uint32_t MaxCount;
-	Allocator Alloc;
+	SAllocator Alloc;
 };
 
 template<typename K>
 void
-HashSetTInitialize(HashSetT<K>* set, uint32_t capacity, Allocator allocator)
+HashSetTInitialize(HashSetT<K>* set, uint32_t capacity, SAllocator SAllocator)
 {
 	SAssert(set);
-	SAssert(IsAllocatorValid(allocator));
+	SAssert(IsAllocatorValid(SAllocator));
 
-	set->Alloc = allocator;
+	set->Alloc = SAllocator;
 	if (capacity > 0)
 		HashSetTReserve(set, capacity);
 }
@@ -85,7 +85,7 @@ HashSetTReserve(HashSetT<K>* set, uint32_t capacity)
 
 		size_t size = sizeof(HashSetTBucket<K>) * set->Capacity;
 		SAssert(size > 0);
-		set->Keys = (HashSetTBucket<K>*)SMalloc(set->Alloc, size);
+		set->Keys = (HashSetTBucket<K>*)SAlloc(set->Alloc, size);
 		SAssert(set->Keys);
 		memset(set->Keys, 0, size);
 	}

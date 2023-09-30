@@ -14,7 +14,7 @@ void TileMgrInitialize(Texture2D* tileSetTexture)
 {
 	TileManager.TileSetTexture = tileSetTexture;
 
-	ArrayListReserve(Allocator::Arena, TileManager.TileDefinitions, 64);
+	ArrayListReserve(SAllocatorGeneral(), TileManager.TileDefinitions, 64);
 
 	TileInfo empty = {};
 	empty.Src = CoordToRec(1, 0);
@@ -42,7 +42,7 @@ u16 TileMgrRegisterTile(const TileInfo* tileInfo)
 {
 	u16 id = (uint16_t)ArrayListCount(TileManager.TileDefinitions);
 
-	ArrayListPush(Allocator::Arena, TileManager.TileDefinitions, *tileInfo);
+	ArrayListPush(SAllocatorGeneral(), TileManager.TileDefinitions, *tileInfo);
 	
 	return id;
 }

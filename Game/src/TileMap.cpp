@@ -48,12 +48,12 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 
 	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS;
 
-	tilemap->ChunkLoader.ChunkPool.Reserve(VIEW_DISTANCE_TOTAL_CHUNKS);
+	tilemap->ChunkLoader.ChunkPool.Reserve(SAllocatorGeneral(), VIEW_DISTANCE_TOTAL_CHUNKS);
 	SAssert(tilemap->ChunkLoader.ChunkPool.IsAllocated());
 
 	for (int i = 0; i < VIEW_DISTANCE_TOTAL_CHUNKS; ++i)
 	{
-		Chunk* chunk = (Chunk*)zpl_alloc(ZplAllocatorArena, sizeof(Chunk));
+		Chunk* chunk = (Chunk*)SAlloc(SAllocatorGeneral(), sizeof(Chunk));
 		SAssert(chunk);
 
 		SZero(chunk, sizeof(Chunk));
@@ -67,7 +67,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	}
 	SAssert(tilemap->ChunkLoader.ChunkPool.Count == VIEW_DISTANCE_TOTAL_CHUNKS);
 
-	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, Allocator::Arena);
+	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, SAllocatorGeneral());
 
 	tilemap->ChunkLoader.Tilemap = tilemap;
 
@@ -75,8 +75,8 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	tilemap->ChunkLoader.Noise = fnlCreateState();
 	tilemap->ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
 
-	tilemap->ChunkLoader.ChunksToAdd.Reserve(MAX_CHUNKS_TO_PROCESS);
-	tilemap->ChunkLoader.ChunkToRemove.Reserve(MAX_CHUNKS_TO_PROCESS);
+	tilemap->ChunkLoader.ChunksToAdd.Reserve(SAllocatorGeneral(), MAX_CHUNKS_TO_PROCESS);
+	tilemap->ChunkLoader.ChunkToRemove.Reserve(SAllocatorGeneral(), MAX_CHUNKS_TO_PROCESS);
 
 	SInfoLog("Tilemap Initialized!");
 }
@@ -100,7 +100,7 @@ TileMapFree(TileMap* tilemap)
 	for (u32 i = 0; i < tilemap->ChunkLoader.ChunkPool.Count; ++i)
 	{
 		UnloadRenderTexture(tilemap->ChunkLoader.ChunkPool.Memory[i]->RenderTexture);
-		zpl_free(ZplAllocatorArena, tilemap->ChunkLoader.ChunkPool.Memory[i]);
+		SFree(SAllocatorGeneral(), tilemap->ChunkLoader.ChunkPool.Memory[i]);
 	}
 
 	tilemap->ChunkLoader.ChunkPool.Free();

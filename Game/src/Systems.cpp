@@ -34,9 +34,9 @@ void MoveOnAdd(ecs_iter_t* it)
 	for (int i = 0; i < it->count; ++i)
 	{
 		moves[i] = {};
-		ArrayListReserve(Allocator::Arena, moves[i].MoveData.StartPath, REGION_SIZE + 2);
-		ArrayListReserve(Allocator::Arena, moves[i].MoveData.EndPath, REGION_SIZE + 2);
-		ArrayListReserve(Allocator::Arena, moves[i].MoveData.RegionPath, 16);
+		ArrayListReserve(SAllocatorGeneral(), moves[i].MoveData.StartPath, REGION_SIZE + 2);
+		ArrayListReserve(SAllocatorGeneral(), moves[i].MoveData.EndPath, REGION_SIZE + 2);
+		ArrayListReserve(SAllocatorGeneral(), moves[i].MoveData.RegionPath, 16);
 	}
 }
 
@@ -45,9 +45,9 @@ void MoveOnRemove(ecs_iter_t* it)
 	CMove* moves = ecs_field(it, CMove, 1);
 	for (int i = 0; i < it->count; ++i)
 	{
-		ArrayListFree(Allocator::Arena, moves[i].MoveData.StartPath);
-		ArrayListFree(Allocator::Arena, moves[i].MoveData.EndPath);
-		ArrayListFree(Allocator::Arena, moves[i].MoveData.RegionPath);
+		ArrayListFree(SAllocatorGeneral(), moves[i].MoveData.StartPath);
+		ArrayListFree(SAllocatorGeneral(), moves[i].MoveData.EndPath);
+		ArrayListFree(SAllocatorGeneral(), moves[i].MoveData.RegionPath);
 	}
 }
 
@@ -96,7 +96,7 @@ void MoveSystem(ecs_iter_t* it)
 #endif
 	}
 }
-
+#if 0
 struct IntervalSystem
 {
 	float Rate; // In seconds
@@ -128,3 +128,4 @@ void TestSystem(ecs_iter_t* it)
 
 	interval.UpdateAccumulator -= (float)updateCount;
 }
+#endif

@@ -21,4 +21,10 @@ struct SpriteAtlas
 
 SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile);
 void SpriteAtlasUnload(SpriteAtlas* atlas);
-Rectangle SpriteAtlasGet(SpriteAtlas* atlas, const char* name);
+
+struct SpriteAtlasGetResult
+{
+	Rectangle Rect;
+	bool WasFound;
+};
+SpriteAtlasGetResult SpriteAtlasGet(SpriteAtlas* atlas, const char* name);

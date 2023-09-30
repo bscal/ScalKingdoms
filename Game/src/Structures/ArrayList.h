@@ -38,8 +38,9 @@ struct ArrayListHeader
         ? (*((void**)&(a)) = ArrayListGrow((_alloc), (a), (n), sizeof(*(a)), __FILE__, __FUNCTION__, __LINE__)) : 0)
 
 inline void* 
-ArrayListGrow(Allocator alloc, void* arr, int increment, int itemsize, const char* file, const char* function, int line)
+ArrayListGrow(SAllocator allocator, void* arr, int increment, int itemsize, const char* file, const char* function, int line)
 {
+    SAssert(IsAllocatorValid(allocator));
     ArrayListHeader header = (arr) ? *ArrayListGetHeader(arr) : ArrayListHeader{ };
     int oldCapacity = header.Capacity;
     int newCapacity = (oldCapacity < ARRAY_LIST_DEFAULT_SIZE) ? ARRAY_LIST_DEFAULT_SIZE : oldCapacity << 1;
@@ -51,7 +52,7 @@ ArrayListGrow(Allocator alloc, void* arr, int increment, int itemsize, const cha
     size_t size = (size_t)itemsize * (size_t)capacity + sizeof(ArrayListHeader);
     
     PushMemoryAdditionalInfo(file, function, line);
-    ArrayListHeader* p = (ArrayListHeader*)SRealloc(alloc, arr ? ArrayListGetHeader(arr) : 0, size, oldSize);
+    ArrayListHeader* p = (ArrayListHeader*)SRealloc(allocator, arr ? ArrayListGetHeader(arr) : 0, size, oldSize);
     PopMemoryAdditionalInfo();
 
     if (p)

@@ -11,7 +11,7 @@
 constexpr internal_var int MAX_REGION_SEARCH = 128;
 constexpr internal_var int MAX_LOCAL_SEARCH = 256;
 
-#define AllocNode(T) ((T*)SMalloc(Allocator::Frame, sizeof(T)));
+#define AllocNode(T) ((T*)SAlloc(SAllocatorFrame(), sizeof(T)));
 
 internal_var HashMapT<Vec2i, Region> RegionMap;
 
@@ -62,10 +62,10 @@ CalculateDistance(Vec2i v0, Vec2i v1)
 void
 PathfinderRegionsInit(RegionPathfinder* pathfinder)
 {
-	HashMapTInitialize(&RegionMap, 32 * 12, Allocator::Arena);
-	pathfinder->Open = BHeapCreate(Allocator::Arena, RegionCompareCost, 256);
-	HashMapTInitialize(&pathfinder->OpenSet, 256, Allocator::Arena);
-	HashSetTInitialize(&pathfinder->ClosedSet, 256, Allocator::Arena);
+	HashMapTInitialize(&RegionMap, 32 * 12, SAllocatorGeneral());
+	pathfinder->Open = BHeapCreate(SAllocatorGeneral(), RegionCompareCost, 256);
+	HashMapTInitialize(&pathfinder->OpenSet, 256, SAllocatorGeneral());
+	HashSetTInitialize(&pathfinder->ClosedSet, 256, SAllocatorGeneral());
 }
 
 void 
@@ -87,7 +87,7 @@ RegionUnload(Chunk* chunk)
 			{
 				if (region->Paths[i])
 				{
-					ArrayListFree(Allocator::Arena, region->Paths[i]);
+					ArrayListFree(SAllocatorGeneral(), region->Paths[i]);
 				}
 			}
 			HashMapTRemove(&RegionMap, &pos);
@@ -262,11 +262,11 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 					[](Node* node, void* stack)
 					{
 						RegionPathStack* pathStack = (RegionPathStack*)stack;
-						ArrayListPush(Allocator::Arena, pathStack->Region->Paths[pathStack->Index], node->Pos);
+						ArrayListPush(SAllocatorGeneral(), pathStack->Region->Paths[pathStack->Index], node->Pos);
 						pathStack->Region->PathCost[pathStack->Index] += node->GCost;
 					}, &stack);
 
-				ArrayListPush(Allocator::Arena, region->Paths[i], region->SideConnections[nodeTo]);
+				ArrayListPush(SAllocatorGeneral(), region->Paths[i], region->SideConnections[nodeTo]);
 			}
 		}
 	}
@@ -399,7 +399,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 		[](Node* node, void* stack)
 		{
 			RegionMoveData* moveData = (RegionMoveData*)stack;
-			ArrayListPush(Allocator::Arena, moveData->StartPath, node->Pos);
+			ArrayListPush(SAllocatorGeneral(), moveData->StartPath, node->Pos);
 		}, moveData);
 
 	RegionNode* node = AllocNode(RegionNode);
@@ -435,7 +435,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 					[](Node* node, void* stack)
 					{
 						RegionMoveData* moveData = (RegionMoveData*)stack;
-						ArrayListPush(Allocator::Arena, moveData->EndPath, node->Pos);
+						ArrayListPush(SAllocatorGeneral(), moveData->EndPath, node->Pos);
 					}, moveData);
 			}
 
@@ -445,7 +445,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 				RegionPath regionPath = {};
 				regionPath.RegionCoord = prev->Pos;
 				regionPath.Direction = (RegionDirection)DIRECTION_2_REGION_DIR[prev->SideFrom][prev->SideTo];
-				ArrayListPush(Allocator::Arena, moveData->RegionPath, regionPath);
+				ArrayListPush(SAllocatorGeneral(), moveData->RegionPath, regionPath);
 				prev = prev->Parent;
 			}
 			return;

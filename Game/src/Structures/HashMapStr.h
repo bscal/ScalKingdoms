@@ -27,10 +27,10 @@ struct HashMapStr
 	u32 Capacity;
 	u32 Count;
 	u32 MaxCount;
-	Allocator Alloc;
+	SAllocator Alloc;
 };
 
-void HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, Allocator alloc);
+void HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, SAllocator alloc);
 
 void HashMapStrReserve(HashMapStr* map, uint32_t capacity);
 

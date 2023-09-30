@@ -11,7 +11,7 @@ void ActionMgrInitialize(ActionMgr* actionMgr)
 {
 	SAssert(actionMgr);
 
-	zpl_array_init(actionMgr->ActionTypes, zpl_heap_allocator());
+	zpl_array_init(actionMgr->ActionTypes, zpl_heap_SAllocator());
 
 	Actions::IDLE = Count;
 	

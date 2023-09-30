@@ -137,9 +137,9 @@ void JobsInitialize(u32 maxThreadCount)
 	// Uses coreCount instead of threadCount, -1 for main thread
 	JobInternalState.NumThreads = (u32)Clamp(coreCount - 1, 1, (int)maxThreadCount);
 
-	JobInternalState.JobQueuePerThread = (JobQueue*)SMalloc(Allocator::Arena, JobInternalState.NumThreads * sizeof(JobQueue));
+	JobInternalState.JobQueuePerThread = (JobQueue*)SCalloc(SAllocatorGeneral(), JobInternalState.NumThreads * sizeof(JobQueue));
 
-	ArrayListReserve(Allocator::Arena, JobInternalState.Threads, (int)JobInternalState.NumThreads);
+	ArrayListReserve(SAllocatorGeneral(), JobInternalState.Threads, (int)JobInternalState.NumThreads);
 
 	for (u32 threadIdx = 0; threadIdx < JobInternalState.NumThreads; ++threadIdx)
 	{

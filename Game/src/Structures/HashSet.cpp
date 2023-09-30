@@ -6,11 +6,11 @@
 #define HashMapSwap(V0, V1, T) T tmp = V0; V0 = V1; V1 = tmp
 #define HashMapKeySize(hashmap) (hashmap->Capacity * sizeof(HashSetBucket))
 
-void HashSetInitialize(HashSet* set, uint32_t capacity, Allocator allocator)
+void HashSetInitialize(HashSet* set, uint32_t capacity, SAllocator SAllocator)
 {
-	SAssert(IsAllocatorValid(allocator));
+	SAssert(IsAllocatorValid(SAllocator));
 
-	set->Alloc = allocator;
+	set->Alloc = SAllocator;
 	if (capacity > 0)
 		HashSetReserve(set, capacity);
 }
@@ -53,7 +53,7 @@ void HashSetReserve(HashSet* set, uint32_t capacity)
 
 		size_t newKeysSize = HashMapKeySize(set);
 
-		set->Keys = (HashSetBucket*)SMalloc(set->Alloc, newKeysSize);
+		set->Keys = (HashSetBucket*)SAlloc(set->Alloc, newKeysSize);
 
 		memset(set->Keys, 0, sizeof(newKeysSize));
 	}

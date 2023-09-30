@@ -23,7 +23,7 @@ internal HashMapSetResults
 HashMapSet_Internal(HashMap* map, const void* key, const void* value);
 
 void HashMapInitialize(HashMap* map, HashMapCompare compareFunc, 
-	u32 keyStride, u32 valueStride, u32 capacity, Allocator alloc)
+	u32 keyStride, u32 valueStride, u32 capacity, SAllocator alloc)
 {
 	SAssert(map);
 	SAssert(compareFunc);
@@ -84,12 +84,12 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 		map->Capacity = capacity;
 		map->MaxCount = (u32)((float)map->Capacity * DEFAULT_LOADFACTOR);
 
-		map->Slots = (HashMapSlot*)SMalloc(map->Alloc, sizeof(HashMapSlot) * map->Capacity);
+		map->Slots = (HashMapSlot*)SAlloc(map->Alloc, sizeof(HashMapSlot) * map->Capacity);
 		memset(map->Slots, 0, sizeof(HashMapSlot) * map->Capacity);
 
-		map->Keys = SMalloc(map->Alloc, map->KeyStride * map->Capacity);
+		map->Keys = SAlloc(map->Alloc, map->KeyStride * map->Capacity);
 
-        map->Values = SMalloc(map->Alloc, map->ValueStride * map->Capacity);
+        map->Values = SAlloc(map->Alloc, map->ValueStride * map->Capacity);
 	}
 }
 

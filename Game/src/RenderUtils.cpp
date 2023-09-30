@@ -224,7 +224,7 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	{
 		// NOTE: We need some extra space to avoid memory corruption on next allocations!
 		size_t size = TextLength(fileName) - TextLength(lastSlash) + TextLength(imFileName) + 4;
-		imPath = (char*)SMalloc(Allocator::Frame, size);
+		imPath = (char*)SAlloc(SAllocatorFrame(), size);
 		memset(imPath, 0, size);
 		memcpy(imPath, fileName, TextLength(fileName) - TextLength(lastSlash) + 1);
 		memcpy(imPath + TextLength(fileName) - TextLength(lastSlash) + 1, imFileName, TextLength(imFileName));
@@ -241,8 +241,8 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	font.baseSize = fontSize;
 	font.glyphCount = glyphCount;
 	font.glyphPadding = 0;
-	font.glyphs = (GlyphInfo*)SMalloc(Allocator::Arena, glyphCount * sizeof(GlyphInfo));
-	font.recs = (Rectangle*)SMalloc(Allocator::Arena, glyphCount * sizeof(Rectangle));
+	font.glyphs = (GlyphInfo*)SAlloc(SAllocatorGeneral(), glyphCount * sizeof(GlyphInfo));
+	font.recs = (Rectangle*)SAlloc(SAllocatorGeneral(), glyphCount * sizeof(Rectangle));
 
 	int charId, charX, charY, charWidth, charHeight, charOffsetX, charOffsetY, charAdvanceX;
 
@@ -294,7 +294,7 @@ UnloadBMPFontData(Font* font)
 			UnloadImage(font->glyphs[i].image);
 		}
 
-		SFree(Allocator::Arena, font->glyphs);
+		SFree(SAllocatorGeneral(), font->glyphs);
 	}
 }
 
@@ -467,7 +467,7 @@ const char*
 NewRichTextColor(int color)
 {
 	char* buffer = {};
-	string_make_length(Allocator::Frame, buffer, RICH_TEXT_MAX_LENGTH + 2);
+	string_make_length(SAllocatorFrame(), buffer, RICH_TEXT_MAX_LENGTH + 2);
 	SAssert(buffer);
 	SZero(buffer, RICH_TEXT_MAX_LENGTH + 2);
 

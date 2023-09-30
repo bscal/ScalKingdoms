@@ -20,10 +20,10 @@ struct HashSet
 	HashSetBucket* Keys;
 	uint32_t Capacity;
 	uint32_t Count;
-	Allocator Alloc;
+	SAllocator Alloc;
 };
 
-void HashSetInitialize(HashSet* set, uint32_t capacity, Allocator allocator);
+void HashSetInitialize(HashSet* set, uint32_t capacity, SAllocator SAllocator);
 
 void HashSetReserve(HashSet* set, uint32_t capacity);
 

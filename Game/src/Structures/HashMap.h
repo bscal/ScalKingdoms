@@ -25,11 +25,11 @@ struct HashMap
     u32 Capacity;
 	u32 Count;
 	u32 MaxCount;
-	Allocator Alloc;
+	SAllocator Alloc;
 };
 
 void HashMapInitialize(HashMap* map, HashMapCompare compareFunc, 
-	u32 keyStride, u32 valueStride, u32 capacity, Allocator alloc);
+	u32 keyStride, u32 valueStride, u32 capacity, SAllocator alloc);
 
 void HashMapReserve(HashMap* map, uint32_t capacity);
 

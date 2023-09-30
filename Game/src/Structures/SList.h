@@ -5,28 +5,21 @@
 
 constexpr internal_var uint32_t SLIST_NO_FOUND = UINT32_MAX;
 
-enum class SListResizeType
-{
-	Double = 0,
-	IncreaseByOne
-};
-
 template<typename T>
 struct SList
 {
+	SAllocator Alloc;
 	T* Memory;
 	uint32_t Capacity;
 	uint32_t Count;
-	SListResizeType ResizeType;
-	Allocator Alloc;
 
-	void EnsureSize(uint32_t ensuredCount); // ensures capacity and count elements
 	void Free();
-	void Reserve(uint32_t capacity); // allocated memory based on capacity
+	void Reserve(SAllocator allocator, uint32_t capacity); // allocated memory based on capacity
+	void EnsureSize(SAllocator allocator, uint32_t ensuredCount); // ensures capacity and count elements
 	void Resize(); // Resizes the array, if size = 0, then size will be 1
 
 	void Push(const T* valueSrc); // Checks resize, inserts and end of array
-	void PushWithAlloc(Allocator allocator, const T* valueSrc);
+	void PushWithAlloc(SAllocator SAllocator, const T* valueSrc);
 	T* PushNew(); // Checks resize, default constructs next element, and returns pointer
 	void PushAt(uint32_t index, const T* valueSrc);
 	void PushAtFast(uint32_t index, const T* valueSrc); // Checks resize, inserts at index, moving old index to end
@@ -76,23 +69,6 @@ struct SList
 };
 
 // ********************
-template<typename T>
-void SList<T>::EnsureSize(uint32_t ensuredCount)
-{
-	if (ensuredCount <= Count) return;
-
-	Reserve(ensuredCount);
-
-	for (uint32_t i = Count; i < ensuredCount; ++i)
-	{
-		Memory[i] = T{};
-	}
-	Count = ensuredCount;
-
-	SAssert(ensuredCount <= Count);
-	SAssert(ensuredCount <= Capacity);
-	SAssert(Count <= Capacity);
-}
 
 template<typename T>
 void SList<T>::Free()
@@ -106,29 +82,47 @@ void SList<T>::Free()
 }
 
 template<typename T>
-void SList<T>::Reserve(uint32_t newCapacity)
+void SList<T>::Reserve(SAllocator allocator, u32 newCapacity)
 {
+	SAssert(IsAllocatorValid(allocator));
+	SAssert(newCapacity > 0);
+
 	if (newCapacity <= Capacity)
 		return;
 
 	size_t newSize = newCapacity * sizeof(T);
-	size_t oldSize = MemUsed();
-	Memory = (T*)SRealloc(Alloc, Memory, newSize, oldSize);
+	size_t oldSize = Capacity * sizeof(T);
+	Memory = (T*)SRealloc(allocator, Memory, newSize, oldSize);
+	Alloc = allocator;
 	Capacity = newCapacity;
 	SAssert(Memory);
 	SAssert(Count <= newCapacity);
 }
 
 template<typename T>
-void SList<T>::Resize()
+void SList<T>::EnsureSize(SAllocator allocator, uint32_t ensuredCount)
 {
-	uint32_t capacity = Capacity;
-	if (capacity == 0 || ResizeType == SListResizeType::IncreaseByOne)
-		++capacity;
-	else
-		capacity *= 2;
+	if (ensuredCount <= Count)
+		return;
 
-	Reserve(capacity);
+	Reserve(allocator, ensuredCount);
+
+	for (uint32_t i = Count; i < ensuredCount; ++i)
+	{
+		Memory[i] = T{};
+	}
+	Count = ensuredCount;
+
+	SAssert(ensuredCount <= Count);
+	SAssert(ensuredCount <= Capacity);
+	SAssert(Count <= Capacity);
+}
+
+template<typename T>
+_FORCE_INLINE_ void SList<T>::Resize()
+{
+	u32 newCapacity = (Capacity == 0) ? 1 : Capacity * 2;
+	Reserve(Alloc, newCapacity);
 }
 
 template<typename T>
@@ -145,11 +139,11 @@ void SList<T>::Push(const T* valueSrc)
 }
 
 template<typename T>
-void SList<T>::PushWithAlloc(Allocator allocator, const T* valueSrc)
+void SList<T>::PushWithAlloc(SAllocator SAllocator, const T* valueSrc)
 {
 	SAssert(valueSrc);
 	SAssert(Count <= Capacity);
-	Alloc = allocator;
+	Alloc = SAllocator;
 	if (Count == Capacity)
 	{
 		Resize();

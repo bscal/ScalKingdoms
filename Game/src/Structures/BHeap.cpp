@@ -52,10 +52,10 @@ static void sx__bheap_heapify_max(BHeap* bh, int index)
     }
 }
 
-BHeap* BHeapCreate(Allocator alloc, CompareFunc compareFunc, int capacity)
+BHeap* BHeapCreate(SAllocator alloc, CompareFunc compareFunc, int capacity)
 {
     size_t total_sz = sizeof(BHeap) + sizeof(BHeapItem) * capacity;
-    BHeap* bh = (BHeap*)SMalloc(alloc, total_sz);
+    BHeap* bh = (BHeap*)SAlloc(alloc, total_sz);
 
     SAssert(bh);
 
@@ -67,7 +67,7 @@ BHeap* BHeapCreate(Allocator alloc, CompareFunc compareFunc, int capacity)
     return bh;
 }
 
-void BHeapDestroy(BHeap* bh, Allocator alloc)
+void BHeapDestroy(BHeap* bh, SAllocator alloc)
 {
     SAssert(bh);
 

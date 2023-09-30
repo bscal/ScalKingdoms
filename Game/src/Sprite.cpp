@@ -16,7 +16,7 @@ internal_var SpriteMgr SpriteManager;
 void 
 SpritesInitialize()
 {
-	ArrayListReserve(Allocator::Arena, SpriteManager.Sprites, 64);
+	ArrayListReserve(SAllocatorGeneral(), SpriteManager.Sprites, 64);
 
 	Sprites::PLAYER = SpriteRegister({ 0, 0, 16, 16 }, { 8, 8 });
 }
@@ -37,7 +37,7 @@ SpriteRegister(SpriteRect rect, Vector2 origin)
 	Sprite sprite;
 	sprite.Rect = rect;
 	sprite.Origin = origin;
-	ArrayListPush(Allocator::Arena, SpriteManager.Sprites, sprite);
+	ArrayListPush(SAllocatorGeneral(), SpriteManager.Sprites, sprite);
 
 	return (uint16_t)id;
 }

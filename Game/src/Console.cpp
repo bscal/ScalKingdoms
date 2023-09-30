@@ -42,25 +42,25 @@ internal_var struct Console Console;
 void ConsoleInit()
 {
 	PushMemoryIgnoreFree();
-	HashMapStrInitialize(&Console.Commands, sizeof(Command), 32, Allocator::Arena);
-	Console.Entries.Init(Allocator::Arena, CONSOLE_MAX_ENTRIES);
+	HashMapStrInitialize(&Console.Commands, sizeof(Command), 32, SAllocatorGeneral());
+	Console.Entries.Init(SAllocatorGeneral(), CONSOLE_MAX_ENTRIES);
 	PopMemoryIgnoreFree();
 
 	for (size_t i = 0; i < CONSOLE_MAX_ENTRIES; ++i)
 	{
-		Console.Entries.Memory[i] = string_make_reserve(Allocator::Arena, CONSOLE_ENTRY_LENGTH);
+		Console.Entries.Memory[i] = string_make_reserve(SAllocatorGeneral(), CONSOLE_ENTRY_LENGTH);
 	}
 
 	// Commands
 	Command cmd = {};
-	cmd.ArgumentString = string_make(Allocator::Arena, "Testing args");
+	cmd.ArgumentString = string_make(SAllocatorGeneral(), "Testing args");
 	cmd.OnCommand = [](const String cmd, const char** arg, int argCount)
 	{
 		SInfoLog("Command executed! %s, %d", cmd, argCount);
 
 		return COMMAND_SUCCESS;
 	};
-	ConsoleRegisterCommand(string_make(Allocator::Arena, "TestCommand"), &cmd);
+	ConsoleRegisterCommand(string_make(SAllocatorGeneral(), "TestCommand"), &cmd);
 }
 
 void ConsoleRegisterCommand(String cmdName, Command* cmd)
@@ -224,7 +224,7 @@ ConsoleFillSuggestions()
 	else
 		idx = (int)(firstSpace - (char*)Console.EntryString);
 
-	String tempString = string_make_length(Allocator::Frame, Console.EntryString, idx);
+	String tempString = string_make_length(SAllocatorFrame(), Console.EntryString, idx);
 
 	for (u32 i = 0; i < Console.Commands.Capacity; ++i)
 	{
@@ -260,7 +260,7 @@ ConsoleHandleCommand()
 	else
 		idx = (int)(firstSpace - (char*)Console.EntryString);
 
-	String tempString = string_make_length(Allocator::Frame, Console.EntryString, idx);
+	String tempString = string_make_length(SAllocatorFrame(), Console.EntryString, idx);
 	Command* cmd = (Command*)HashMapStrGet(&Console.Commands, tempString);
 	if (cmd)
 	{

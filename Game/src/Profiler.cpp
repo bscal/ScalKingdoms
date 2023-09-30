@@ -15,7 +15,7 @@ struct ThreadedProfiler
 	ThreadedProfiler()
 	{
 		Buffer.length = Megabytes(1);
-		Buffer.data = zpl_alloc(zpl_heap_allocator(), Buffer.length);
+		Buffer.data = zpl_alloc(zpl_heap_SAllocator(), Buffer.length);
 		SAssert(Buffer.data);
 		bool spallBufferInit = spall_buffer_init(&SpallCtx, &Buffer);
 		SAssert(spallBufferInit);
@@ -26,7 +26,7 @@ struct ThreadedProfiler
 		else
 		{
 			ThreadId = 0;
-			zpl_free(zpl_heap_allocator(), Buffer.data);
+			zpl_free(zpl_heap_SAllocator(), Buffer.data);
 		}
 		Timer = 0.0f;
 	}
@@ -34,7 +34,7 @@ struct ThreadedProfiler
 	~ThreadedProfiler()
 	{
 		spall_buffer_quit(&SpallCtx, &Buffer);
-		zpl_free(zpl_heap_allocator(), Buffer.data);
+		zpl_free(zpl_heap_SAllocator(), Buffer.data);
 	}
 
 };
@@ -83,7 +83,7 @@ void InitProfile(const char* filename)
 
 #if !USE_THREADS
 #define BUFFER_SIZE (64 * 1024 * 1024)
-	void* buffer = SAlloc(SAllocator::Malloc, BUFFER_SIZE, MemoryTag::Profiling);
+	void* buffer = SAlloc(SSAllocator::Malloc, BUFFER_SIZE, MemoryTag::Profiling);
 	memset(buffer, 1, BUFFER_SIZE);
 
 	SpallData = {};

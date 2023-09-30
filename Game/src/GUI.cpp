@@ -21,7 +21,7 @@ InitializeGUI(GameState* gameState, Font* guiFont)
 	gameState->GUIState.Ctx.clip.userdata	= nk_handle_ptr(0);
 
 	size_t guiMemorySize = Megabytes(2);
-	void* guiMemory = SMalloc(Allocator::Malloc, guiMemorySize);
+	void* guiMemory = SAlloc(SAllocatorMalloc(), guiMemorySize);
 
 	if (!nk_init_fixed(&gameState->GUIState.Ctx, guiMemory, guiMemorySize, &gameState->GUIState.Font))
 	{

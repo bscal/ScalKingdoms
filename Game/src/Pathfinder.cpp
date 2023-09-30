@@ -8,7 +8,7 @@
 constexpr int MAX_SEARCH_TILES = 64 * 16;
 constexpr int PATHFINDER_TABLE_SIZE = MAX_SEARCH_TILES + (int)((float)MAX_SEARCH_TILES * HASHSET_LOAD_FACTOR);
 
-#define AllocNode() ((Node*)SMalloc(Allocator::Frame, sizeof(Node)));
+#define AllocNode() ((Node*)SAlloc(SAllocatorFrame(), sizeof(Node)));
 
 internal int 
 ManhattanDistance(Vec2i v0, Vec2i v1)
@@ -39,9 +39,9 @@ CompareCost(void* cur, void* parent)
 void
 PathfinderInit(Pathfinder* pathfinder)
 {
-	pathfinder->Open = BHeapCreate(Allocator::Arena, CompareCost, MAX_SEARCH_TILES);
-	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, Allocator::Arena);
-	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, Allocator::Arena);
+	pathfinder->Open = BHeapCreate(SAllocatorGeneral(), CompareCost, MAX_SEARCH_TILES);
+	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, SAllocatorGeneral());
+	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, SAllocatorGeneral());
 }
 
 SList<Vec2i>
@@ -51,9 +51,7 @@ PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	if (node)
 	{
 		SList<Vec2i> positions = {};
-		positions.Alloc = Allocator::Frame;
-
-		positions.Reserve(10);
+		positions.Reserve(SAllocatorFrame(), 10);
 
 		positions.Push(&node->Pos);
 		Node* prev = node->Parent;

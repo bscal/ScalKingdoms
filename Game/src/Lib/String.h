@@ -15,42 +15,42 @@ extern "C" {
 
     #define StringHeader(str) (Cast(string_header *)(str) - 1)
 
-    inline String string_make_reserve(Allocator a, u32 capacity);
-    inline String string_make_length(Allocator a, void const* str, u32 num_bytes);
-    inline String string_sprintf(Allocator a, char* buf, u32 num_bytes, const char* fmt, ...);
-    inline String string_sprintf_buf(Allocator a, const char* fmt, ...); // NOTE: Uses locally persistent buffer
-    inline String string_append_length(Allocator a, String str, void const* other, u32 num_bytes);
-    inline String string_appendc(Allocator a, String str, const char* other);
-    inline String string_join(Allocator a, const char** parts, u32 count, const char* glue);
-    inline String string_set(Allocator a, String str, const char* cstr);
-    inline String string_make_space_for(Allocator a, String str, u32 add_len);
+    inline String string_make_reserve(SAllocator a, u32 capacity);
+    inline String string_make_length(SAllocator a, void const* str, u32 num_bytes);
+    inline String string_sprintf(SAllocator a, char* buf, u32 num_bytes, const char* fmt, ...);
+    inline String string_sprintf_buf(SAllocator a, const char* fmt, ...); // NOTE: Uses locally persistent buffer
+    inline String string_append_length(SAllocator a, String str, void const* other, u32 num_bytes);
+    inline String string_appendc(SAllocator a, String str, const char* other);
+    inline String string_join(SAllocator a, const char** parts, u32 count, const char* glue);
+    inline String string_set(SAllocator a, String str, const char* cstr);
+    inline String string_make_space_for(SAllocator a, String str, u32 add_len);
     inline u32    string_allocation_size(String const str);
     inline bool32 string_are_equal(String const lhs, String const rhs);
     inline String string_trim(String str, const char* cut_set);
-    inline String string_append_rune(Allocator a, String str, zpl_rune r);
-    inline String string_append_fmt(Allocator a, String str, const char* fmt, ...);
+    inline String string_append_rune(SAllocator a, String str, zpl_rune r);
+    inline String string_append_fmt(SAllocator a, String str, const char* fmt, ...);
 
-    inline String string_make(Allocator a, const char* str);
-    inline void   string_free(Allocator a, String str);
+    inline String string_make(SAllocator a, const char* str);
+    inline void   string_free(SAllocator a, String str);
     inline void   string_clear(String str);
-    inline String string_duplicate(Allocator a, String const str);
+    inline String string_duplicate(SAllocator a, String const str);
     inline u32    string_length(String const str);
     inline u32    string_capacity(String const str);
     inline u32    string_available_space(String const str);
-    inline String string_append(Allocator a, String str, String const other);
+    inline String string_append(SAllocator a, String str, String const other);
     inline String string_trim_space(String str); // Whitespace ` \t\r\n\v\f`
 
     inline void string_set_length(String str, u32 len) { StringHeader(str)->length = len; }
     inline void string_set_capacity(String str, u32 cap) { StringHeader(str)->capacity = cap; }
 
-    inline String string_make(Allocator a, const char* str)
+    inline String string_make(SAllocator a, const char* str)
     {
         size_t len = str ? strlen(str) : 0;
         SAssert(len < UINT32_MAX);
         return string_make_length(a, str, (u32)len);
     }
 
-    inline void string_free(Allocator a, String str)
+    inline void string_free(SAllocator a, String str)
     {
         if (str)
         {
@@ -59,7 +59,7 @@ extern "C" {
         }
     }
 
-    inline String string_duplicate(Allocator a, String const str)
+    inline String string_duplicate(SAllocator a, String const str)
     {
         return string_make_length(a, str, string_length(str));
     }
@@ -80,17 +80,17 @@ extern "C" {
         str[0] = '\0';
     }
 
-    inline String string_append(Allocator a, String str, String const other)
+    inline String string_append(SAllocator a, String str, String const other)
     {
         return string_append_length(a, str, other, string_length(other));
     }
 
     inline String string_trim_space(String str) { return string_trim(str, " \t\r\n\v\f"); }
 
-    inline String string_make_reserve(Allocator a, u32 capacity) {
+    inline String string_make_reserve(SAllocator a, u32 capacity) {
         u32 header_size = sizeof(string_header);
         PushMemoryIgnoreFree();
-        void* ptr = SMalloc(a, header_size + capacity + 1);
+        void* ptr = SAlloc(a, header_size + capacity + 1);
         PopMemoryIgnoreFree();
 
         String str;
@@ -109,10 +109,10 @@ extern "C" {
     }
 
 
-    inline String string_make_length(Allocator a, void const* init_str, u32 num_bytes) {
+    inline String string_make_length(SAllocator a, void const* init_str, u32 num_bytes) {
         u32 header_size = sizeof(string_header);
         PushMemoryIgnoreFree();
-        void* ptr = SMalloc(a, header_size + num_bytes + 1);
+        void* ptr = SAlloc(a, header_size + num_bytes + 1);
         PopMemoryIgnoreFree();
 
         String str;
@@ -131,7 +131,7 @@ extern "C" {
         return str;
     }
 
-    inline String string_sprintf_buf(Allocator a, const char* fmt, ...) {
+    inline String string_sprintf_buf(SAllocator a, const char* fmt, ...) {
         local_persist thread_local char buf[ZPL_PRINTF_MAXLEN] = { 0 };
         va_list va;
         va_start(va, fmt);
@@ -141,7 +141,7 @@ extern "C" {
         return string_make(a, buf);
     }
 
-    inline String string_sprintf(Allocator a, char* buf, u32 num_bytes, const char* fmt, ...) {
+    inline String string_sprintf(SAllocator a, char* buf, u32 num_bytes, const char* fmt, ...) {
         va_list va;
         va_start(va, fmt);
         zpl_snprintf_va(buf, num_bytes, fmt, va);
@@ -150,7 +150,7 @@ extern "C" {
         return string_make(a, buf);
     }
 
-    inline String string_append_length(Allocator a, String str, void const* other, u32 other_len) {
+    inline String string_append_length(SAllocator a, String str, void const* other, u32 other_len) {
         if (other_len > 0) {
             u32 curr_len = string_length(str);
 
@@ -164,11 +164,11 @@ extern "C" {
         return str;
     }
 
-    _FORCE_INLINE_ String string_appendc(Allocator a, String str, const char* other) {
+    _FORCE_INLINE_ String string_appendc(SAllocator a, String str, const char* other) {
         return string_append_length(a, str, other, (u32)strlen(other));
     }
 
-    _FORCE_INLINE_ String string_join(Allocator a, const char** parts, u32 count, const char* glue) {
+    _FORCE_INLINE_ String string_join(SAllocator a, const char** parts, u32 count, const char* glue) {
         String ret;
         u32 i;
 
@@ -185,7 +185,7 @@ extern "C" {
         return ret;
     }
 
-    inline String string_set(Allocator a, String str, const char* cstr) {
+    inline String string_set(SAllocator a, String str, const char* cstr) {
         size_t len = strlen(cstr);
         SAssert(len < UINT32_MAX);
         if (string_capacity(str) < (u32)len) {
@@ -200,7 +200,7 @@ extern "C" {
         return str;
     }
 
-    inline String string_make_space_for(Allocator a, String str, u32 add_len) {
+    inline String string_make_space_for(SAllocator a, String str, u32 add_len) {
         u32 available = string_available_space(str);
 
         // NOTE: Return if there is enough space left
@@ -271,7 +271,7 @@ extern "C" {
         return str;
     }
 
-    inline String string_append_rune(Allocator a, String str, zpl_rune r) {
+    inline String string_append_rune(SAllocator a, String str, zpl_rune r) {
         if (r >= 0) {
             zpl_u8 buf[8] = { 0 };
             u32 len = (u32)zpl_utf8_encode_rune(buf, r);
@@ -281,7 +281,7 @@ extern "C" {
         return str;
     }
 
-    inline String string_append_fmt(Allocator a, String str, const char* fmt, ...) {
+    inline String string_append_fmt(SAllocator a, String str, const char* fmt, ...) {
         u32 res;
         char buf[ZPL_PRINTF_MAXLEN] = { 0 };
         va_list va;

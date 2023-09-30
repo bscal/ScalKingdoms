@@ -47,6 +47,9 @@ typedef uint64_t u64;
 typedef Vector2i Vec2i;
 typedef Vector2 Vec2;
 
+#define C_DECL_BEGIN extern "C" {
+#define C_DECL_END }
+
 #if defined(__clang__) || defined(__GNUC__)
 #define _RESTRICT_ __restrict__
 #elif defined(_MSC_VER)

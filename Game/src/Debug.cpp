@@ -81,7 +81,7 @@ void DrawDebugWindow(GameClient* client, GameState* gameState, GUIState* guiStat
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "UpdateTime: %.3fms", Client.UpdateTime * 1000.0);
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "DrawTime: %.3fms", GetDrawTime() * 1000.0);
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "ArenaMem: %dkb / %dkb",
-					(int)((gameState->GameMemory.Size - MemArenaGetFreeMemory(gameState->GameMemory)) / 1024),
+					(int)((gameState->GameMemory.Size - FreelistGetFreeMemory(&gameState->GameMemory)) / 1024),
 					(int)(gameState->GameMemory.Size / 1024));
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "TempMem: %dkb / %dkb",
 					(int)((gameState->FrameMemory.Size - LinearArenaFreeSpace(&gameState->FrameMemory)) / 1024),

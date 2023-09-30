@@ -20,7 +20,7 @@ internal HashMapStrSetResults
 HashMapStrSet_Internal(HashMapStr* map, const String key, const void* value);
 
 void 
-HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, Allocator alloc)
+HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, SAllocator alloc)
 {
 	SAssert(map);
 	SAssert(IsAllocatorValid(alloc));
@@ -74,10 +74,10 @@ HashMapStrReserve(HashMapStr* map, uint32_t capacity)
 		map->Capacity = capacity;
 		map->MaxCount = (u32)((float)map->Capacity * DEFAULT_LOADFACTOR);
 
-		map->Buckets = (HashStrSlot*)SMalloc(map->Alloc, sizeof(HashStrSlot) * map->Capacity);
+		map->Buckets = (HashStrSlot*)SAlloc(map->Alloc, sizeof(HashStrSlot) * map->Capacity);
 		memset(map->Buckets, 0, sizeof(HashStrSlot) * map->Capacity);
 
-		map->Values = SMalloc(map->Alloc, map->ValueStride * map->Capacity);
+		map->Values = SAlloc(map->Alloc, map->ValueStride * map->Capacity);
 	}
 }
 

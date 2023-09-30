@@ -12,16 +12,16 @@ struct Queue
 	int Last;
 	int Count;
 	int Capacity;
-	Allocator Allocator;
+	SAllocator Allocator;
 
-	void Init(enum Allocator allocator, int capacity)
+	void Init(SAllocator allocator, int capacity)
 	{
 		SAssert(IsAllocatorValid(allocator));
 		SAssert(capacity > 0)
 
 		Allocator = allocator;
 		Capacity = capacity;
-		Memory = (T*)SMalloc(this->Allocator, Capacity * sizeof(T));
+		Memory = (T*)SAlloc(Allocator, Capacity * sizeof(T));
 
 		SAssert(Memory);
 	}

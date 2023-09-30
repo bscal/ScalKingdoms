@@ -29,9 +29,9 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 	int count = 0;
 	int bufferSize = Kilobytes(10);
-	char* buffer = (char*)SMalloc(Allocator::Frame, bufferSize);
+	char* buffer = (char*)SAlloc(SAllocatorFrame(), bufferSize);
 	int splitBufferSize = Kilobytes(1);
-	char** split = (char**)SMalloc(Allocator::Frame, splitBufferSize * sizeof(char*));
+	char** split = (char**)SAlloc(SAllocatorFrame(), splitBufferSize * sizeof(char*));
 	TextSplitBuffered(atlasData, '\n', &count, buffer, bufferSize, split, splitBufferSize);
 
 	// 1st line empty
@@ -52,10 +52,10 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 		return {};
 	}
 
-	ArrayListReserve(Allocator::Arena, atlas.Rects, length);
-	ArrayListAdd(Allocator::Arena, atlas.Rects, length);
+	ArrayListReserve(SAllocatorGeneral(), atlas.Rects, length);
+	ArrayListAdd(SAllocatorGeneral(), atlas.Rects, length);
 
-	HashMapStrInitialize(&atlas.NameToIndex, sizeof(u16), length, Allocator::Malloc);
+	HashMapStrInitialize(&atlas.NameToIndex, sizeof(u16), length, SAllocatorGeneral());
 	atlas.Texture = LoadTexture(imgPath);
 
 	char s0[16];
@@ -79,7 +79,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 		line += 7;
 
-		String str = string_make(Allocator::Arena, name);
+		String str = string_make(SAllocatorGeneral(), name);
 		HashMapStrSet(&atlas.NameToIndex, str, &entryCounter);
 
 		int err;
@@ -143,26 +143,27 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 void SpriteAtlasUnload(SpriteAtlas* atlas)
 {
-	ArrayListFree(Allocator::Arena, atlas->Rects);
+	ArrayListFree(SAllocatorGeneral(), atlas->Rects);
 	// Note: Doesn't free strings
 	HashMapStrFree(&atlas->NameToIndex);
 	UnloadTexture(atlas->Texture);
 }
 
-Rectangle SpriteAtlasGet(SpriteAtlas* atlas, const char* name)
+SpriteAtlasGetResult SpriteAtlasGet(SpriteAtlas* atlas, const char* name)
 {
-	Rectangle result = {};
+	SpriteAtlasGetResult result = {};
 
-	String nameString = string_make(Allocator::Frame, name);
+	String nameString = string_make(SAllocatorFrame(), name);
 	u16* idx = (u16*)HashMapStrGet(&atlas->NameToIndex, nameString);
 	if (idx)
 	{
 		Rect16 textRect = atlas->Rects[*idx];
 
-		result.x = textRect.x;
-		result.y = textRect.y;
-		result.width = textRect.w;
-		result.height = textRect.h;
+		result.Rect.x = textRect.x;
+		result.Rect.y = textRect.y;
+		result.Rect.width = textRect.w;
+		result.Rect.height = textRect.h;
+		result.WasFound = true;
 	}
 
 	return result;

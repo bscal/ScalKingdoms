@@ -12,16 +12,16 @@ struct PoolArray
 	int Tail;
 	int BlockCount;
 	int TotalElements;
-	Allocator Alloc;
+	SAllocator Alloc;
 
-	void Initialize(Allocator allocator, int startBlockCapacity)
+	void Initialize(SAllocator SAllocator, int startBlockCapacity)
 	{
 		static_assert(ElementsPerBlock > 0);
 		
-		SAssert(IsAllocatorValid(allocator));
+		SAssert(IsAllocatorValid(SAllocator));
 		
 		MemoryBlocks = nullptr;
-		Alloc = allocator;
+		Alloc = SAllocator;
 		Head = 0;
 		Tail = 0;
 		BlockCount = 0;
@@ -58,7 +58,7 @@ struct PoolArray
 		{
 			int idx = BlockCount + i;
 			size_t size = ElementsPerBlock * SizeOfElement();
-			MemoryBlocks[idx] = (T*)SMalloc(Alloc, size);
+			MemoryBlocks[idx] = (T*)SAlloc(Alloc, size);
 		}
 
 		BlockCount = newBlockCount;
@@ -141,7 +141,7 @@ struct PoolArray
 inline int Test()
 {
 	PoolArray<i64, 512> pool = {};
-	pool.Initialize(Allocator::Malloc, 0);
+	pool.Initialize(SAllocatorMalloc(), 0);
 
 	SAssert(pool.BlockCount == 0);
 	SAssert(pool.MemoryBlocks == 0);
