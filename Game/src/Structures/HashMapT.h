@@ -36,7 +36,10 @@ void HashMapTInitialize(HashMapT<K, V>* map, uint32_t capacity, SAllocator alloc
 
 	map->Alloc = alloc;
 	if (capacity > 0)
+	{
+		capacity = (u32)ceilf((float)capacity / HashMapT<K, V>::DEFAULT_LOADFACTOR);
 		HashMapTReserve(map, capacity);
+	}
 }
 
 template<typename K, typename V>
@@ -52,7 +55,7 @@ void HashMapTReserve(HashMapT<K, V>* map, uint32_t capacity)
 		return;
 
 	if (!IsPowerOf2_32(capacity))
-		capacity = AlignPowTwo32(capacity);
+		capacity = AlignPowTwo32Ceil(capacity);
 
 	if (map->Buckets)
 	{

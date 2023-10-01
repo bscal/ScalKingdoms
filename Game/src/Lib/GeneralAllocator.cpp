@@ -315,21 +315,24 @@ void* GeneralPurposeRealloc(GeneralPurposeAllocator* _RESTRICT_ freelist, void* 
 	}
 	else // Handles a full free and alloc here
 	{
-		SAssert((uintptr_t)ptr >= freelist->Offset);
-		SAssert((uintptr_t)ptr - freelist->Mem <= freelist->Size);
+		uintptr_t block = (uintptr_t)ptr - sizeof(MemNode);
+		SAssert(block >= freelist->Offset);
+		SAssert(block - freelist->Mem <= freelist->Size);
+		// REVISIT maybe just use the asserts
+		if (block < freelist->Offset || block - freelist->Mem > freelist->Size)
+		{
+			SError("Invalid pointer");
+			return nullptr;
+		}
 
-		MemNode* node = (MemNode*)((uint8_t*)ptr - sizeof(*node));
+		MemNode* node = (MemNode*)block;
 		SAssert(node->size != 0);
 		SAssert(node->size < freelist->Size);
-		//if (node->size > size + sizeof(MemNode))
-			//return ptr;
 
 		uint8_t* resized_block = (uint8_t*)GeneralPurposeAlloc(freelist, size);
 		SAssert(resized_block);
 
-		if (!resized_block)
-			return nullptr;
-		else
+		if (resized_block)
 		{
 			MemNode* resized = (MemNode*)(resized_block - sizeof(MemNode));
 			memmove(resized_block, ptr, (node->size > resized->size) 
@@ -339,6 +342,7 @@ void* GeneralPurposeRealloc(GeneralPurposeAllocator* _RESTRICT_ freelist, void* 
 			return resized_block;
 		}
 	}
+	return nullptr;
 }
 
 void GeneralPurposeFree(GeneralPurposeAllocator* _RESTRICT_ freelist, void* _RESTRICT_ ptr)
@@ -359,6 +363,13 @@ void GeneralPurposeFree(GeneralPurposeAllocator* _RESTRICT_ freelist, void* _RES
 		SAssert(block - freelist->Mem <= freelist->Size);
 		SAssert(mem_node->size > 0);
 		SAssert(mem_node->size < freelist->Size);
+
+		// REVISIT maybe just use the asserts
+		if (block < freelist->Offset || block - freelist->Mem > freelist->Size)
+		{
+			SError("Invalid pointer");
+			return;
+		}
 
 		// If the mem_node is right at the arena offs, then merge it back to the arena.
 		if (block == freelist->Offset)

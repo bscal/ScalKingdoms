@@ -46,14 +46,14 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	tilemap->LastChunkCoord = Vec2i{ INT32_MAX, INT32_MAX };
 	tilemap->Dimensions = dimensions;
 
-	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS;
+	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS + 1;
 
-	tilemap->ChunkLoader.ChunkPool.Reserve(SAllocatorGeneral(), VIEW_DISTANCE_TOTAL_CHUNKS);
+	tilemap->ChunkLoader.ChunkPool.Reserve(SAllocatorArena(&GetGameState()->GameArena), VIEW_DISTANCE_TOTAL_CHUNKS);
 	SAssert(tilemap->ChunkLoader.ChunkPool.IsAllocated());
 
 	for (int i = 0; i < VIEW_DISTANCE_TOTAL_CHUNKS; ++i)
 	{
-		Chunk* chunk = (Chunk*)SAlloc(SAllocatorGeneral(), sizeof(Chunk));
+		Chunk* chunk = (Chunk*)SAlloc(SAllocatorArena(&GetGameState()->GameArena), sizeof(Chunk));
 		SAssert(chunk);
 
 		SZero(chunk, sizeof(Chunk));
@@ -67,7 +67,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	}
 	SAssert(tilemap->ChunkLoader.ChunkPool.Count == VIEW_DISTANCE_TOTAL_CHUNKS);
 
-	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, SAllocatorGeneral());
+	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, SAllocatorArena(&GetGameState()->GameArena));
 
 	tilemap->ChunkLoader.Tilemap = tilemap;
 
@@ -75,8 +75,8 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	tilemap->ChunkLoader.Noise = fnlCreateState();
 	tilemap->ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
 
-	tilemap->ChunkLoader.ChunksToAdd.Reserve(SAllocatorGeneral(), MAX_CHUNKS_TO_PROCESS);
-	tilemap->ChunkLoader.ChunkToRemove.Reserve(SAllocatorGeneral(), MAX_CHUNKS_TO_PROCESS);
+	tilemap->ChunkLoader.ChunksToAdd.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
+	tilemap->ChunkLoader.ChunkToRemove.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
 
 	SInfoLog("Tilemap Initialized!");
 }
@@ -95,17 +95,17 @@ TileMapFree(TileMap* tilemap)
 			InternalChunkUnload(tilemap, chunk);
 		}
 	}
-	HashMapTDestroy(&tilemap->ChunkMap);
+	//HashMapTDestroy(&tilemap->ChunkMap);
 
 	for (u32 i = 0; i < tilemap->ChunkLoader.ChunkPool.Count; ++i)
 	{
 		UnloadRenderTexture(tilemap->ChunkLoader.ChunkPool.Memory[i]->RenderTexture);
-		SFree(SAllocatorGeneral(), tilemap->ChunkLoader.ChunkPool.Memory[i]);
+		//SFree(SAllocatorGeneral(), tilemap->ChunkLoader.ChunkPool.Memory[i]);
 	}
 
-	tilemap->ChunkLoader.ChunkPool.Free();
-	tilemap->ChunkLoader.ChunksToAdd.Free();
-	tilemap->ChunkLoader.ChunkToRemove.Free();
+	//tilemap->ChunkLoader.ChunkPool.Free();
+	//tilemap->ChunkLoader.ChunksToAdd.Free();
+	//tilemap->ChunkLoader.ChunkToRemove.Free();
 }
 
 void 

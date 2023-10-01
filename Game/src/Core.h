@@ -120,6 +120,42 @@ typedef Vector2 Vec2;
 
 #define Swap(x, y, T) do { T temp = (x); (x) = (y); (y) = temp; } while(0)
 
+// Double linked list : First, Last, Node
+#define DLPushBackT(f, l, n, Next, Prev) (((f) == 0 \
+											? (f) = (l) = (n), (n)->Next = (n)->Prev = 0) \
+											: ((n)->Prev = (l), (l)->Next = (n), (l) = (n), (n)->Next = 0))
+#define DLPushBack(f, l, n) DLPushBackT(f, l, n, Next, Prev)
+
+#define DLPushFront(f, l, n) DLPushBackT(f, l, n, Prev, Next)
+
+#define DLRemoveT(f, l, n, Next, Prev) (((f) == (n) \
+											? ((f) = (f)->Next, (f)->Prev = 0) \
+											: (l) == (n) \
+												? ((l) = (l)->Prev, (l)->Next = 0) \
+												: ((n)->Next->Prev = (n)->Prev \
+													, (n)->Prev->Next = (n)->Next)))
+
+#define DLRemove(f, l, n) ) DLRemoveT(f, l, n, Next, Prev)
+
+// Singled linked list queue : First, Last, Node
+#define SLQueuePush(f, l, n, Next) ((f) == 0 \
+									? (f) = (l) = (n) \
+									: ((l)->Next = (n), (l) = (n)) \
+										, (n)->Next = 0)
+
+#define SLQueuePushFront(f, l, n, Next) ((f) == 0 \
+											? (f) = (l) = (n), (n)->Next = 0) \
+											: ((n)->Next = (f), (f) = (n))) \
+
+#define SLQueuePop(f, l) ((f) == (l) \
+								? (f) = (l) = 0 \
+								: (f) = (f)->Next)
+
+// Singled linked list stack : First, Node
+#define SLStackPush(f, n, Next) ((n)->Next = (f), (f) = (n))
+
+#define SLStackPop(f, Next) ((f) == 0 ? 0 : (f) = (f)->Next)
+
 #if SCAL_DEBUG
 	#if _MSC_VER
 		#define DebugBreak(void) __debugbreak()
@@ -142,6 +178,7 @@ typedef Vector2 Vec2;
 
 #define SWarn(msg, ... ) \
 	TraceLog(LOG_WARNING, msg, __VA_ARGS__); \
+	DebugBreak(void);\
 	TriggerErrorPopupWindow(true, TextFormat(msg, __VA_ARGS__), __FILE__, __FUNCTION__, __LINE__) \
 
 #define SError(msg, ...) \
@@ -159,7 +196,6 @@ constant_var int CACHE_LINE = 64;
 
 constant_var float PI = (float)3.14159265358979323846;
 constant_var float TAO = PI * 2.0;
-
 
 constant_var int WIDTH = 1920;
 constant_var int HEIGHT = 1080;

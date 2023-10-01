@@ -52,10 +52,10 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 		return {};
 	}
 
-	ArrayListReserve(SAllocatorGeneral(), atlas.Rects, length);
-	ArrayListAdd(SAllocatorGeneral(), atlas.Rects, length);
+	ArrayListReserve(SAllocatorArena(&GetGameState()->GameArena), atlas.Rects, length);
+	ArrayListAdd(SAllocatorArena(&GetGameState()->GameArena), atlas.Rects, length);
 
-	HashMapStrInitialize(&atlas.NameToIndex, sizeof(u16), length, SAllocatorGeneral());
+	HashMapStrInitialize(&atlas.NameToIndex, sizeof(u16), length, SAllocatorArena(&GetGameState()->GameArena));
 	atlas.Texture = LoadTexture(imgPath);
 
 	char s0[16];
@@ -79,7 +79,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 		line += 7;
 
-		String str = string_make(SAllocatorGeneral(), name);
+		String str = string_make(SAllocatorArena(&GetGameState()->GameArena), name);
 		HashMapStrSet(&atlas.NameToIndex, str, &entryCounter);
 
 		int err;
@@ -143,9 +143,9 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 void SpriteAtlasUnload(SpriteAtlas* atlas)
 {
-	ArrayListFree(SAllocatorGeneral(), atlas->Rects);
+	//ArrayListFree(SAllocatorGeneral(), atlas->Rects);
 	// Note: Doesn't free strings
-	HashMapStrFree(&atlas->NameToIndex);
+	//HashMapStrFree(&atlas->NameToIndex);
 	UnloadTexture(atlas->Texture);
 }
 

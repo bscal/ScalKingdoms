@@ -6,12 +6,10 @@ void LinearArenaCreate(LinearArena* arena, void* buffer, size_t size)
 {
     SAssert(arena);
     SAssert(buffer);
-    if (!buffer || size == 0)
+    if (!arena || !buffer || size == 0)
     {
         SError("Could not initialize linear arena");
     }
-
-    LinearArena arena;
     arena->Size = size;
     arena->Memory = (uintptr_t)buffer;
     arena->Front = arena->Memory;

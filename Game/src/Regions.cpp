@@ -62,10 +62,10 @@ CalculateDistance(Vec2i v0, Vec2i v1)
 void
 PathfinderRegionsInit(RegionPathfinder* pathfinder)
 {
-	HashMapTInitialize(&RegionMap, 32 * 12, SAllocatorGeneral());
-	pathfinder->Open = BHeapCreate(SAllocatorGeneral(), RegionCompareCost, 256);
-	HashMapTInitialize(&pathfinder->OpenSet, 256, SAllocatorGeneral());
-	HashSetTInitialize(&pathfinder->ClosedSet, 256, SAllocatorGeneral());
+	HashMapTInitialize(&RegionMap, 1024, SAllocatorArena(&GetGameState()->GameArena));
+	pathfinder->Open = BHeapCreate(SAllocatorArena(&GetGameState()->GameArena), RegionCompareCost, 256);
+	HashMapTInitialize(&pathfinder->OpenSet, 256, SAllocatorArena(&GetGameState()->GameArena));
+	HashSetTInitialize(&pathfinder->ClosedSet, 256, SAllocatorArena(&GetGameState()->GameArena));
 }
 
 void 

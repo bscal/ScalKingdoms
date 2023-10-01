@@ -219,17 +219,17 @@ SAllocatorProc(GameAllocatorProc)
 	{
 	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = GeneralPurposeAlloc(&GetGameState()->GameMemory, newSize);
+		res = GeneralPurposeAlloc(&GetGameState()->GeneralPurposeMemory, newSize);
 	} break;
 
 	case (ALLOCATOR_TYPE_REALLOC):
 	{
-		res = GeneralPurposeRealloc(&GetGameState()->GameMemory, ptr, newSize);
+		res = GeneralPurposeRealloc(&GetGameState()->GeneralPurposeMemory, ptr, newSize);
 	} break;
 
 	case (ALLOCATOR_TYPE_FREE):
 	{
-		GeneralPurposeFree(&GetGameState()->GameMemory, ptr);
+		GeneralPurposeFree(&GetGameState()->GeneralPurposeMemory, ptr);
 		res = nullptr;
 	} break;
 
@@ -258,12 +258,12 @@ SAllocatorProc(FrameAllocatorProc)
 	{
 	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = LinearArenaAlloc(&GetGameState()->FrameMemory, newSize);
+		res = ArenaPush(&TransientState.TransientArena, newSize);
 	} break;
 
 	case (ALLOCATOR_TYPE_REALLOC):
 	{
-		res = LinearArenaAlloc(&GetGameState()->FrameMemory, newSize);
+		res = ArenaPush(&TransientState.TransientArena, newSize);
 		if (ptr)
 		{
 			SCopy(res, ptr, oldSize);
@@ -347,6 +347,9 @@ SAllocatorProc(ArenaAllocatorProc)
 		res = ArenaPush(arena, newSize);
 		if (ptr)
 		{
+#if 1
+			SAssertMsg(false, "Reallocating an arena allocator. But want to catch any");
+#endif
 			SMemMove(res, ptr, oldSize);
 		}
 	} break;

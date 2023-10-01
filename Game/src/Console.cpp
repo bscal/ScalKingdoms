@@ -42,25 +42,25 @@ internal_var struct Console Console;
 void ConsoleInit()
 {
 	PushMemoryIgnoreFree();
-	HashMapStrInitialize(&Console.Commands, sizeof(Command), 32, SAllocatorGeneral());
-	Console.Entries.Init(SAllocatorGeneral(), CONSOLE_MAX_ENTRIES);
+	HashMapStrInitialize(&Console.Commands, sizeof(Command), 256, SAllocatorArena(&GetGameState()->GameArena));
+	Console.Entries.Init(SAllocatorArena(&GetGameState()->GameArena), CONSOLE_MAX_ENTRIES);
 	PopMemoryIgnoreFree();
 
 	for (size_t i = 0; i < CONSOLE_MAX_ENTRIES; ++i)
 	{
-		Console.Entries.Memory[i] = string_make_reserve(SAllocatorGeneral(), CONSOLE_ENTRY_LENGTH);
+		Console.Entries.Memory[i] = string_make_reserve(SAllocatorArena(&GetGameState()->GameArena), CONSOLE_ENTRY_LENGTH);
 	}
 
 	// Commands
 	Command cmd = {};
-	cmd.ArgumentString = string_make(SAllocatorGeneral(), "Testing args");
+	cmd.ArgumentString = string_make(SAllocatorArena(&GetGameState()->GameArena), "Testing args");
 	cmd.OnCommand = [](const String cmd, const char** arg, int argCount)
 	{
 		SInfoLog("Command executed! %s, %d", cmd, argCount);
 
 		return COMMAND_SUCCESS;
 	};
-	ConsoleRegisterCommand(string_make(SAllocatorGeneral(), "TestCommand"), &cmd);
+	ConsoleRegisterCommand(string_make(SAllocatorArena(&GetGameState()->GameArena), "TestCommand"), &cmd);
 }
 
 void ConsoleRegisterCommand(String cmdName, Command* cmd)

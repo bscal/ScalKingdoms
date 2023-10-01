@@ -33,8 +33,8 @@ struct AssetMgr
 
 struct GameState
 {
-	GeneralPurposeAllocator GameMemory;
-	LinearArena FrameMemory;
+	Arena GameArena;
+	GeneralPurposeAllocator GeneralPurposeMemory;
 
 	RenderTexture2D ScreenTexture;
 
@@ -60,7 +60,8 @@ struct GameState
 
 struct TransientGameState
 {
-	Arena PermanentMemory;
+	zpl_virtual_memory GameMemory;
+	Arena TransientArena;
 };
 
 struct GameClient

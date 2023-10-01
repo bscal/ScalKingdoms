@@ -39,9 +39,9 @@ CompareCost(void* cur, void* parent)
 void
 PathfinderInit(Pathfinder* pathfinder)
 {
-	pathfinder->Open = BHeapCreate(SAllocatorGeneral(), CompareCost, MAX_SEARCH_TILES);
-	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, SAllocatorGeneral());
-	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, SAllocatorGeneral());
+	pathfinder->Open = BHeapCreate(SAllocatorArena(&GetGameState()->GameArena), CompareCost, MAX_SEARCH_TILES);
+	HashMapTInitialize(&pathfinder->OpenSet, MAX_SEARCH_TILES, SAllocatorArena(&GetGameState()->GameArena));
+	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_TABLE_SIZE, SAllocatorArena(&GetGameState()->GameArena));
 }
 
 SList<Vec2i>

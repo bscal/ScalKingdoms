@@ -36,7 +36,10 @@ void HashMapInitialize(HashMap* map, HashMapCompare compareFunc,
 	map->KeyStride = keyStride;
     map->ValueStride = valueStride;
 	if (capacity > 0)
+	{
+		capacity = (u32)ceilf((float)capacity / DEFAULT_LOADFACTOR);
 		HashMapReserve(map, capacity);
+	}
 }
 
 void HashMapReserve(HashMap* map, uint32_t capacity)

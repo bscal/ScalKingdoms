@@ -29,7 +29,10 @@ HashMapStrInitialize(HashMapStr* map, u32 valueStride, u32 capacity, SAllocator 
 	map->Alloc = alloc;
 	map->ValueStride = valueStride;
 	if (capacity > 0)
+	{
+		capacity = (u32)ceilf((float)capacity / DEFAULT_LOADFACTOR);
 		HashMapStrReserve(map, capacity);
+	}
 }
 
 void 
@@ -89,8 +92,8 @@ void HashMapStrClear(HashMapStr* map)
 
 void HashMapStrFree(HashMapStr* map)
 {
-	SFree(map->Alloc, map->Buckets);
-	SFree(map->Alloc, map->Values);
+	//SFree(map->Alloc, map->Buckets);
+	//SFree(map->Alloc, map->Values);
 	map->Capacity = 0;
 	map->Count = 0;
 }

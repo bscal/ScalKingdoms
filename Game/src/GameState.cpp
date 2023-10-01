@@ -31,21 +31,24 @@ internal Vec2i ScreenToTile();
 
 ECS_SYSTEM_DECLARE(DrawEntities);
 
+// MAYBE_FIXME what to do about these allocators
+// raylib. I have to double check raylib allocations.
+// Is mostly allocates to load things, and free at end of function
 internal void* RlMallocOverride(size_t sz)
 {
-	return GeneralPurposeAlloc(&GetGameState()->GameMemory, sz);
+	return _aligned_malloc(sz, 16);
 }
 
 internal void* RlReallocOverride(void* ptr, size_t sz)
 {
-	return GeneralPurposeRealloc(&GetGameState()->GameMemory, ptr, sz);
+	return _aligned_realloc(ptr, sz, 16);
 }
 
 internal void RlFreeOverride(void* ptr)
 {
-	GeneralPurposeFree(&GetGameState()->GameMemory, ptr);
+	return _aligned_free(ptr);
 }
-#include "Structures/PoolArray.h"
+
 int 
 GameInitialize()
 {
@@ -54,18 +57,20 @@ GameInitialize()
 	size_t gameMemorySize = Megabytes(16);
 	size_t frameMemorySize = Megabytes(16);
 	size_t totalMemory = permanentMemorySize + gameMemorySize + frameMemorySize;
-	//zpl_virtual_memory memory = zpl_vm_alloc(0, totalMemory);
+	TransientState.GameMemory = zpl_vm_alloc(0, totalMemory);
 
-	void* permantentMemory = _aligned_malloc(permanentMemorySize, 64);
-	ArenaCreate(&TransientState.PermanentMemory, permantentMemory, permanentMemorySize);
+	uintptr_t memoryOffset = (uintptr_t)TransientState.GameMemory.data;
 
-	void* gameMemory = _aligned_malloc(gameMemorySize, 64);
-	GeneralPurposeCreate(&State.GameMemory, gameMemory, gameMemorySize);
+	ArenaCreate(&State.GameArena, (void*)memoryOffset, permanentMemorySize);
+	memoryOffset += permanentMemorySize;
 
-	void* frameMemory = _aligned_malloc(frameMemorySize, 64);
-	State.FrameMemory = LinearArenaCreate(frameMemory, frameMemorySize);
+	GeneralPurposeCreate(&State.GeneralPurposeMemory, (void*)memoryOffset, gameMemorySize);
+	memoryOffset += gameMemorySize;
 
+	ArenaCreate(&TransientState.TransientArena, (void*)memoryOffset, frameMemorySize);
+	memoryOffset += frameMemorySize;
 
+	SAssert(memoryOffset - TransientState.GameMemory.size == (size_t)TransientState.GameMemory.data);
 
 	InitializeMemoryTracking();
 
@@ -97,7 +102,7 @@ GameInitialize()
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
 	SAssert(guiInitialized);
 
-	HashMapTInitialize(&State.EntityMap, 64, SAllocatorGeneral());
+	HashMapTInitialize(&State.EntityMap, 4096, SAllocatorArena(&GetGameState()->GameArena));
 
 	SpritesInitialize();
 
@@ -159,7 +164,7 @@ GameRun()
 	{
 		double start = GetTime();
 
-		LinearArenaReset(&State.FrameMemory);
+		ArenaSnapshot tempMemory = ArenaSnapshotBegin(&TransientState.TransientArena);
 
 		// Update
 
@@ -214,6 +219,8 @@ GameRun()
 		DrawGUI(&State);
 		
 		EndDrawing();
+
+		ArenaSnapshotEnd(tempMemory);
 	}
 }
 
@@ -388,7 +395,7 @@ GameShutdown()
 {
 	ecs_fini(State.World);
 
-	HashMapTDestroy(&State.EntityMap);
+	//HashMapTDestroy(&State.EntityMap);
 
 	UnloadRenderTexture(State.ScreenTexture);
 

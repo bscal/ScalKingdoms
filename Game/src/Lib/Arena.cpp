@@ -26,7 +26,7 @@ void ArenaCreateFromAllocator(Arena* arena, SAllocator backing, size_t size)
 //! Initialize memory arena within an existing parent memory arena.
 void ArenaCreateFromArena(Arena* arena, Arena* parentArena, size_t size)
 {
-	ArenaCreateFromAllocator(arena, parentArena->Allocator, size);
+	ArenaCreateFromAllocator(arena, SAllocatorArena(parentArena), size);
 }
 
 //! Release the memory used by memory arena.

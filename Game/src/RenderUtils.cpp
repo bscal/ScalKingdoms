@@ -241,8 +241,8 @@ Font LoadBMPFontFromTexture(const char* fileName, Texture2D* fontTexture, Vec2 o
 	font.baseSize = fontSize;
 	font.glyphCount = glyphCount;
 	font.glyphPadding = 0;
-	font.glyphs = (GlyphInfo*)SAlloc(SAllocatorGeneral(), glyphCount * sizeof(GlyphInfo));
-	font.recs = (Rectangle*)SAlloc(SAllocatorGeneral(), glyphCount * sizeof(Rectangle));
+	font.glyphs = (GlyphInfo*)ArenaPushArray(&GetGameState()->GameArena, GlyphInfo, glyphCount);
+	font.recs = (Rectangle*)ArenaPushArray(&GetGameState()->GameArena, Rectangle, glyphCount);
 
 	int charId, charX, charY, charWidth, charHeight, charOffsetX, charOffsetY, charAdvanceX;
 
@@ -293,8 +293,6 @@ UnloadBMPFontData(Font* font)
 			SAssert(font->glyphs[i].image.data);
 			UnloadImage(font->glyphs[i].image);
 		}
-
-		SFree(SAllocatorGeneral(), font->glyphs);
 	}
 }
 

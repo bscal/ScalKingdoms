@@ -80,12 +80,15 @@ void DrawDebugWindow(GameClient* client, GameState* gameState, GUIState* guiStat
 
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "UpdateTime: %.3fms", Client.UpdateTime * 1000.0);
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "DrawTime: %.3fms", GetDrawTime() * 1000.0);
-				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "ArenaMem: %dkb / %dkb",
-					(int)((gameState->GameMemory.Size - GeneralPurposeGetFreeMemory(&gameState->GameMemory)) / 1024),
-					(int)(gameState->GameMemory.Size / 1024));
-				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "TempMem: %dkb / %dkb",
-					(int)((gameState->FrameMemory.Size - LinearArenaFreeSpace(&gameState->FrameMemory)) / 1024),
-					(int)(gameState->FrameMemory.Size / 1024));
+				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "GeneralPurpose: %dkb / %dkb",
+					(int)((gameState->GeneralPurposeMemory.Size - GeneralPurposeGetFreeMemory(&gameState->GeneralPurposeMemory)) / 1024),
+					(int)(gameState->GeneralPurposeMemory.Size / 1024));
+				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "GameArena: %dkb / %dkb",
+						  (int)((gameState->GameArena.Size - ArenaSizeRemaining(&gameState->GameArena, 16)) / 1024),
+						  (int)(gameState->GameArena.Size / 1024));
+				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "TempArena: %dkb / %dkb",
+					(int)((TransientState.TransientArena.Size - ArenaSizeRemaining(&TransientState.TransientArena, 16)) / 1024),
+					(int)(TransientState.TransientArena.Size / 1024));
 
 				nk_group_end(ctx);
 			}
