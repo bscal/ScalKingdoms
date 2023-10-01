@@ -9,13 +9,12 @@ constant_var size_t FREELIST_ALIGNMENT = 16;
 constant_var size_t MEM_SPLIT_THRESHOLD = FREELIST_ALIGNMENT * 2;
 constant_var size_t FREELIST_BUCKET_SIZES[FREELIST_BUCKET_SIZE] =
 {
-    16, 32, 64, 128, 256, 512, 1024, 2048
+    512, 1024, 2048, 4096, 8192, 16384
 };
-
 
 // 65536, 32768 16384, 8192 4096 2048 1024
 
-static_assert(ArrayLength(FREELIST_BUCKET_SIZES) == 8, "MEMARENA_SIZES count is not 8");
+static_assert(ArrayLength(FREELIST_BUCKET_SIZES) == FREELIST_BUCKET_SIZE, "MEMARENA_SIZES count is not 8");
 
 internal MemNode* 
 SplitMemNode(MemNode* node, size_t bytes)
@@ -242,13 +241,13 @@ void* FreelistGetBasePtr(FreeListAllocator* freelist)
 
 void* FreelistAlloc(FreeListAllocator* freelist, size_t size)
 {
-    static_assert(ArrayLength(freelist->Buckets) == 8, "freelist->Buckets count is not 8");
+    static_assert(ArrayLength(freelist->Buckets) == FREELIST_BUCKET_SIZE, "freelist->Buckets count is not 8");
     SAssert(freelist);
     SAssert(size > 0);
     SAssert(size < freelist->Size);
 
     MemNode* new_mem = nullptr;
-    size_t allocSize = AlignSize(size + sizeof(*new_mem), FREELIST_ALIGNMENT);
+    size_t allocSize = AlignSize(size + sizeof(MemNode), FREELIST_ALIGNMENT);
     SAssert(allocSize >= FREELIST_ALIGNMENT);
 
     // Goes straight to large allocations or small allocation bucket lists 
@@ -258,8 +257,8 @@ void* FreelistAlloc(FreeListAllocator* freelist, size_t size)
     }
     else
     {
-        SAssert(allocSize >= FREELIST_BUCKET_SIZES[0]);
-        SAssert(allocSize <= FREELIST_BUCKET_SIZES[FREELIST_BUCKET_SIZE - 1]);
+        SAssert(allocSize <= FREELIST_BUCKET_SIZES[0]);
+        SAssert(allocSize >= FREELIST_BUCKET_SIZES[FREELIST_BUCKET_SIZE - 1]);
         if (!IsPowerOf2(allocSize))
             allocSize = AlignPowTwo64Ceil(allocSize);
 
@@ -272,8 +271,8 @@ void* FreelistAlloc(FreeListAllocator* freelist, size_t size)
         case(FREELIST_BUCKET_SIZES[3]): bucketList = freelist->Buckets + 3; break;
         case(FREELIST_BUCKET_SIZES[4]): bucketList = freelist->Buckets + 4; break;
         case(FREELIST_BUCKET_SIZES[5]): bucketList = freelist->Buckets + 5; break;
-        case(FREELIST_BUCKET_SIZES[6]): bucketList = freelist->Buckets + 6; break;
-        case(FREELIST_BUCKET_SIZES[7]): bucketList = freelist->Buckets + 7; break;
+        //case(FREELIST_BUCKET_SIZES[6]): bucketList = freelist->Buckets + 6; break;
+        //case(FREELIST_BUCKET_SIZES[7]): bucketList = freelist->Buckets + 7; break;
         default: SError("Invalid memory size for bucket!");  return nullptr;
         }
         new_mem = FindMemNode(bucketList, allocSize);
@@ -332,7 +331,6 @@ void* FreelistRealloc(FreeListAllocator* _RESTRICT_ freelist, void* _RESTRICT_ p
     else // Handles a full free and alloc here
     {
         MemNode* node = (MemNode*)((uint8_t*)ptr - sizeof(*node));
-        size_t NODE_SIZE = sizeof(*node);
         uint8_t* resized_block = (uint8_t*)FreelistAlloc(freelist, size);
 
         if (resized_block == nullptr)
@@ -340,7 +338,7 @@ void* FreelistRealloc(FreeListAllocator* _RESTRICT_ freelist, void* _RESTRICT_ p
         else
         {
             MemNode* resized = (MemNode*)(resized_block - sizeof(*resized));
-            memmove(resized_block, ptr, (node->size > resized->size) ? (resized->size - NODE_SIZE) : (node->size - NODE_SIZE));
+            memmove(resized_block, ptr, (node->size > resized->size) ? (resized->size - sizeof(MemNode)) : (node->size - sizeof(MemNode)));
             FreelistFree(freelist, ptr);
 
             return resized_block;
@@ -350,7 +348,7 @@ void* FreelistRealloc(FreeListAllocator* _RESTRICT_ freelist, void* _RESTRICT_ p
 
 void FreelistFree(FreeListAllocator* _RESTRICT_ freelist, void* _RESTRICT_ ptr)
 {
-    static_assert(ArrayLength(FREELIST_BUCKET_SIZES) == 8, "MEMARENA_SIZES count is not 8");
+    static_assert(ArrayLength(FREELIST_BUCKET_SIZES) == FREELIST_BUCKET_SIZE, "MEMARENA_SIZES count is not 8");
     SAssert(freelist);
     SAssert(ptr);
 
@@ -392,8 +390,6 @@ void FreelistFree(FreeListAllocator* _RESTRICT_ freelist, void* _RESTRICT_ ptr)
             case(FREELIST_BUCKET_SIZES[3]): bucketList = freelist->Buckets + 3; break;
             case(FREELIST_BUCKET_SIZES[4]): bucketList = freelist->Buckets + 4; break;
             case(FREELIST_BUCKET_SIZES[5]): bucketList = freelist->Buckets + 5; break;
-            case(FREELIST_BUCKET_SIZES[6]): bucketList = freelist->Buckets + 6; break;
-            case(FREELIST_BUCKET_SIZES[7]): bucketList = freelist->Buckets + 7; break;
             default: SError("Invalid memory size for bucket!");  return;
             }
             InsertMemNode(freelist, bucketList, mem_node, true);

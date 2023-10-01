@@ -4,7 +4,7 @@
 #include "Utils.h"
 
 //! Initialize memory arena from existing memory region.
-void ArenaCreate(MemArena* arena, void* start, size_t size)
+void ArenaCreate(Arena* arena, void* start, size_t size)
 {
 	arena->Allocator = {};
 	arena->Memory = start;
@@ -14,7 +14,7 @@ void ArenaCreate(MemArena* arena, void* start, size_t size)
 }
 
 //! Initialize memory arena using existing memory SAllocator.
-void ArenaCreateFromAllocator(MemArena* arena, SAllocator backing, size_t size)
+void ArenaCreateFromAllocator(Arena* arena, SAllocator backing, size_t size)
 {
 	arena->Allocator = backing;
 	arena->Memory = SAlloc(backing, size);
@@ -24,13 +24,13 @@ void ArenaCreateFromAllocator(MemArena* arena, SAllocator backing, size_t size)
 }
 
 //! Initialize memory arena within an existing parent memory arena.
-void ArenaCreateFromArena(MemArena* arena, MemArena* parentArena, size_t size)
+void ArenaCreateFromArena(Arena* arena, Arena* parentArena, size_t size)
 {
 	ArenaCreateFromAllocator(arena, parentArena->Allocator, size);
 }
 
 //! Release the memory used by memory arena.
-void ArenaFree(MemArena* arena)
+void ArenaFree(Arena* arena)
 {
 	if (IsAllocatorValid(arena->Allocator))
 	{
@@ -40,7 +40,7 @@ void ArenaFree(MemArena* arena)
 }
 
 //! Retrieve memory arena's aligned allocation address.
-size_t ArenaAlignment(MemArena* arena, size_t alignment)
+size_t ArenaAlignment(Arena* arena, size_t alignment)
 {
 	SAssert(IsPowerOf2(alignment));
 	size_t alignmentOffset = 0;
@@ -53,14 +53,14 @@ size_t ArenaAlignment(MemArena* arena, size_t alignment)
 }
 
 //! Retrieve memory arena's remaining size.
-size_t ArenaSizeRemaining(MemArena* arena, size_t alignment)
+size_t ArenaSizeRemaining(Arena* arena, size_t alignment)
 {
 	size_t res = arena->Size - (arena->TotalAllocated + ArenaAlignment(arena, alignment));
 	return res;
 }
 
 //! Capture a snapshot of used memory in a memory arena.
-ArenaSnapshot ArenaSnapshotBegin(MemArena* arena)
+ArenaSnapshot ArenaSnapshotBegin(Arena* arena)
 {
 	ArenaSnapshot snapshot;
 	snapshot.Arena = arena;
@@ -78,7 +78,7 @@ void ArenaSnapshotEnd(ArenaSnapshot snapshot)
 	snapshot.Arena->TotalAllocated--;
 }
 
-void* ArenaPush(MemArena* arena, size_t size)
+void* ArenaPush(Arena* arena, size_t size)
 {
 	void* res;
 	size_t totalSize = AlignSize(size, 16);
@@ -95,14 +95,14 @@ void* ArenaPush(MemArena* arena, size_t size)
 	return res;
 }
 
-void* ArenaPushZero(MemArena* arena, size_t size)
+void* ArenaPushZero(Arena* arena, size_t size)
 {
 	void* res = ArenaPush(arena, size);
 	SZero(res, AlignSize(size, 16));
 	return res;
 }
 
-void ArenaPop(MemArena* arena, size_t size)
+void ArenaPop(Arena* arena, size_t size)
 {
 	arena->TotalAllocated -= AlignSize(size, 16);
 }

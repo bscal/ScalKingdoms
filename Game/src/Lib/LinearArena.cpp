@@ -2,23 +2,20 @@
 
 #include "Utils.h"
 
-LinearArena LinearArenaCreate(void* buffer, size_t size)
+void LinearArenaCreate(LinearArena* arena, void* buffer, size_t size)
 {
+    SAssert(arena);
     SAssert(buffer);
-    if (size == 0)
+    if (!buffer || size == 0)
     {
-        SError("LinearArena size cannot be 0");
-        return {};
+        SError("Could not initialize linear arena");
     }
 
     LinearArena arena;
-    arena.Size = size;
-    arena.Memory = (uintptr_t)buffer;
-    arena.Front = arena.Memory;
-    arena.Back = arena.Memory + size;
-
-    SAssert(arena.Memory);
-    return arena;
+    arena->Size = size;
+    arena->Memory = (uintptr_t)buffer;
+    arena->Front = arena->Memory;
+    arena->Back = arena->Memory + size;
 }
 
 [[nodiscard]] void* LinearArenaAlloc(LinearArena* arena, size_t size)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core.h"
+#include "Structures/ArrayList.h"
 
 struct ActionType;
 struct Action;
@@ -68,7 +69,7 @@ struct CEntityPriorityMap
 
 struct ActionMgr
 {
-	zpl_array(ActionType) ActionTypes;
+	ArrayList(ActionType) ActionTypes;
 };
 
 void ActionMgrInitialize(ActionMgr* actionMgr);

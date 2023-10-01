@@ -74,8 +74,8 @@ HashMapStrReserve(HashMapStr* map, uint32_t capacity)
 		map->Capacity = capacity;
 		map->MaxCount = (u32)((float)map->Capacity * DEFAULT_LOADFACTOR);
 
-		map->Buckets = (HashStrSlot*)SAlloc(map->Alloc, sizeof(HashStrSlot) * map->Capacity);
-		memset(map->Buckets, 0, sizeof(HashStrSlot) * map->Capacity);
+		map->Buckets = (HashStrSlot*)SCalloc(map->Alloc, sizeof(HashStrSlot) * map->Capacity);
+		//memset(map->Buckets, 0, sizeof(HashStrSlot) * map->Capacity);
 
 		map->Values = SAlloc(map->Alloc, map->ValueStride * map->Capacity);
 	}

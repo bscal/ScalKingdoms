@@ -13,9 +13,10 @@
 #include "Structures/SList.h"
 #include "Structures/ArrayList.h"
 #include "Structures/HashMap.h"
-#include "Lib/FreeList.h"
-#include "Lib/LinearArena.h"
 
+#include "Lib/Arena.h"
+#include "Lib/LinearArena.h"
+#include "Lib/GeneralAllocator.h"
 #include "Lib/Jobs.h"
 
 #include <luajit/src/lua.hpp>
@@ -32,7 +33,7 @@ struct AssetMgr
 
 struct GameState
 {
-	FreeListAllocator GameMemory;
+	GeneralPurposeAllocator GameMemory;
 	LinearArena FrameMemory;
 
 	RenderTexture2D ScreenTexture;
@@ -59,8 +60,7 @@ struct GameState
 
 struct TransientGameState
 {
-	FreeListAllocator TransientMemory;
-
+	Arena PermanentMemory;
 };
 
 struct GameClient

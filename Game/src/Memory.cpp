@@ -211,16 +211,6 @@ void Internal_PopMemoryPointer()
 #endif
 }
 
-FreeListAllocator* GetGeneralAllocatorObject()
-{
-	return &GetGameState()->GameMemory;
-}
-
-LinearArena* GetFrameAllocatorObject()
-{
-	return &GetGameState()->FrameMemory;
-}
-
 SAllocatorProc(GameAllocatorProc)
 {
 	void* res;
@@ -229,17 +219,17 @@ SAllocatorProc(GameAllocatorProc)
 	{
 	case (ALLOCATOR_TYPE_MALLOC):
 	{
-		res = FreelistAlloc(&GetGameState()->GameMemory, newSize);
+		res = GeneralPurposeAlloc(&GetGameState()->GameMemory, newSize);
 	} break;
 
 	case (ALLOCATOR_TYPE_REALLOC):
 	{
-		res = FreelistRealloc(&GetGameState()->GameMemory, ptr, newSize);
+		res = GeneralPurposeRealloc(&GetGameState()->GameMemory, ptr, newSize);
 	} break;
 
 	case (ALLOCATOR_TYPE_FREE):
 	{
-		FreelistFree(&GetGameState()->GameMemory, ptr);
+		GeneralPurposeFree(&GetGameState()->GameMemory, ptr);
 		res = nullptr;
 	} break;
 
@@ -339,3 +329,43 @@ SAllocatorProc(MallocAllocatorProc)
 
 	return res;
 }
+
+SAllocatorProc(ArenaAllocatorProc)
+{
+	Arena* arena = (Arena*)data;
+	void* res;
+
+	switch (allocatorType)
+	{
+	case (ALLOCATOR_TYPE_MALLOC):
+	{
+		res = ArenaPush(arena, newSize);
+	} break;
+
+	case (ALLOCATOR_TYPE_REALLOC):
+	{
+		res = ArenaPush(arena, newSize);
+		if (ptr)
+		{
+			SMemMove(res, ptr, oldSize);
+		}
+	} break;
+
+	case (ALLOCATOR_TYPE_FREE):
+	{
+		SWarn("Do not free ArenaAllocators");
+		res = nullptr;
+	} break;
+
+	default:
+		SError("Invalid SAllocator type");
+		res = nullptr;
+	}
+
+#if SCAL_DEBUG
+	if (allocatorType != ALLOCATOR_TYPE_FREE)
+		SAssert(res);
+#endif
+	return res;
+}
+

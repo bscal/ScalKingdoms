@@ -28,7 +28,7 @@ SAllocatorProc(ArenaAllocatorProc);
 #define SAllocatorGeneral() (SAllocator{ GameAllocatorProc, nullptr })
 #define SAllocatorFrame() (SAllocator{ FrameAllocatorProc, nullptr })
 #define SAllocatorMalloc() (SAllocator{ MallocAllocatorProc, nullptr })
-#define SAllocatorArena(arena) SAllocator{ ArenaAllocatorProc, arena }
+#define SAllocatorArena(arena) (SAllocator{ ArenaAllocatorProc, arena })
 
 inline bool
 IsAllocatorValid(SAllocator allocator)
@@ -36,17 +36,22 @@ IsAllocatorValid(SAllocator allocator)
 	return allocator.Proc;
 }
 
+constant_var size_t DEFAULT_ALIGNMENT = 16;
+
 #define SAlloc(allocator, size)	\
-	allocator.Proc(ALLOCATOR_TYPE_MALLOC, allocator.Data, nullptr, size, 0, 16, __FILE__, __FUNCTION__, __LINE__)
+	allocator.Proc(ALLOCATOR_TYPE_MALLOC, allocator.Data, nullptr, size, 0, DEFAULT_ALIGNMENT, __FILE__, __FUNCTION__, __LINE__)
+
+#define SAllocAlign(allocator, size, align) \
+	allocator.Proc(ALLOCATOR_TYPE_MALLOC, allocator.Data, nullptr, size, 0, align, __FILE__, __FUNCTION__, __LINE__)
 
 #define SCalloc(allocator, size) \
 	SZero(SAlloc(allocator, size), size)
 
 #define SRealloc(allocator, ptr, size, oldSize)	\
-	allocator.Proc(ALLOCATOR_TYPE_REALLOC, allocator.Data, ptr, size, oldSize, 16, __FILE__, __FUNCTION__, __LINE__)
+	allocator.Proc(ALLOCATOR_TYPE_REALLOC, allocator.Data, ptr, size, oldSize, DEFAULT_ALIGNMENT, __FILE__, __FUNCTION__, __LINE__)
 
 #define SFree(allocator, ptr)	\
-	allocator.Proc(ALLOCATOR_TYPE_FREE, allocator.Data, ptr, 0, 0, 16, __FILE__, __FUNCTION__, __LINE__)
+	allocator.Proc(ALLOCATOR_TYPE_FREE, allocator.Data, ptr, 0, 0, DEFAULT_ALIGNMENT, __FILE__, __FUNCTION__, __LINE__)
 
 #define SCopy(dst, src, sz) memcpy(dst, src, sz)
 #define SMemMove(dst, src, sz) memmove(dst, src, sz)

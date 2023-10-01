@@ -5,7 +5,7 @@
 
 #include <inttypes.h>
 
-constant_var size_t FREELIST_BUCKET_SIZE = 8;
+constant_var size_t FREELIST_BUCKET_SIZE = 6;
 
 struct MemNode
 {

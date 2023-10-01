@@ -33,32 +33,38 @@ ECS_SYSTEM_DECLARE(DrawEntities);
 
 internal void* RlMallocOverride(size_t sz)
 {
-	return FreelistAlloc(&GetGameState()->GameMemory, sz);
+	return GeneralPurposeAlloc(&GetGameState()->GameMemory, sz);
 }
 
 internal void* RlReallocOverride(void* ptr, size_t sz)
 {
-	return FreelistRealloc(&GetGameState()->GameMemory, ptr, sz);
+	return GeneralPurposeRealloc(&GetGameState()->GameMemory, ptr, sz);
 }
 
 internal void RlFreeOverride(void* ptr)
 {
-	if (!ptr)
-		return;
-	else 
-		FreelistFree(&GetGameState()->GameMemory, ptr);
+	GeneralPurposeFree(&GetGameState()->GameMemory, ptr);
 }
 #include "Structures/PoolArray.h"
 int 
 GameInitialize()
 {
+	// TODO Move to virtual memory?
+	size_t permanentMemorySize = Megabytes(16);
 	size_t gameMemorySize = Megabytes(16);
-	void* gameMemory = _aligned_malloc(gameMemorySize, 64);
-	State.GameMemory = FreelistCreateFromBuffer(gameMemory, gameMemorySize);
-
 	size_t frameMemorySize = Megabytes(16);
+	size_t totalMemory = permanentMemorySize + gameMemorySize + frameMemorySize;
+	//zpl_virtual_memory memory = zpl_vm_alloc(0, totalMemory);
+
+	void* permantentMemory = _aligned_malloc(permanentMemorySize, 64);
+	ArenaCreate(&TransientState.PermanentMemory, permantentMemory, permanentMemorySize);
+
+	void* gameMemory = _aligned_malloc(gameMemorySize, 64);
+	GeneralPurposeCreate(&State.GameMemory, gameMemory, gameMemorySize);
+
 	void* frameMemory = _aligned_malloc(frameMemorySize, 64);
 	State.FrameMemory = LinearArenaCreate(frameMemory, frameMemorySize);
+
 
 
 	InitializeMemoryTracking();

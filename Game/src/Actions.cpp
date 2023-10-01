@@ -4,23 +4,21 @@
 #include "GameState.h"
 #include "Components.h"
 
-#define Count ((u16)zpl_array_count(actionMgr->ActionTypes))
-#define Append(var) (zpl_array_append(actionMgr->ActionTypes, var))
 
 void ActionMgrInitialize(ActionMgr* actionMgr)
 {
 	SAssert(actionMgr);
 
-	zpl_array_init(actionMgr->ActionTypes, zpl_heap_SAllocator());
+	ArrayListReserve(SAllocatorGeneral(), actionMgr->ActionTypes, 256);
 
-	Actions::IDLE = Count;
+	Actions::IDLE = (u16)ArrayListCount(actionMgr->ActionTypes);
 	
 	ActionType idle = {};
 	idle.OnInitAction = [](Action* action, ecs_entity_t entity, u16 actionId)
 	{
 		SZero(action, sizeof(Action));
 	};
-	Append(idle);
+	ArrayListPush(SAllocatorGeneral(), actionMgr->ActionTypes, idle);
 }
 
 internal u16
