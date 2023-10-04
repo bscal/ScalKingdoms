@@ -57,9 +57,9 @@ GameInitialize()
 	size_t gameMemorySize = Megabytes(16);
 	size_t frameMemorySize = Megabytes(16);
 	size_t totalMemory = permanentMemorySize + gameMemorySize + frameMemorySize;
-	TransientState.GameMemory = zpl_vm_alloc(0, totalMemory);
+	zpl_virtual_memory vm = zpl_vm_alloc(0, totalMemory);
 
-	uintptr_t memoryOffset = (uintptr_t)TransientState.GameMemory.data;
+	uintptr_t memoryOffset = (uintptr_t)vm.data;
 
 	ArenaCreate(&State.GameArena, (void*)memoryOffset, permanentMemorySize);
 	memoryOffset += permanentMemorySize;
@@ -70,7 +70,7 @@ GameInitialize()
 	ArenaCreate(&TransientState.TransientArena, (void*)memoryOffset, frameMemorySize);
 	memoryOffset += frameMemorySize;
 
-	SAssert(memoryOffset - TransientState.GameMemory.size == (size_t)TransientState.GameMemory.data);
+	SAssert(memoryOffset - vm.size == (size_t)vm.data);
 
 	InitializeMemoryTracking();
 
@@ -119,8 +119,8 @@ GameInitialize()
 	
 	ECS_TAG_DEFINE(State.World, GameObject);
 
-	ECS_OBSERVER(State.World, MoveOnAdd, EcsOnAdd, CMove);
-	ECS_OBSERVER(State.World, MoveOnRemove, EcsOnRemove, CMove);
+	//ECS_OBSERVER(State.World, MoveOnAdd, EcsOnAdd, CMove);
+	//ECS_OBSERVER(State.World, MoveOnRemove, EcsOnRemove, CMove);
 
 	ECS_SYSTEM_DEFINE(State.World, DrawEntities, 0, CTransform, CRender);
 	ECS_SYSTEM(State.World, MoveSystem, EcsOnUpdate, CTransform, CMove);
@@ -192,8 +192,8 @@ GameRun()
 		screenRect.height = (float)GetScreenHeight() / State.Camera.zoom;
 
 		BeginTextureMode(State.ScreenTexture);
-		ClearBackground(BLACK);
 		BeginMode2D(State.Camera);
+		ClearBackground(BLACK);
 
 		TileMapDraw(&State.TileMap, screenRect);
 
@@ -201,7 +201,7 @@ GameRun()
 
 		GameLateUpdate();
 
-		//DrawRegions();
+		DrawRegions();
 
 		EndMode2D();
 		EndTextureMode();
@@ -349,17 +349,8 @@ void InputUpdate()
 	if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE))
 	{
 		Vec2i tile = ScreenToTile();
-
-		struct PathFindStack
-		{
-			ArrayList(Vec2i)* Path;
-		};
-
-		PathFindStack stack = {};
-		stack.Path = &Client.DebugPathfinder;
 		ecs_entity_t selectedEntity = Client.SelectedEntity;
-		PathfindRegion(transform->TilePos, tile, &Client.MoveData);
-		//MoveEntity(&State, selectedEntity, tile);
+		MoveEntity(&State, selectedEntity, tile);
 	}
 
 	if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
@@ -372,10 +363,6 @@ void InputUpdate()
 			Client.SelectedEntity = *entity;
 			const char* entityInfo = ecs_entity_str(State.World, *entity);
 			SInfoLog("%s", entityInfo);
-
-			HashMapTPrint<Vec2i, ecs_entity_t>(&State.EntityMap
-				, [](Vec2i* key) { Vec2i k = *key; return TextFormat("%s", FMT_VEC2I(k)); }
-				, [](ecs_entity_t* value) { return TextFormat("%u", *value); });
 		}
 	}
 

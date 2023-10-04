@@ -8,8 +8,10 @@
 
 #include "Structures/ArrayList.h"
 
-constexpr internal_var int MAX_REGION_SEARCH = 128;
-constexpr internal_var int MAX_LOCAL_SEARCH = 256;
+constant_var int MAX_REGION_SEARCH = 128;
+constant_var int MAX_LOCAL_SEARCH = 256;
+
+constant_var u8 INVERSE[] = { 2, 3, 0, 1 };
 
 #define AllocNode(T) ((T*)SAlloc(SAllocatorFrame(), sizeof(T)));
 
@@ -63,12 +65,12 @@ void
 PathfinderRegionsInit(RegionPathfinder* pathfinder)
 {
 	HashMapTInitialize(&RegionMap, 1024, SAllocatorArena(&GetGameState()->GameArena));
-	pathfinder->Open = BHeapCreate(SAllocatorArena(&GetGameState()->GameArena), RegionCompareCost, 256);
-	HashMapTInitialize(&pathfinder->OpenSet, 256, SAllocatorArena(&GetGameState()->GameArena));
-	HashSetTInitialize(&pathfinder->ClosedSet, 256, SAllocatorArena(&GetGameState()->GameArena));
+	pathfinder->Open = BHeapCreate(SAllocatorArena(&GetGameState()->GameArena), RegionCompareCost, 512);
+	HashMapTInitialize(&pathfinder->OpenSet, 512, SAllocatorArena(&GetGameState()->GameArena));
+	HashSetTInitialize(&pathfinder->ClosedSet, 512, SAllocatorArena(&GetGameState()->GameArena));
 }
 
-void 
+void
 RegionUnload(Chunk* chunk)
 {
 	SAssert(chunk);
@@ -95,7 +97,7 @@ RegionUnload(Chunk* chunk)
 	}
 }
 
-Region* 
+Region*
 GetRegion(Vec2i tilePos)
 {
 	return HashMapTGet(&RegionMap, &tilePos);
@@ -103,9 +105,9 @@ GetRegion(Vec2i tilePos)
 
 internal void
 Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end,
-	void(*callback)(Node*, void*), void* stack);
+		 void(*callback)(Node*, void*), void* stack);
 
-void 
+void
 RegionLoad(TileMap* tilemap, Chunk* chunk)
 {
 	SAssert(tilemap);
@@ -126,8 +128,8 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 		{
 			Region region = {};
 
-			Vec2i pos = chunkWorld + Vec2i{ xDiv * REGION_SIZE, yDiv * REGION_SIZE };
-			
+			Vec2i pos = chunkWorld + Vec2i{ xDiv* REGION_SIZE, yDiv* REGION_SIZE };
+
 			region.Coord = startRegion + Vec2i{ xDiv, yDiv };
 
 			for (int i = 0; i < (int)ArrayLength(region.Sides); ++i)
@@ -153,7 +155,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
-				region.Sides[SIDE] = neighborTilePos;
+				region.SideConnections[SIDE] = neighborTilePos;
 				break;
 			}
 
@@ -175,7 +177,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
-				region.Sides[SIDE] = neighborTilePos;
+				region.SideConnections[SIDE] = neighborTilePos;
 				break;
 			}
 
@@ -197,7 +199,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
-				region.Sides[SIDE] = neighborTilePos;
+				region.SideConnections[SIDE] = neighborTilePos;
 				break;
 			}
 
@@ -219,7 +221,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 					continue;
 
 				region.Sides[SIDE] = tilePos;
-				region.Sides[SIDE] = neighborTilePos;
+				region.SideConnections[SIDE] = neighborTilePos;
 				break;
 			}
 
@@ -259,20 +261,20 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 				stack.Index = i;
 
 				Pathfind(&GetGameState()->Pathfinder, &GetGameState()->TileMap, start, end,
-					[](Node* node, void* stack)
-					{
-						RegionPathStack* pathStack = (RegionPathStack*)stack;
-						ArrayListPush(SAllocatorGeneral(), pathStack->Region->Paths[pathStack->Index], node->Pos);
-						pathStack->Region->PathCost[pathStack->Index] += node->GCost;
-					}, &stack);
+						 [](Node* node, void* stack)
+						 {
+							 RegionPathStack* pathStack = (RegionPathStack*)stack;
+							 ArrayListPush(SAllocatorGeneral(), pathStack->Region->Paths[pathStack->Index], node->Pos);
+							 pathStack->Region->PathCost[pathStack->Index] += node->GCost;
+						 }, &stack);
 
-				ArrayListPush(SAllocatorGeneral(), region->Paths[i], region->SideConnections[nodeTo]);
+				//ArrayListPushAtIndex(SAllocatorGeneral(), region->Paths[i], region->SideConnections[nodeTo], 0);
 			}
 		}
 	}
 }
 
-internal void 
+internal void
 Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack)
 {
 	BHeapClear(pathfinder->Open);
@@ -361,14 +363,12 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 	HashMapTClear(&pathfinder->OpenSet);
 	HashSetTClear(&pathfinder->ClosedSet);
 
-	moveData->NeedToPathfindToStart = false;
-	moveData->NeedToPathfindToEnd = false;
+	moveData->PathLength = 0;
+	moveData->PathProgress = 0;
+	moveData->StartPathLength = 0;
+	moveData->EndPathLength = 0;
 	moveData->StartRegionTilePos = tileStart;
 	moveData->EndRegionTilePos = tileEnd;
-	ArrayListClear(moveData->StartPath);
-	ArrayListClear(moveData->EndPath);
-	ArrayListClear(moveData->RegionPath);
-
 
 	Vec2i regionStart = TileCoordToRegionCoord(tileStart);
 	Vec2i regionEnd = TileCoordToRegionCoord(tileEnd);
@@ -376,44 +376,16 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 	Region* startingRegion = HashMapTGet(&RegionMap, &regionStart);
 	SAssert(startingRegion);
 
-	Vec2i firstTarget = Vec2i_NULL;
-	int shortestDist = INT32_MAX;
-	u8 shortestDir = 0;
-	for (u8 i = 0; i < 4; ++i)
-	{
-		if (startingRegion->Sides[i] != Vec2i_NULL)
-		{
-			firstTarget = startingRegion->Sides[i];
-			int dist = CalculateDistance(firstTarget, tileEnd);
-			if (dist < shortestDist)
-			{
-				shortestDist = dist;
-				shortestDir = i;
-			}
-		}
-	}
-	SAssert(firstTarget != Vec2i_NULL);
-
-	moveData->NeedToPathfindToStart = true;
-	Pathfind(pathfinderForTiles, tilemap, tileStart, firstTarget,
-		[](Node* node, void* stack)
-		{
-			RegionMoveData* moveData = (RegionMoveData*)stack;
-			ArrayListPush(SAllocatorGeneral(), moveData->StartPath, node->Pos);
-		}, moveData);
-
 	RegionNode* node = AllocNode(RegionNode);
-	node->Pos = regionStart + Vec2i_NEIGHTBORS[shortestDir];
+	node->Pos = regionStart;
 	node->Parent = nullptr;
 	node->GCost = 0;
-	node->HCost = ManhattanDistance(tileStart, tileEnd);
+	node->HCost = ManhattanDistance(regionStart, regionEnd);
 	node->FCost = node->GCost + node->HCost;
-	node->SideFrom = shortestDir;
-	node->SideTo = 0;
+	node->SideFrom = UINT8_MAX; // Start node doesn't come from anywhere, this is used if we reach the dest.
 
 	BHeapPushMin(pathfinder->Open, node, node);
 	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node);
-
 	while (pathfinder->Open->Count > 0)
 	{
 		BHeapItem item = BHeapPopMin(pathfinder->Open);
@@ -424,35 +396,82 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
 		Region* curRegion = HashMapTGet(&RegionMap, &curNode->Pos);
 
+		// Dest reached
 		if (curNode->Pos == regionEnd)
 		{
-			Vec2i curTile = curRegion->Sides[curNode->SideFrom];
-
-			if (curTile != tileEnd)
-			{
-				moveData->NeedToPathfindToEnd = true;
-				Pathfind(pathfinderForTiles, tilemap, curTile, tileEnd,
-					[](Node* node, void* stack)
-					{
-						RegionMoveData* moveData = (RegionMoveData*)stack;
-						ArrayListPush(SAllocatorGeneral(), moveData->EndPath, node->Pos);
-					}, moveData);
-			}
-
-			RegionNode* prev = curNode;
+			Vec2i lastPos = curNode->Pos;
+			RegionNode* prev = curNode->Parent;
 			while (prev)
 			{
+				// Don't process start region, we start in it and will pathfind to start of
+				// next region.
+				if (prev->SideFrom == UINT8_MAX)
+				{
+					break;
+				}
+
 				RegionPath regionPath = {};
 				regionPath.RegionCoord = prev->Pos;
-				regionPath.Direction = (RegionDirection)DIRECTION_2_REGION_DIR[prev->SideFrom][prev->SideTo];
-				ArrayListPush(SAllocatorGeneral(), moveData->RegionPath, regionPath);
+
+
+
+				// Get's the diretions we going to.
+				// Remember this is reverse order.
+				// lastPos would be dest on 1st iteration
+				int toDir;
+				Vec2i diff = lastPos - prev->Pos;
+				if (diff.x == 1)
+					toDir = (int)Direction::EAST;
+				else if (diff.x == -1)
+					toDir = (int)Direction::WEST;
+				else if (diff.y == 1)
+					toDir = (int)Direction::SOUTH;
+				else
+					toDir = (int)Direction::NORTH;
+
+				// Converts dirTo and sideFrom to path index
+				regionPath.Direction = (RegionDirection)DIRECTION_2_REGION_DIR[prev->SideFrom][toDir];
+				moveData->Path[moveData->PathLength] = regionPath;
+				++moveData->PathLength;
+				lastPos = prev->Pos;
 				prev = prev->Parent;
+			}
+			
+			if (moveData->PathLength > 0)
+			{
+				// cur tile -> 1st path pos (doesn't include start region)
+				RegionPath startRegionPath = moveData->Path[moveData->PathLength - 1];
+				Region* startRegion = GetRegion(startRegionPath.RegionCoord);
+				SAssert(startRegion);
+				Vec2i* path = startRegion->Paths[(int)startRegionPath.Direction];
+				SAssert(path);
+				Vec2i startRegionTile = ArrayListLast(path);
+				Pathfind(pathfinderForTiles, tilemap, tileStart, startRegionTile,
+						 [](Node* node, void* stack)
+						 {
+							 RegionMoveData* moveData = (RegionMoveData*)stack;
+							 moveData->StartPath[moveData->StartPathLength] = node->Pos;
+							 ++moveData->StartPathLength;
+						 }, moveData);
+
+				// last pos in last path -> end tile
+				RegionPath endRegionPath = moveData->Path[0];
+				Region* endRegion = GetRegion(endRegionPath.RegionCoord);
+				SAssert(endRegion);
+				Vec2i pathv = endRegion->Paths[(int)endRegionPath.Direction][0];
+				Vec2i endRegionTile = endRegion->SideConnections[(int)endRegionPath.Direction];
+				Pathfind(pathfinderForTiles, tilemap, pathv, tileEnd,
+						 [](Node* node, void* stack)
+						 {
+							 RegionMoveData* moveData = (RegionMoveData*)stack;
+							 moveData->EndPath[moveData->EndPathLength] = node->Pos;
+							 ++moveData->EndPathLength;
+						 }, moveData);
 			}
 			return;
 		}
 		else
 		{
-			constexpr u8 INVERSE[] = { 2, 3, 0, 1 };
 			for (u8 neighborDirection = 0; neighborDirection < ArrayLength(Vec2i_NEIGHTBORS); ++neighborDirection)
 			{
 				Vec2i regionNextCoord = curNode->Pos + Vec2i_NEIGHTBORS[neighborDirection];
@@ -463,16 +482,14 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 				if (curRegion->Sides[neighborDirection] == Vec2i_NULL)
 					continue;
 
-
 				Region* regionNext = HashMapTGet(&RegionMap, &regionNextCoord);
 				if (!regionNext)
 					continue;
 				else
 				{
-					//u8 pathDir = DIRECTION_2_REGION_DIR[curNode->SideFrom][neighborDirection];
 					RegionNode** nextNodePtr = HashMapTGet(&pathfinder->OpenSet, &regionNextCoord);
-					int dist = ManhattanDistance(curRegion->Sides[curNode->SideFrom], regionNext->Sides[INVERSE[neighborDirection]]);
-					int cost = curNode->GCost + dist;
+					int dist = ManhattanDistance(curNode->Pos, regionNextCoord);
+					int cost = curNode->GCost + dist + curRegion->PathCost[neighborDirection];
 					if (!nextNodePtr || cost < (*nextNodePtr)->GCost)
 					{
 						SAssert(!nextNodePtr || (nextNodePtr && *nextNodePtr));
@@ -482,15 +499,20 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 						nextNode->Pos = regionNextCoord;
 						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
-						nextNode->HCost = ManhattanDistance(regionNext->Sides[INVERSE[neighborDirection]], tileEnd);
+						nextNode->HCost = ManhattanDistance(regionEnd, regionNextCoord);
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
+						// This takes inverse because neighborDirection is direction from curNode -> nextNode
+						// So when we look at a node we know what side we are on.
 						nextNode->SideFrom = INVERSE[neighborDirection];
-						curNode->SideTo = neighborDirection;
 
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
 						if (!nextNodePtr)
 						{
 							HashMapTSet(&pathfinder->OpenSet, &regionNextCoord, &nextNode);
+						}
+						else
+						{
+							*nextNodePtr = nextNode;
 						}
 					}
 				}
@@ -499,19 +521,27 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 	}
 }
 
-void 
+void
 DrawRegions()
 {
-	for (int i = 0; i < ArrayListCount(Client.MoveData.RegionPath); ++i)
+	if (!ecs_is_valid(GetGameState()->World, Client.SelectedEntity))
+		return;
+
+	const CMove* move = ecs_get(GetGameState()->World, Client.SelectedEntity, CMove);
+	if (move)
 	{
-		DrawRectangle(
-			Client.MoveData.RegionPath[i].RegionCoord.x * REGION_SIZE * TILE_SIZE,
-			Client.MoveData.RegionPath[i].RegionCoord.y * REGION_SIZE * TILE_SIZE,
-			REGION_SIZE * TILE_SIZE,
-			REGION_SIZE * TILE_SIZE,
-			RED);
+		for (int i = 0; i < move->MoveData.PathLength; ++i)
+		{
+			DrawRectangle(
+				move->MoveData.Path[i].RegionCoord.x * REGION_SIZE * TILE_SIZE,
+				move->MoveData.Path[i].RegionCoord.y * REGION_SIZE * TILE_SIZE,
+				REGION_SIZE * TILE_SIZE,
+				REGION_SIZE * TILE_SIZE,
+				{ 255, 0, 0, 100 });
+		}
 	}
 
+#if 0
 	for (u32 i = 0; i < RegionMap.Capacity; ++i)
 	{
 		if (RegionMap.Buckets[i].IsUsed)
@@ -532,7 +562,8 @@ DrawRegions()
 				//		DrawRectangle(tile.x * TILE_SIZE, tile.y * TILE_SIZE, TILE_SIZE, TILE_SIZE, BLUE);
 				//	}
 				//}
-			}
 		}
 	}
+}
+#endif
 }

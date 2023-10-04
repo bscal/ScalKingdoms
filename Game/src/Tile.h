@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Core.h"
-#include "TileMap.h"
 
 #include "Structures/BitArray.h"
 
@@ -11,6 +10,21 @@ struct TileInfo
 	Rectangle Occulution;
 	Flag8 DefaultTileFlags;
 	int MovementCost;
+};
+
+enum TileFlags : uint8_t
+{
+	TILE_FLAG_COLLISION = Bit(0),
+	TILE_FLAG_LIQUID = Bit(1),
+	TILE_FLAG_IS_HIDDEN = Bit(2),
+};
+
+struct Tile
+{
+	u16 BackgroundId;
+	u16 ForegroundId;
+	Flag8 Flags;
+	u8 ReachabilityLevel;
 };
 
 void TileMgrInitialize(Texture2D* tileSetTexture);

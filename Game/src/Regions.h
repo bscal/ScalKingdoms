@@ -39,7 +39,7 @@ enum class RegionDirection : u8
 	E2N,
 	E2W,
 	E2S,
-	S2E,//
+	S2E,
 	S2N,
 	S2W,
 	W2S,
@@ -67,7 +67,6 @@ struct RegionNode
 	int HCost;
 	int FCost;
 	u8 SideFrom;
-	u8 SideTo;
 };
 
 struct RegionPathfinder
@@ -95,12 +94,17 @@ struct RegionPath
 struct RegionMoveData
 {
 	Vec2i StartRegionTilePos;
-	ArrayList(Vec2i) StartPath;
 	Vec2i EndRegionTilePos;
-	ArrayList(Vec2i) EndPath;
-	ArrayList(RegionPath) RegionPath;
-	bool NeedToPathfindToStart;
-	bool NeedToPathfindToEnd;
+	u8 PathLength;
+	u8 PathCapacity;
+	u8 PathProgress;
+	u8 StartPathLength;
+	u8 StartPathCapacity;
+	u8 EndPathLength;
+	u8 EndPathCapacity;
+	RegionPath Path[128];
+	Vec2i StartPath[32];
+	Vec2i EndPath[32];
 };
 
 void PathfinderRegionsInit(RegionPathfinder* pathfinder);

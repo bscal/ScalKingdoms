@@ -60,7 +60,6 @@ struct GameState
 
 struct TransientGameState
 {
-	zpl_virtual_memory GameMemory;
 	Arena TransientArena;
 };
 

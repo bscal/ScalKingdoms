@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Game.h"
 #include "Regions.h"
+#include "Tile.h"
 #include "Lib/Jobs.h"
 #include "Structures/SList.h"
 #include "Structures/BitArray.h"
@@ -16,20 +17,6 @@ struct GameState;
 constant_var int LAYER_BACKGROUND	= 0;
 constant_var int LAYER_FOREGROUND	= 1;
 constant_var int LAYER_WALL			= 2;
-
-enum TileFlags : uint8_t 
-{
-	TILE_FLAG_COLLISION	= Bit(0),
-	TILE_FLAG_LIQUID	= Bit(1),
-	TILE_FLAG_IS_HIDDEN = Bit(2),
-};
-
-struct Tile
-{
-	u16 BackgroundId;
-	u16 ForegroundId;
-	Flag8 Flags;
-};
 
 enum class ChunkUpdateState : u8
 {

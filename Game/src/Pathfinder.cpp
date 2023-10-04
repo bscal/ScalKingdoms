@@ -172,3 +172,30 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	}
 	return nullptr;
 }
+
+#define FLOOD_FILL_CALLBACK(name) bool name(Vec2i pos, void* stack)
+typedef FLOOD_FILL_CALLBACK(FloodFillCallback);
+void FloodFill(Vec2i pos, Vec2i xy, Vec2i wh, FloodFillCallback callback, void* stack)
+{
+	BitArray<CHUNK_AREA> checkedTiles = {};
+	BitArray<CHUNK_AREA> visitedTiles = {};
+
+	ArrayList(Vec2i) queue = {};
+	ArrayListReserve(SAllocatorFrame(), queue, CHUNK_AREA);
+
+	while (ArrayListCount(queue) > 0)
+	{
+		Vec2i curPos = ArrayListLast(queue);
+		ArrayListPopLast(queue);
+
+		size_t idx = curPos.x + curPos.y * CHUNK_SIZE;
+		visitedTiles.Set(idx);
+		
+		for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+		{
+			Vec2i neighbor = curPos + Vec2i_NEIGHTBORS[i];
+		}
+
+	}
+
+}

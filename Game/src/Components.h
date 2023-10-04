@@ -25,6 +25,7 @@ struct CMove
 	Vec2 Start;
 	Vec2 Target;
 	float Progress;
+	bool IsCompleted;
 };
 
 struct CBody

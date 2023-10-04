@@ -508,6 +508,20 @@ bool IsTileInBounds(TileMap* tilemap, Vec2i coord)
 		&& y < tilemap->Dimensions.height);
 }
 
+void ProcessTileReachablity(TileMap* tilemap, Chunk* chunk)
+{
+	int idx = 0;
+	for (int y = 0; y < CHUNK_SIZE; ++y)
+	{
+		for (int x = 0; x < CHUNK_SIZE; ++x)
+		{
+			
+
+			++idx;
+		}
+	}
+}
+
 internal void
 ChunkThreadFunc(JobArgs* args)
 {

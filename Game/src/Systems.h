@@ -4,9 +4,6 @@
 
 void DrawEntities(ecs_iter_t* it);
 
-void MoveOnAdd(ecs_iter_t* it);
-void MoveOnRemove(ecs_iter_t* it);
-
 void MoveSystem(ecs_iter_t* it);
 
 void SystemUpdateActions(ecs_iter_t* it);
