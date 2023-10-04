@@ -88,19 +88,6 @@ Str2UInt(u32* out, const char* s, int base)
 	return STR2INT_SUCCESS;
 }
 
-
-int 
-FastAtoi(const char* str)
-{
-	SAssert(str);
-	int val = 0;
-	for (; *str; ++str)
-	{
-		val = val * 10 + (*str - '0');
-	}
-	return val;
-}
-
 Color IntToColor(int colorInt)
 {
 	Color c;

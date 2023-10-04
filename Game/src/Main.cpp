@@ -4,7 +4,8 @@
 #define FNL_IMPL
 #include <FastNoiseLite/FastNoiseLite.h>
 
-#include "GameEntry.h"
+// Defined in GameState.cpp
+extern int GameInitialize();
 
 int
 main(int argCount, char** args)

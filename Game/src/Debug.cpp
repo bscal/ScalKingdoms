@@ -78,6 +78,7 @@ void DrawDebugWindow(GameClient* client, GameState* gameState, GUIState* guiStat
 			{
 				nk_layout_row_static(ctx, TEXT_ROW_HEIGHT, 512, 1);
 
+				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "FPS: %d", GetFPS());
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "UpdateTime: %.3fms", Client.UpdateTime * 1000.0);
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "DrawTime: %.3fms", GetDrawTime() * 1000.0);
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "GeneralPurpose: %dkb / %dkb",

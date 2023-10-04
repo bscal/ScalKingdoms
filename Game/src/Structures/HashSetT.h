@@ -35,7 +35,10 @@ HashSetTInitialize(HashSetT<K>* set, uint32_t capacity, SAllocator SAllocator)
 
 	set->Alloc = SAllocator;
 	if (capacity > 0)
+	{
+		capacity = (u32)ceilf((float)capacity / HashSetT<K>::DEFAULT_LOADFACTOR);
 		HashSetTReserve(set, capacity);
+	}
 }
 
 template<typename K>

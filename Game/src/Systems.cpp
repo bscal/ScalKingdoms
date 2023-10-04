@@ -44,8 +44,7 @@ void MoveSystem(ecs_iter_t* it)
 
 		u8 pathType;
 		Vec2i target;
-		// > 1 because index[0] or (last position in path) == start of region path. We will pause on that tile.
-		if (moves[i].MoveData.StartPathLength > 1)
+		if (moves[i].MoveData.StartPathLength > 0)
 		{
 			// Gets last index since paths are from back to front order
 			target = moves[i].MoveData.StartPath[moves[i].MoveData.StartPathLength - 1];
@@ -56,16 +55,15 @@ void MoveSystem(ecs_iter_t* it)
 			RegionPath pathData = moves[i].MoveData.Path[moves[i].MoveData.PathLength - 1];
 			Region* region = GetRegion(pathData.RegionCoord);
 			SAssert(region);
-			Vec2i* path = region->Paths[(size_t)pathData.Direction];
+			u8 pathLength = region->PathLengths[(int)pathData.Direction];
+			Vec2i* path = region->PathPaths[(int)pathData.Direction];
 			SAssert(path);
-			int pathLength = ArrayListCount(path) - 1;
-			target = path[pathLength - moves[i].MoveData.PathProgress];
+			target = path[pathLength - 1 - moves[i].MoveData.PathProgress];
 			pathType = 1;
 		}
-		// > 1 because we - 2 on endpath below. This skips the 1st element so we don't pause on it
-		else if (moves[i].MoveData.EndPathLength > 1)
+		else if (moves[i].MoveData.EndPathLength > 0)
 		{
-			target = moves[i].MoveData.EndPath[moves[i].MoveData.EndPathLength - 2];
+			target = moves[i].MoveData.EndPath[moves[i].MoveData.EndPathLength - 1];
 			pathType = 2;
 		}
 		else
@@ -90,10 +88,10 @@ void MoveSystem(ecs_iter_t* it)
 			{
 				RegionPath pathData = moves[i].MoveData.Path[moves[i].MoveData.PathLength - 1];
 				Region* region = GetRegion(pathData.RegionCoord);
-				Vec2i* path = region->Paths[(size_t)pathData.Direction];
-				int pathLength = ArrayListCount(path);
+				u8 pathLength = region->PathLengths[(int)pathData.Direction];
+				Vec2i* path = region->PathPaths[(int)pathData.Direction];
 				++moves[i].MoveData.PathProgress;
-				if (moves[i].MoveData.PathProgress == ArrayListCount(path))
+				if (moves[i].MoveData.PathProgress == pathLength)
 				{
 					moves[i].MoveData.PathProgress = 0;
 					--moves[i].MoveData.PathLength;

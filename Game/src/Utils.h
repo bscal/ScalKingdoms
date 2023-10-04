@@ -104,12 +104,25 @@ FNVHash32(const void* const data, size_t length)
 	return val;
 }
 
+// Only use for capacity that are powers of 2
 _FORCE_INLINE_ u32
 HashKey(const void* key, size_t len, u32 capacity)
 {
 	u32 hash = FNVHash32((const u8*)key, len);
 	hash &= (capacity - 1);
 	return hash;
+}
+
+inline int
+FastAtoi(const char* str)
+{
+	SAssert(str);
+	int val = 0;
+	for (; *str; ++str)
+	{
+		val = val * 10 + (*str - '0');
+	}
+	return val;
 }
 
 // TODO move
@@ -131,8 +144,6 @@ enum STR2INT
 STR2INT Str2Int(int* out, const char* s, int base);
 
 STR2INT Str2UInt(u32* out, const char* s, int base);
-
-int FastAtoi(const char* str);
 
 Color IntToColor(int color);
 

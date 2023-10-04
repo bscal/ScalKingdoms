@@ -1,5 +1,4 @@
 #include "GameState.h"
-#include "GameEntry.h"
 
 #include "Memory.h"
 #include "Tile.h"
@@ -11,12 +10,9 @@
 
 #include <Lib/Jobs.h>
 
-#define COMPONENT_DECLARATION
 #include "Components.h"
 
 #include <raylib/src/raymath.h>
-
-internal_var struct GameState State;
 
 internal void GameRun();
 internal void GameUpdate();
@@ -26,8 +22,6 @@ internal void InputUpdate();
 
 internal void LoadAssets(GameState* gameState);
 internal void UnloadAssets(GameState* gameState);
-
-internal Vec2i ScreenToTile();
 
 ECS_SYSTEM_DECLARE(DrawEntities);
 
@@ -73,6 +67,8 @@ GameInitialize()
 	SAssert(memoryOffset - vm.size == (size_t)vm.data);
 
 	InitializeMemoryTracking();
+
+	ArenaSnapshot tempMemoryInit = ArenaSnapshotBegin(&TransientState.TransientArena);
 
 	PushMemoryIgnoreFree();
 	
@@ -149,6 +145,8 @@ GameInitialize()
 				SInfoLog("Thread %d, Printing %d", tid, v);
 			}, &val);
 	}
+
+	ArenaSnapshotEnd(tempMemoryInit);
 
 	GameRun();
 
@@ -437,24 +435,4 @@ UnloadAssets(GameState* gameState)
 	UnloadTexture(gameState->AssetMgr.EntitySpriteSheet);
 	UnloadBMPFontData(&gameState->AssetMgr.MainFont);
 	SpriteAtlasUnload(&gameState->AssetMgr.UIAtlas);
-}
-
-internal Vec2i 
-ScreenToTile()
-{
-	// Creates a new camera that uses size of screen.
-	// Than convert from screen to game draw resolution
-	Camera2D screenCamera = State.Camera;
-	screenCamera.offset = Vec2{ (float)GetScreenWidth() / 2, (float)GetScreenHeight() / 2 };
-	Vec2 worldPos = GetScreenToWorld2D(GetMousePosition(), screenCamera);
-	worldPos = worldPos / Vec2{ (float)GetScreenWidth(), (float)GetScreenHeight() };
-	worldPos = worldPos * Vec2{ 1600, 900 };
-	worldPos = worldPos * Vec2{ INVERSE_TILE_SIZE, INVERSE_TILE_SIZE };
-	return Vec2ToVec2i(worldPos);
-}
-
-GameState* 
-GetGameState()
-{
-	return &State;
 }

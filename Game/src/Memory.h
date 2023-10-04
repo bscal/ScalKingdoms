@@ -36,8 +36,6 @@ IsAllocatorValid(SAllocator allocator)
 	return allocator.Proc;
 }
 
-constant_var size_t DEFAULT_ALIGNMENT = 16;
-
 #define SAlloc(allocator, size)	\
 	allocator.Proc(ALLOCATOR_TYPE_MALLOC, allocator.Data, nullptr, size, 0, DEFAULT_ALIGNMENT, __FILE__, __FUNCTION__, __LINE__)
 

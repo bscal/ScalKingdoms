@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core.h"
-#include "Game.h"
+#include "GameTypes.h"
 #include "Regions.h"
 #include "Tile.h"
 #include "Lib/Jobs.h"

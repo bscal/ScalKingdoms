@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include "Base.h"
 
 struct Vector2;
 
@@ -9,18 +9,18 @@ struct Vector2i
 	int x;
 	int y;
 
-	Vector2i Add(Vector2i o) const;
-    Vector2i AddValue(int value) const;
-    Vector2i Subtract(Vector2i o) const;
-    Vector2i SubtractValue(int value) const;
-    Vector2i Scale(int value) const;
-    Vector2i Multiply(Vector2i o) const;
-    Vector2i Divide(Vector2i o) const;
-    float Distance(Vector2i o) const;
-    float SqrDistance(Vector2i o) const;
-    Vector2i Negate() const;
-    Vector2i Min(Vector2i min) const;
-    Vector2i Max(Vector2i max) const;
+	_FORCE_INLINE_ Vector2i Add(Vector2i o) const;
+    _FORCE_INLINE_ Vector2i AddValue(int value) const;
+    _FORCE_INLINE_ Vector2i Subtract(Vector2i o) const;
+    _FORCE_INLINE_ Vector2i SubtractValue(int value) const;
+    _FORCE_INLINE_ Vector2i Scale(int value) const;
+    _FORCE_INLINE_ Vector2i Multiply(Vector2i o) const;
+    _FORCE_INLINE_ Vector2i Divide(Vector2i o) const;
+    _FORCE_INLINE_ float Distance(Vector2i o) const;
+    _FORCE_INLINE_ float SqrDistance(Vector2i o) const;
+    _FORCE_INLINE_ Vector2i Negate() const;
+    _FORCE_INLINE_ Vector2i Min(Vector2i min) const;
+    _FORCE_INLINE_ Vector2i Max(Vector2i max) const;
 };
 
 constexpr static Vector2i Vec2i_ONE     = { 1, 1 };
@@ -45,37 +45,159 @@ constexpr static Vector2i Vec2i_NEIGHTBORS_CORNERS[8] = {
     Vec2i_LEFT,          Vec2i_RIGHT,
     Vec2i_SW,   Vec2i_DOWN, Vec2i_SE };
 
-long long Vec2iPackInt64(Vector2i v);
-Vector2i Vec2iUnpackInt64(long long packedI64);
-Vector2 Vec2iToVec2(Vector2i v);
-Vector2i Vec2ToVec2i(Vector2 v); // Floored
+_FORCE_INLINE_ long long Vec2iPackInt64(Vector2i v);
+_FORCE_INLINE_ Vector2i Vec2iUnpackInt64(long long packedI64);
+_FORCE_INLINE_ Vector2 Vec2iToVec2(Vector2i v);
+_FORCE_INLINE_ Vector2i Vec2ToVec2i(Vector2 v); // Floored
 
-static inline bool operator==(Vector2i left, Vector2i right)
+long long Vec2iPackInt64(Vector2i v)
+{
+    return (long long)v.x << 32ll | v.y;
+}
+
+Vector2i Vec2iUnpackInt64(long long packedI64)
+{
+    int y = (int)packedI64;
+    int x = (int)(packedI64 >> 32);
+    return { x, y };
+}
+
+Vector2 Vec2iToVec2(Vector2i v)
+{
+    Vector2 res;
+    res.x = (float)v.x;
+    res.y = (float)v.y;
+    return res;
+}
+
+Vector2i Vec2ToVec2i(Vector2 v)
+{
+    Vector2i res;
+    res.x = (int)floorf(v.x);
+    res.y = (int)floorf(v.y);
+    return res;
+}
+
+Vector2i Vector2i::Add(Vector2i o) const
+{
+    return { x + o.x, y + o.y };
+}
+
+Vector2i Vector2i::AddValue(int add) const
+{
+    return { x + add, y + add };
+}
+
+Vector2i Vector2i::Subtract(Vector2i o) const
+{
+    return { x - o.x, y - o.y };
+}
+
+Vector2i Vector2i::SubtractValue(int sub) const
+{
+    return { x - sub, y - sub };
+}
+
+// Calculate distance between two vectors
+float Vector2i::Distance(Vector2i o) const
+{
+    float result = sqrtf((float)((x - o.x) * (x - o.x) + (y - o.y) * (y - o.y)));
+    return result;
+}
+
+// Calculate square distance between two vectors
+float Vector2i::SqrDistance(Vector2i o) const
+{
+    float result = (float)((x - o.x) * (x - o.x) + (y - o.y) * (y - o.y));
+    return result;
+}
+
+// Scale vector (multiply by value)
+Vector2i Vector2i::Scale(int scale) const
+{
+    return { x * scale, y * scale };
+}
+
+// Multiply vector by vector
+Vector2i Vector2i::Multiply(Vector2i o) const
+{
+    return { x * o.x, y * o.y };
+}
+
+// Negate vector
+Vector2i Vector2i::Negate() const
+{
+    return { -x, -y };
+}
+
+Vector2i Vector2i::Min(Vector2i min) const
+{
+    Vector2i result;
+    result.x = (x < min.x) ? min.x : x;
+    result.y = (y < min.y) ? min.y : y;
+    return result;
+}
+
+Vector2i Vector2i::Max(Vector2i max) const
+{
+    Vector2i result;
+    result.x = (x > max.x) ? max.x : x;
+    result.y = (y > max.y) ? max.y : y;
+    return result;
+}
+
+// Divide vector by vector
+Vector2i Vector2i::Divide(Vector2i o) const
+{
+    return { x / o.x, y / o.y };
+}
+
+static _FORCE_INLINE_ bool operator==(Vector2i left, Vector2i right)
 {
     return left.x == right.x && left.y == right.y;
 }
 
-static inline bool operator!=(Vector2i left, Vector2i right)
+static _FORCE_INLINE_ bool operator!=(Vector2i left, Vector2i right)
 {
     return left.x != right.x || left.y != right.y;
 }
 
-static inline Vector2i operator+(Vector2i left, Vector2i right)
+static _FORCE_INLINE_ Vector2i operator+=(Vector2i left, Vector2i right)
 {
     return left.Add(right);
 }
 
-static inline Vector2i operator-(Vector2i left, Vector2i right)
+static _FORCE_INLINE_ Vector2i operator-=(Vector2i left, Vector2i right)
 {
     return left.Subtract(right);
 }
 
-static inline Vector2i operator*(Vector2i left, Vector2i right)
+static _FORCE_INLINE_ Vector2i operator*=(Vector2i left, Vector2i right)
 {
     return left.Multiply(right);
 }
 
-static inline Vector2i operator/(Vector2i left, Vector2i right)
+static _FORCE_INLINE_ Vector2i operator/=(Vector2i left, Vector2i right)
+{
+    return left.Divide(right);
+}
+
+static _FORCE_INLINE_ Vector2i operator+(Vector2i left, Vector2i right)
+{
+    return left.Add(right);
+}
+
+static _FORCE_INLINE_ Vector2i operator-(Vector2i left, Vector2i right)
+{
+    return left.Subtract(right);
+}
+
+static _FORCE_INLINE_ Vector2i operator*(Vector2i left, Vector2i right)
+{
+    return left.Multiply(right);
+}
+
+static _FORCE_INLINE_ Vector2i operator/(Vector2i left, Vector2i right)
 {
     return left.Divide(right);
 }

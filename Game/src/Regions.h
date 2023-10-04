@@ -81,8 +81,9 @@ struct Region
 	Vec2i Coord;
 	Vec2i Sides[4];
 	Vec2i SideConnections[4];
-	int PathCost[REGION_DIR_MAX];
-	ArrayList(Vec2i) Paths[REGION_DIR_MAX];
+	short PathCost[REGION_DIR_MAX];
+	u8 PathLengths[REGION_DIR_MAX];
+	Vec2i PathPaths[REGION_DIR_MAX][32];
 };
 
 struct RegionPath
@@ -96,14 +97,11 @@ struct RegionMoveData
 	Vec2i StartRegionTilePos;
 	Vec2i EndRegionTilePos;
 	u8 PathLength;
-	u8 PathCapacity;
 	u8 PathProgress;
 	u8 StartPathLength;
-	u8 StartPathCapacity;
 	u8 EndPathLength;
-	u8 EndPathCapacity;
 	RegionPath Path[128];
-	Vec2i StartPath[32];
+	Vec2i StartPath[64];
 	Vec2i EndPath[32];
 };
 

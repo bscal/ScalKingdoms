@@ -1,9 +1,4 @@
-#include "Game.h"
-
 #include "GameState.h"
-#include "Components.h"
-#include "Pathfinder.h"
-#include "Regions.h"
 
 ecs_entity_t SpawnCreature(GameState* gamestate, u16 type, Vec2i tile)
 {
@@ -56,14 +51,12 @@ void MoveEntity(GameState* state, ecs_entity_t id, Vec2i tile)
 		CMove* move = ecs_get_mut(state->World, id, CMove);
 		if (move)
 		{
+			Timer();
 			move->Start = transform->Pos;
 			move->Target = {};
 			move->Progress = 0;
 			move->IsCompleted = false;
 			PathfindRegion(transform->TilePos, tile, &move->MoveData);
-			move->MoveData.PathCapacity = move->MoveData.PathLength;
-			move->MoveData.StartPathCapacity = move->MoveData.StartPathLength;
-			move->MoveData.EndPathCapacity = move->MoveData.EndPathLength;
 			ecs_modified(state->World, id, CMove);
 		}
 	}
