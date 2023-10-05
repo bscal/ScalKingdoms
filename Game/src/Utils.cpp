@@ -87,13 +87,3 @@ Str2UInt(u32* out, const char* s, int base)
 	*out = l;
 	return STR2INT_SUCCESS;
 }
-
-Color IntToColor(int colorInt)
-{
-	Color c;
-	c.r = (i8)(colorInt >> 24);
-	c.g = (i8)(colorInt >> 16);
-	c.b = (i8)(colorInt >> 8);
-	c.a = (i8)colorInt;
-	return c;
-}

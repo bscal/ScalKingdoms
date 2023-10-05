@@ -125,7 +125,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 		}
 		else
 		{
-			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
+			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
 			{
 				if (pathfinder->Open->Count >= MAX_SEARCH_TILES)
 				{
@@ -133,7 +133,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 					return nullptr;
 				}
 
-				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
+				Vec2i next = curNode->Pos + Vec2i_NEIGHTBORS[i];
 
 				//u64 nextHash = HashTile(next);
 				if (HashSetTContains(&pathfinder->ClosedSet, &next))
@@ -191,9 +191,9 @@ void FloodFill(Vec2i pos, Vec2i xy, Vec2i wh, FloodFillCallback callback, void* 
 		size_t idx = curPos.x + curPos.y * CHUNK_SIZE;
 		visitedTiles.Set(idx);
 		
-		for (int i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+		for (int i = 0; i < ArrayLength(Vec2i_CARDINALS); ++i)
 		{
-			Vec2i neighbor = curPos + Vec2i_NEIGHTBORS[i];
+			Vec2i neighbor = curPos + Vec2i_CARDINALS[i];
 		}
 
 	}

@@ -128,7 +128,7 @@ uint32_t HashMapStrFind(HashMapStr* map, const String key)
 	if (!map->Buckets || map->Count == 0)
 		return HASHMAPSTR_NOT_FOUND;
 
-	size_t length = string_length(key);
+	size_t length = StringLength(key);
 	u32 hash = FNVHash32(key, length);
 	u32 idx = hash & (map->Capacity - 1);
 	u32 probeLength = 0;
@@ -137,7 +137,7 @@ uint32_t HashMapStrFind(HashMapStr* map, const String key)
 		HashStrSlot slot = map->Buckets[idx];
 		if (!slot.IsUsed || probeLength > slot.ProbeLength)
 			return HASHMAPSTR_NOT_FOUND;
-		else if (slot.Hash == hash && string_are_equal(key, slot.String))
+		else if (slot.Hash == hash && StringAreEqual(key, slot.String))
 			return idx;
 		else
 		{
@@ -170,7 +170,7 @@ bool HashMapStrRemove(HashMapStr* map, const String key)
 	if (!map->Buckets || map->Count == 0)
 		return false;
 
-	size_t length = string_length(key);
+	size_t length = StringLength(key);
 	u32 hash = FNVHash32(key, length);
 	u32 idx = hash & (map->Capacity - 1);
 	while (true)
@@ -180,7 +180,7 @@ bool HashMapStrRemove(HashMapStr* map, const String key)
 		{
 			return false;
 		}
-		else if (slot.Hash == hash && string_are_equal(key, slot.String))
+		else if (slot.Hash == hash && StringAreEqual(key, slot.String))
 		{
 			while (true) // Move any entries after index closer to their ideal probe length.
 			{
@@ -236,7 +236,7 @@ HashMapStrSet_Internal(HashMapStr* map, const String key, const void* value)
 	swapSlot.String = key;
 	swapSlot.IsUsed = true;
 
-	size_t length = string_length(key);
+	size_t length = StringLength(key);
 	u32 hash = FNVHash32(key, length);
 	swapSlot.Hash = hash;
 	u32 idx = hash & (map->Capacity - 1);;
@@ -276,7 +276,7 @@ HashMapStrSet_Internal(HashMapStr* map, const String key, const void* value)
 		}
 		else
 		{
-			if (slot->Hash == swapSlot.Hash && string_are_equal(swapSlot.String, slot->String))
+			if (slot->Hash == swapSlot.Hash && StringAreEqual(swapSlot.String, slot->String))
 				return { idx, true };
 
 			if (probeLength > slot->ProbeLength)

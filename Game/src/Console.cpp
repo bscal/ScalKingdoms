@@ -6,10 +6,10 @@
 #include "Structures/Queue.h"
 #include "Structures/HashMapStr.h"
 
-constexpr internal_var int CONSOLE_ENTRY_LENGTH = 60;
-constexpr internal_var int CONSOLE_MAX_ENTRIES = 128;
-constexpr internal_var int CONSOLE_MAX_SUGGESTIONS = 4;
-constexpr internal_var int CONSOLE_NUM_SUGGESTIONS_ARGS = 6;
+constant_var int CONSOLE_ENTRY_LENGTH = 60;
+constant_var int CONSOLE_MAX_ENTRIES = 128;
+constant_var int CONSOLE_MAX_SUGGESTIONS = 4;
+constant_var int CONSOLE_NUM_SUGGESTIONS_ARGS = 6;
 
 #define ENABLE_CONSOLE_LOGGING 1
 
@@ -48,19 +48,19 @@ void ConsoleInit()
 
 	for (size_t i = 0; i < CONSOLE_MAX_ENTRIES; ++i)
 	{
-		Console.Entries.Memory[i] = string_make_reserve(SAllocatorArena(&GetGameState()->GameArena), CONSOLE_ENTRY_LENGTH);
+		Console.Entries.Memory[i] = StringMakeReserve(SAllocatorArena(&GetGameState()->GameArena), CONSOLE_ENTRY_LENGTH);
 	}
 
 	// Commands
 	Command cmd = {};
-	cmd.ArgumentString = string_make(SAllocatorArena(&GetGameState()->GameArena), "Testing args");
+	cmd.ArgumentString = StringMake(SAllocatorArena(&GetGameState()->GameArena), "Testing args");
 	cmd.OnCommand = [](const String cmd, const char** arg, int argCount)
 	{
 		SInfoLog("Command executed! %s, %d", cmd, argCount);
 
 		return COMMAND_SUCCESS;
 	};
-	ConsoleRegisterCommand(string_make(SAllocatorArena(&GetGameState()->GameArena), "TestCommand"), &cmd);
+	ConsoleRegisterCommand(StringMake(SAllocatorArena(&GetGameState()->GameArena), "TestCommand"), &cmd);
 }
 
 void ConsoleRegisterCommand(String cmdName, Command* cmd)
@@ -135,7 +135,7 @@ void ConsoleDraw(GameClient* client, GUIState* guiState)
 			if (IsKeyPressed(KEY_TAB) && Console.NumOfSuggestions > 0)
 			{
 				memset(Console.EntryString, 0, CONSOLE_ENTRY_LENGTH);
-				Console.EntryLength = (int)string_length(*Console.Suggestions[0]);
+				Console.EntryLength = (int)StringLength(*Console.Suggestions[0]);
 				memcpy(Console.EntryString, *Console.Suggestions[0], Console.EntryLength);
 			}
 
@@ -178,7 +178,7 @@ void ConsoleDraw(GameClient* client, GUIState* guiState)
 				&Console.EntryLength,
 				CONSOLE_ENTRY_LENGTH,
 				nk_filter_default);
-
+			
 			SuggestionPanelSize = 0;
 			if (Console.EntryLength > 0)
 			{
@@ -224,7 +224,7 @@ ConsoleFillSuggestions()
 	else
 		idx = (int)(firstSpace - (char*)Console.EntryString);
 
-	String tempString = string_make_length(SAllocatorFrame(), Console.EntryString, idx);
+	String tempString = StringMakeLength(SAllocatorFrame(), Console.EntryString, idx);
 
 	for (u32 i = 0; i < Console.Commands.Capacity; ++i)
 	{
@@ -260,7 +260,7 @@ ConsoleHandleCommand()
 	else
 		idx = (int)(firstSpace - (char*)Console.EntryString);
 
-	String tempString = string_make_length(SAllocatorFrame(), Console.EntryString, idx);
+	String tempString = StringMakeLength(SAllocatorFrame(), Console.EntryString, idx);
 	Command* cmd = (Command*)HashMapStrGet(&Console.Commands, tempString);
 	if (cmd)
 	{

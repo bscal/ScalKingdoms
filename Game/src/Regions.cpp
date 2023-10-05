@@ -112,7 +112,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 				int sideIdx = REGION_SIDE_POINTS[i];
 				Vec2i offset = { sideIdx, 0 };
 				Vec2i tilePos = pos + offset;
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
+				Vec2i neighborTilePos = tilePos + Vec2i_CARDINALS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
@@ -134,7 +134,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 				int sideIdx = REGION_SIDE_POINTS[i];
 				Vec2i offset = { REGION_SIZE - 1, sideIdx };
 				Vec2i tilePos = pos + offset;
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
+				Vec2i neighborTilePos = tilePos + Vec2i_CARDINALS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
@@ -156,7 +156,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 				int sideIdx = REGION_SIDE_POINTS[i];
 				Vec2i offset = { sideIdx, REGION_SIZE - 1 };
 				Vec2i tilePos = pos + offset;
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
+				Vec2i neighborTilePos = tilePos + Vec2i_CARDINALS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
@@ -178,7 +178,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 				int sideIdx = REGION_SIDE_POINTS[i];
 				Vec2i offset = { 0, sideIdx };
 				Vec2i tilePos = pos + offset;
-				Vec2i neighborTilePos = tilePos + Vec2i_NEIGHTBORS[SIDE];
+				Vec2i neighborTilePos = tilePos + Vec2i_CARDINALS[SIDE];
 
 				Tile* tile = GetTile(tilemap, tilePos);
 				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
@@ -300,9 +300,9 @@ Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end, void(
 		}
 		else
 		{
-			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS_CORNERS); ++i)
+			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
 			{
-				Vec2i nextTile = curNode->Pos + Vec2i_NEIGHTBORS_CORNERS[i];
+				Vec2i nextTile = curNode->Pos + Vec2i_NEIGHTBORS[i];
 
 				if (HashSetTContains(&pathfinder->ClosedSet, &nextTile))
 					continue;
@@ -481,9 +481,9 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 		}
 		else
 		{
-			for (u8 neighborDirection = 0; neighborDirection < ArrayLength(Vec2i_NEIGHTBORS); ++neighborDirection)
+			for (u8 neighborDirection = 0; neighborDirection < ArrayLength(Vec2i_CARDINALS); ++neighborDirection)
 			{
-				Vec2i regionNextCoord = curNode->Pos + Vec2i_NEIGHTBORS[neighborDirection];
+				Vec2i regionNextCoord = curNode->Pos + Vec2i_CARDINALS[neighborDirection];
 
 				if (curRegion->Sides[neighborDirection] == Vec2i_NULL)
 					continue;

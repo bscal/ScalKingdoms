@@ -239,9 +239,9 @@ ChunkTick(GameState* gameState, Chunk* chunk)
 		bool updateNeighbors = chunk->UpdateState == ChunkUpdateState::SelfAndNeighbors;
 		if (bakeNeighbors || updateNeighbors)
 		{
-			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+			for (size_t i = 0; i < ArrayLength(Vec2i_CARDINALS); ++i)
 			{
-				Vec2i neighbor = chunk->Coord + Vec2i_NEIGHTBORS[i];
+				Vec2i neighbor = chunk->Coord + Vec2i_CARDINALS[i];
 				Chunk* neighborChunk = GetChunkByCoordNoCache(&gameState->TileMap, neighbor);
 				if (!neighborChunk)
 					continue;

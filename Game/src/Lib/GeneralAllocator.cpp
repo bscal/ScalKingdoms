@@ -10,7 +10,7 @@ constant_var size_t GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE] =
 	512, 1024, 2048, 4096, 8192, 16384
 };
 constant_var size_t GENERALPURPOSE_ALIGNMENT = GENERALPURPOSE_BUCKET_SIZES[0];
-constant_var size_t MEM_SPLIT_THRESHOLD = GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1];
+constant_var size_t MEM_SPLIT_THRESHOLD = GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1] << 1;
 
 static_assert(AlignPowTwo64Ceil(AlignSize(1200, GENERALPURPOSE_BUCKET_SIZES[0])) == 2048);
 static_assert(ArrayLength(GENERALPURPOSE_BUCKET_SIZES) == GENERALPURPOSE_BUCKET_SIZE, "GENERALPURPOSE_BUCKET_SIZES count is not FREELIST_BUCKET_SIZE");
@@ -76,8 +76,9 @@ FindMemNode(AllocList* list, size_t bytes)
 		if (node->size < bytes)
 			continue;
 
-		// Close in size - reduce fragmentation by not splitting
-		else if (node->size <= bytes + MEM_SPLIT_THRESHOLD) 
+		// Try to reduce fragmentation. But can waste memory if allocating slightly above the largest
+		// freelist.
+		if (node->size <= bytes + MEM_SPLIT_THRESHOLD) 
 			return RemoveMemNode(list, node);
 		else 
 			return SplitMemNode(node, bytes);
@@ -420,7 +421,7 @@ size_t GeneralPurposeGetFreeMemory(GeneralPurposeAllocator* freelist)
 	return total_remaining;
 }
 
-void GeneralPurposeReset(GeneralPurposeAllocator* freelist)
+void GeneralPurposeClearAll(GeneralPurposeAllocator* freelist)
 {
 	SAssert(freelist);
 

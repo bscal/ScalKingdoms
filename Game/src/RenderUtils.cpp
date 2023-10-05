@@ -465,7 +465,7 @@ const char*
 NewRichTextColor(int color)
 {
 	char* buffer = {};
-	string_make_length(SAllocatorFrame(), buffer, RICH_TEXT_MAX_LENGTH + 2);
+	StringMakeLength(SAllocatorFrame(), buffer, RICH_TEXT_MAX_LENGTH + 2);
 	SAssert(buffer);
 	SZero(buffer, RICH_TEXT_MAX_LENGTH + 2);
 

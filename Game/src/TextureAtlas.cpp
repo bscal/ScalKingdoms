@@ -79,7 +79,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 
 		line += 7;
 
-		String str = string_make(SAllocatorArena(&GetGameState()->GameArena), name);
+		String str = StringMake(SAllocatorArena(&GetGameState()->GameArena), name);
 		HashMapStrSet(&atlas.NameToIndex, str, &entryCounter);
 
 		int err;
@@ -153,7 +153,7 @@ SpriteAtlasGetResult SpriteAtlasGet(SpriteAtlas* atlas, const char* name)
 {
 	SpriteAtlasGetResult result = {};
 
-	String nameString = string_make(SAllocatorFrame(), name);
+	String nameString = StringMake(SAllocatorFrame(), name);
 	u16* idx = (u16*)HashMapStrGet(&atlas->NameToIndex, nameString);
 	if (idx)
 	{

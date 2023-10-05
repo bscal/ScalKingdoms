@@ -35,6 +35,6 @@ void GeneralPurposeCreate(GeneralPurposeAllocator* allocator, void* buffer, size
 void* GeneralPurposeAlloc(GeneralPurposeAllocator* allocator, size_t bytes);
 void* GeneralPurposeRealloc(GeneralPurposeAllocator* _RESTRICT_ allocator, void* _RESTRICT_ ptr, size_t bytes);
 void GeneralPurposeFree(GeneralPurposeAllocator* _RESTRICT_ allocator, void* _RESTRICT_ ptr);
-void GeneralPurposeReset(GeneralPurposeAllocator* allocator);
+void GeneralPurposeClearAll(GeneralPurposeAllocator* allocator);
 
 size_t GeneralPurposeGetFreeMemory(GeneralPurposeAllocator* allocator);

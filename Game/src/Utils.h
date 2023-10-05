@@ -145,7 +145,27 @@ STR2INT Str2Int(int* out, const char* s, int base);
 
 STR2INT Str2UInt(u32* out, const char* s, int base);
 
-Color IntToColor(int color);
+inline Color 
+IntToColor(int colorInt)
+{
+	Color c;
+	c.r = (i8)(colorInt >> 24);
+	c.g = (i8)(colorInt >> 16);
+	c.b = (i8)(colorInt >> 8);
+	c.a = (i8)colorInt;
+	return c;
+}
+
+inline int
+ColorToInt(Color c)
+{
+	int res = 0;
+	res |= (c.r << 24);
+	res |= (c.g << 16);
+	res |= (c.b << 8);
+	res |= (c.a << 0);
+	return res;
+}
 
 //
 // Vector2 operator overloads
@@ -169,10 +189,6 @@ static inline Vector2 operator/(Vector2 left, Vector2 right)
 {
 	return Vector2Divide(left, right);
 }
-
-#define Min(v0, v1) ((v0 < v1) ? v0 : v1)
-#define Max(v0, v1) ((v0 > v1) ? v0 : v1)
-#define Clamp(v, min, max) Min(max, Max(min, v))
 
 struct Timer
 {

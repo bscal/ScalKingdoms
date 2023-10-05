@@ -87,8 +87,6 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 #define API extern "C"
 #endif
 
-#define Cast(type) (type)
-
 #define Stringify(x) #x
 #define Expand(x) Stringify(x)
 
@@ -110,6 +108,10 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 #define BitMask(state, mask) (FlagTrue(state, mask))
 
 #define Swap(x, y, T) do { T temp = (x); (x) = (y); (y) = temp; } while(0)
+
+#define Min(v0, v1) ((v0 < v1) ? v0 : v1)
+#define Max(v0, v1) ((v0 > v1) ? v0 : v1)
+#define SClamp(v, min, max) Min(max, Max(min, v))
 
 // Double linked list : First, Last, Node
 #define DLPushBackT(f, l, n, Next, Prev) (((f) == 0 \
