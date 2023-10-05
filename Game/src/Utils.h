@@ -173,3 +173,37 @@ static inline Vector2 operator/(Vector2 left, Vector2 right)
 #define Min(v0, v1) ((v0 < v1) ? v0 : v1)
 #define Max(v0, v1) ((v0 > v1) ? v0 : v1)
 #define Clamp(v, min, max) Min(max, Max(min, v))
+
+struct Timer
+{
+	u64 Start;
+	u64 End;
+	double StartSecs;
+	const char* Name;
+
+	Timer()
+	{
+		End = 0;
+		Name = nullptr;
+		StartSecs = GetTime();
+		Start = zpl_rdtsc();
+	}
+
+	Timer(const char* name)
+	{
+		Name = name;
+		End = 0;
+		StartSecs = GetTime();
+		Start = zpl_rdtsc();
+	}
+
+	~Timer()
+	{
+		End = zpl_rdtsc() - Start;
+		double EndSeconds = GetTime() - StartSecs;
+		if (Name)
+			SInfoLog("[ Timer ] Timer %s took %llu cycles, %f ns", Name, End, EndSeconds * 1000 * 1000);
+		else
+			SInfoLog("[ Timer ] Timer took %llu cycles, %f ns", End, EndSeconds * 1000 * 1000);
+	}
+};

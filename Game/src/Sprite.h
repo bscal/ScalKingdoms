@@ -2,12 +2,14 @@
 
 #include "Core.h"
 
+#include "Structures/StaticArray.h"
+
 struct SpriteRect
 {
-    uint16_t x;
-    uint16_t y;
-    uint16_t w;
-    uint16_t h;
+    u16 x;
+    u16 y;
+    u16 w;
+    u16 h;
 };
 
 struct Sprite
@@ -21,14 +23,52 @@ struct Sprite
     }
 };
 
-void SpritesInitialize();
+struct SpriteMgr
+{
+	Buffer<Sprite, 256> Sprites;
+};
 
-uint16_t SpriteRegister(SpriteRect rect, Vector2 origin);
+global_var SpriteMgr SpriteManager;
 
-Sprite* SpriteGet(uint16_t id);
+_FORCE_INLINE_ Sprite* 
+SpriteGet(u16 id)
+{
+	if (id >= SpriteManager.Sprites.Capacity)
+	{
+		return SpriteManager.Sprites.Data;
+	}
+	else
+	{
+		return SpriteManager.Sprites.Data + id;
+	}
+}
 
-#define SpriteDef inline u16
+inline u16 
+SpriteRegister(SpriteRect rect, Vector2 origin)
+{
+	SAssert(rect.w > 0 && rect.h > 0);
+
+	u16 id = (u16)SpriteManager.Sprites.Count;
+
+	if (id >= SpriteManager.Sprites.Capacity)
+	{
+		SError("Registering to many sprites!");
+		return 0;
+	}
+
+	Sprite sprite;
+	sprite.Rect = rect;
+	sprite.Origin = origin;
+
+	SpriteManager.Sprites.Data[id] = sprite;
+	++SpriteManager.Sprites.Count;
+
+	return id;
+}
+
+#define SpriteDef(name) inline u16 name
+
 namespace Sprites
 {
-    SpriteDef PLAYER;
+    SpriteDef(PLAYER) = SpriteRegister({ 0, 0, 16, 16 }, { 8, 8 });
 }

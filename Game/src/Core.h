@@ -114,33 +114,3 @@ inline int ScalTestPasses;
 
 #define TimerStart(name) Timer(name)
 #define TimerStartFunc() TimerStart(__FUNCTION__)
-
-struct Timer
-{
-	u64 Start;
-	u64 End;
-	const char* Name;
-
-	Timer()
-	{
-		End = 0;
-		Start = zpl_rdtsc();
-		Name = nullptr;
-	}
-
-	Timer(const char* name)
-	{
-		End = 0;
-		Start = zpl_rdtsc();
-		Name = name;
-	}
-
-	~Timer()
-	{
-		End = zpl_rdtsc() - Start;
-		if (Name)
-			SDebugLog("[ Timer ] Timer %s took %llu cycles", Name, End);
-		else
-			SDebugLog("[ Timer ] Timer took %llu cycles", End);
-	}
-};

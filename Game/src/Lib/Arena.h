@@ -47,8 +47,8 @@ inline void* ArenaPushZero(Arena* arena, size_t size);
 
 #define ArenaPushArray(arena, type, count) (type*)ArenaPush((arena), sizeof(type)*(count))
 #define ArenaPushArrayZero(arena, type, count) (type*)ArenaPushZero((arena), sizeof(type)*(count))
-#define ArenaPushStruct(arena, type) PushArray((arena), (type), 1)
-#define ArenaPushStructZero(arena, type) PushArrayZero((arena), (type), 1)
+#define ArenaPushStruct(arena, type) ArenaPushArray(arena, type, 1)
+#define ArenaPushStructZero(arena, type) ArenaPushArrayZero(arena, type, 1)
 
 inline void ArenaPop(Arena* arena, size_t size);
 

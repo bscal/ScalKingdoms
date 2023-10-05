@@ -100,8 +100,6 @@ GameInitialize()
 
 	HashMapTInitialize(&State.EntityMap, 4096, SAllocatorArena(&GetGameState()->GameArena));
 
-	SpritesInitialize();
-
 	TileMgrInitialize(&State.AssetMgr.TileSpriteSheet);
 
 	TileMapInit(&State, &State.TileMap, { -8, -8, 8, 8 });
@@ -332,7 +330,11 @@ void InputUpdate()
 		Vec2i tile = ScreenToTile();
 		SInfoLog("Tile: %s", FMT_VEC2I(tile));
 
-		SList<Vec2i> next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
+		SList<Vec2i> next;
+		{
+			Timer();
+			next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
+		}
 
 		if (next.IsAllocated())
 		{

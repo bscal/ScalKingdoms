@@ -2,34 +2,19 @@
 
 #include "Core.h"
 
-#include "Structures/HashMap.h"
-#include "Structures/HashSet.h"
 #include "Structures/BHeap.h"
-#include "Structures/ArrayList.h"
 #include "Structures/HashMapT.h"
 #include "Structures/HashSetT.h"
 
 struct TileMap;
 struct Chunk;
 struct CMove;
-struct Portal;
-struct Node;
-struct Pathfinder;
 
-constexpr internal_var int DIVISIONS = 4;
-constexpr internal_var int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
+constant_var int DIVISIONS = 4;
+constant_var int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
 
-constexpr internal_var u8 REGION_SIDE_POINTS[REGION_SIZE] = { 3, 4, 2, 5, 1, 6, 0, 7 };
-
-struct Region;
-
-struct FlowTile
-{
-	u8 Dir : 4;
-	u8 Pathable : 1;
-	u8 LOS : 1;
-};
-static_assert(sizeof(FlowTile) == 1);
+// Order of tiles we check on side to get one most near middle of a region side
+constant_var u8 REGION_SIDE_POINTS[REGION_SIZE] = { 3, 4, 2, 5, 1, 6, 0, 7 };
 
 enum class RegionDirection : u8
 {
@@ -48,10 +33,10 @@ enum class RegionDirection : u8
 
 	MAX
 };
-constexpr int REGION_DIR_MAX = (int)RegionDirection::MAX;
-constexpr u8 REGION_DIR_START[REGION_DIR_MAX] = { 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3 };
-constexpr u8 REGION_DIR_END[REGION_DIR_MAX] = { 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0 };
-constexpr u8 DIRECTION_2_REGION_DIR[4][4] =
+constant_var int REGION_DIR_MAX = (int)RegionDirection::MAX;
+constant_var u8 REGION_DIR_START[REGION_DIR_MAX] = { 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3 };
+constant_var u8 REGION_DIR_END[REGION_DIR_MAX] = { 3, 2, 1, 0, 3, 2, 1, 0, 3, 2, 1, 0 };
+constant_var u8 DIRECTION_2_REGION_DIR[4][4] =
 {
 	{ 0, 2, 1, 0 },
 	{ 3, 0, 5, 4 },
@@ -111,6 +96,7 @@ void RegionLoad(TileMap* tilemap, Chunk* chunk);
 void RegionUnload(Chunk* chunk);
 
 void PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData);
+
 void DrawRegions();
 
 Region* GetRegion(Vec2i tilePos);

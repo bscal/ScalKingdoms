@@ -5,7 +5,7 @@
 #include "Regions.h"
 #include "Tile.h"
 #include "Lib/Jobs.h"
-#include "Structures/SList.h"
+#include "Structures/StaticArray.h"
 #include "Structures/BitArray.h"
 #include "Structures/HashMapT.h"
 
@@ -45,24 +45,27 @@ struct ChunkLoaderData
 	Vec2i Key;
 };
 
+constant_var int MAX_CHUNKS_TO_PROCESS = 8;
+constant_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS + 1;
+
 struct ChunkLoaderState
 {
 	TileMap* Tilemap;
 	Vec2 TargetPosition;
-	SList<Chunk*> ChunkPool;
-	SList<ChunkLoaderData> ChunksToAdd;
-	SList<ChunkLoaderData> ChunkToRemove;
+	Buffer<ChunkLoaderData, MAX_CHUNKS_TO_PROCESS> ChunksToAdd;
+	Buffer<ChunkLoaderData, MAX_CHUNKS_TO_PROCESS> ChunksToRemove;
+	Buffer<Chunk*, VIEW_DISTANCE_TOTAL_CHUNKS> ChunkPool;
 	fnl_state Noise;
 };
 
 struct TileMap
 {
+	Rectangle Dimensions;
 	Vec2i LastChunkCoord;
 	Chunk* LastChunk;
 	HashMapT<Vec2i, Chunk*> ChunkMap;
-	Rectangle Dimensions;
-	JobHandle ChunkLoaderJobHandle;
 	ChunkLoaderState ChunkLoader;
+	JobHandle ChunkLoaderJobHandle;
 };
 
 void TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions);

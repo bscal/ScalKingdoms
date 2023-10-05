@@ -1,5 +1,6 @@
 #include "TileMap.h"
 
+#include "Components.h"
 #include "Memory.h"
 #include "GameState.h"
 #include "RenderUtils.h"
@@ -13,8 +14,6 @@
 // TODO
 #pragma warning(disable: 4505)
 
-constexpr internal_var int MAX_CHUNKS_TO_PROCESS = 12;
-
 internal void ChunkThreadFunc(JobArgs* args);
 
 // Internal thread safe chunk management functions
@@ -27,7 +26,7 @@ internal void ChunkTick(GameState* gameState, Chunk* chunk); // Every tick
 
 // Main thread chunk events
 internal void OnChunkLoad(GameState* gameState, Chunk* chunk);
-internal void OnChunkUnload(GameState* gameState, Chunk* chunk);
+internal void OnChunkUnload(GameState* gameState, TileMap* tilemap, Chunk* chunk);
 internal void OnChunkBake(GameState* gameState, Chunk* chunk); // When baked
 internal void OnChunkUpdate(GameState* gameState, Chunk* chunk); // When a chunk update is triggered.
 
@@ -46,12 +45,10 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	tilemap->LastChunkCoord = Vec2i{ INT32_MAX, INT32_MAX };
 	tilemap->Dimensions = dimensions;
 
-	constexpr int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS + 1;
+	//tilemap->ChunkLoader.ChunkPool.Reserve(SAllocatorArena(&GetGameState()->GameArena), VIEW_DISTANCE_TOTAL_CHUNKS);
+	//SAssert(tilemap->ChunkLoader.ChunkPool.IsAllocated());
 
-	tilemap->ChunkLoader.ChunkPool.Reserve(SAllocatorArena(&GetGameState()->GameArena), VIEW_DISTANCE_TOTAL_CHUNKS);
-	SAssert(tilemap->ChunkLoader.ChunkPool.IsAllocated());
-
-	for (int i = 0; i < VIEW_DISTANCE_TOTAL_CHUNKS; ++i)
+	for (int i = 0; i < tilemap->ChunkLoader.ChunkPool.Capacity; ++i)
 	{
 		Chunk* chunk = (Chunk*)SAlloc(SAllocatorArena(&GetGameState()->GameArena), sizeof(Chunk));
 		SAssert(chunk);
@@ -75,8 +72,8 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 	tilemap->ChunkLoader.Noise = fnlCreateState();
 	tilemap->ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
 
-	tilemap->ChunkLoader.ChunksToAdd.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
-	tilemap->ChunkLoader.ChunkToRemove.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
+	//tilemap->ChunkLoader.ChunksToAdd.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
+	//tilemap->ChunkLoader.ChunkToRemove.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
 
 	SInfoLog("Tilemap Initialized!");
 }
@@ -91,21 +88,15 @@ TileMapFree(TileMap* tilemap)
 		if (tilemap->ChunkMap.Buckets[i].IsUsed)
 		{
 			Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
-			OnChunkUnload(GetGameState(), chunk);
+			OnChunkUnload(GetGameState(), tilemap, chunk);
 			InternalChunkUnload(tilemap, chunk);
 		}
 	}
-	//HashMapTDestroy(&tilemap->ChunkMap);
 
-	for (u32 i = 0; i < tilemap->ChunkLoader.ChunkPool.Count; ++i)
+	for (int i = 0; i < tilemap->ChunkLoader.ChunkPool.Count; ++i)
 	{
-		UnloadRenderTexture(tilemap->ChunkLoader.ChunkPool.Memory[i]->RenderTexture);
-		//SFree(SAllocatorGeneral(), tilemap->ChunkLoader.ChunkPool.Memory[i]);
+		UnloadRenderTexture(tilemap->ChunkLoader.ChunkPool.Data[i]->RenderTexture);
 	}
-
-	//tilemap->ChunkLoader.ChunkPool.Free();
-	//tilemap->ChunkLoader.ChunksToAdd.Free();
-	//tilemap->ChunkLoader.ChunkToRemove.Free();
 }
 
 void 
@@ -115,25 +106,26 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 	SAssert(tilemap);
 
 	ChunkLoaderState* chunkLoader = &tilemap->ChunkLoader;
-	chunkLoader->TargetPosition = gameState->Camera.target;
+	const CTransform* playerTransform = ecs_get(State.World, Client.Player, CTransform);
+	chunkLoader->TargetPosition = playerTransform->Pos;
 
 	if (!JobHandleIsBusy(&tilemap->ChunkLoaderJobHandle))
 	{
 		// Sync chunkloader
 
 		// Remove unused chunks from map
-		for (u32 i = 0; i < chunkLoader->ChunkToRemove.Count; ++i)
+		for (int i = 0; i < chunkLoader->ChunksToRemove.Count; ++i)
 		{
-			OnChunkUnload(gameState, chunkLoader->ChunkToRemove.Memory[i].ChunkPtr);
-			HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunkToRemove.Memory[i].Key);
+			OnChunkUnload(gameState, tilemap, chunkLoader->ChunksToRemove.Data[i].ChunkPtr);
+			HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunksToRemove.Data[i].Key);
 		}
-		chunkLoader->ChunkToRemove.Clear();
+		chunkLoader->ChunksToRemove.Clear();
 
 		// Add unused chunks from map
-		for (u32 i = 0; i < chunkLoader->ChunksToAdd.Count; ++i)
+		for (int i = 0; i < chunkLoader->ChunksToAdd.Count; ++i)
 		{
-			HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunksToAdd.Memory[i].Key, &chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
-			OnChunkLoad(gameState, chunkLoader->ChunksToAdd.Memory[i].ChunkPtr);
+			HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunksToAdd.Data[i].Key, &chunkLoader->ChunksToAdd.Data[i].ChunkPtr);
+			OnChunkLoad(gameState, chunkLoader->ChunksToAdd.Data[i].ChunkPtr);
 		}
 		chunkLoader->ChunksToAdd.Clear();
 
@@ -200,9 +192,12 @@ InternalChunkLoad(TileMap* tilemap, Vec2i coord)
 	if (tilemap->ChunkLoader.ChunkPool.Count <= 0)
 		return nullptr;
 
-	Chunk* chunk;
-	tilemap->ChunkLoader.ChunkPool.Pop(&chunk);
-	SAssert(chunk);
+	Chunk** chunkPtr = tilemap->ChunkLoader.ChunkPool.Last();
+	SAssert(chunkPtr);
+	Chunk* chunk = *chunkPtr;
+	SAssert(*chunkPtr);
+
+	tilemap->ChunkLoader.ChunkPool.Pop();
 
 	chunk->Coord = coord;
 	chunk->BoundingBox.x = (float)coord.x * CHUNK_SIZE_PIXELS;
@@ -270,8 +265,11 @@ OnChunkLoad(GameState* gameState, Chunk* chunk)
 }
 
 internal void 
-OnChunkUnload(GameState* gameState, Chunk* chunk)
+OnChunkUnload(GameState* gameState, TileMap* tilemap, Chunk* chunk)
 {
+	if (tilemap->LastChunkCoord == chunk->Coord)
+		tilemap->LastChunkCoord = Vec2i_NULL;
+	
 	RegionUnload(chunk);
 }
 
@@ -530,8 +528,6 @@ ChunkThreadFunc(JobArgs* args)
 	TileMap* tilemap = chunkLoader->Tilemap;
 	SAssert(tilemap);
 
-	SAssert(chunkLoader->ChunksToAdd.IsAllocated());
-	SAssert(chunkLoader->ChunkToRemove.IsAllocated());
 	if (!tilemap->ChunkMap.Buckets)
 	{
 		SAssertMsg(false, "Chunk thread, ChunkMap, is NULL");
@@ -539,29 +535,6 @@ ChunkThreadFunc(JobArgs* args)
 	}
 
 	Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
-
-	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
-	{
-		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
-			continue;
-
-		if (chunkLoader->ChunkToRemove.Count >= MAX_CHUNKS_TO_PROCESS)
-			break;
-
-		Vec2i key = tilemap->ChunkMap.Buckets[i].Key;
-		Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
-		float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
-		if (distance > VIEW_DISTANCE_SQR)
-		{
-			InternalChunkUnload(tilemap, chunk);
-
-			ChunkLoaderData data;
-			data.ChunkPtr = chunk;
-			data.Key = key;
-			chunkLoader->ChunkToRemove.Push(&data);
-		}
-	}
-
 	Vec2 chunkPos = position;
 	chunkPos.x *= INVERSE_CHUNK_SIZE;
 	chunkPos.y *= INVERSE_CHUNK_SIZE;
@@ -573,7 +546,7 @@ ChunkThreadFunc(JobArgs* args)
 	{
 		for (int x = start.x; x < end.x; ++x)
 		{
-			if (chunkLoader->ChunksToAdd.Count >= MAX_CHUNKS_TO_PROCESS)
+			if (chunkLoader->ChunksToAdd.Count >= MAX_CHUNKS_TO_PROCESS || chunkLoader->ChunkPool.Count == 0)
 				break;
 
 			Vec2i coord = { x, y };
@@ -591,13 +564,35 @@ ChunkThreadFunc(JobArgs* args)
 					data.Key = coord;
 
 					if (!data.ChunkPtr)
-						continue;
+						break;
 
 					chunkLoader->ChunksToAdd.Push(&data);
 				}
-
 			}
 		}
 	}
+
+	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
+	{
+		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
+			continue;
+
+		if (chunkLoader->ChunksToRemove.Count >= MAX_CHUNKS_TO_PROCESS)
+			break;
+
+		Vec2i key = tilemap->ChunkMap.Buckets[i].Key;
+		Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
+		float distance = Vector2DistanceSqr(chunk->CenterCoord, position);
+		if (distance > VIEW_DISTANCE_SQR)
+		{
+			InternalChunkUnload(tilemap, chunk);
+
+			ChunkLoaderData data;
+			data.ChunkPtr = chunk;
+			data.Key = key;
+			chunkLoader->ChunksToRemove.Push(&data);
+		}
+	}
+
 }
 

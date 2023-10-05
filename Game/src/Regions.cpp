@@ -1,21 +1,24 @@
 #include "Regions.h"
 
 #include "GameState.h"
-#include "Pathfinder.h"
 #include "Components.h"
+#include "Pathfinder.h"
 #include "TileMap.h"
 #include "Tile.h"
 
-#include "Structures/ArrayList.h"
-
-constant_var int MAX_REGION_SEARCH = 128;
-constant_var int MAX_LOCAL_SEARCH = 256;
-
 constant_var u8 INVERSE[] = { 2, 3, 0, 1 };
 
-#define AllocNode(T) ((T*)SAlloc(SAllocatorFrame(), sizeof(T)));
-
 internal_var HashMapT<Vec2i, Region> RegionMap;
+
+internal void
+Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end,
+		 void(*callback)(Node*, void*), void* stack);
+
+Region*
+GetRegion(Vec2i tilePos)
+{
+	return HashMapTGet(&RegionMap, &tilePos);
+}
 
 internal _FORCE_INLINE_ Vec2i
 TileCoordToRegionCoord(Vec2i tile)
@@ -43,7 +46,7 @@ internal int
 ManhattanDistance(Vec2i v0, Vec2i v1)
 {
 	constexpr int MOVE_COST = 10;
-	constexpr int DIAGONAL_COST = 29;
+	constexpr int DIAGONAL_COST = 14;
 	int x = abs(v0.x - v1.x);
 	int y = abs(v0.y - v1.y);
 	int res = MOVE_COST * (x + y) + (DIAGONAL_COST - 2 * MOVE_COST) * (int)fminf((float)x, (float)y);
@@ -64,48 +67,12 @@ CalculateDistance(Vec2i v0, Vec2i v1)
 void
 PathfinderRegionsInit(RegionPathfinder* pathfinder)
 {
-	HashMapTInitialize(&RegionMap, 1024, SAllocatorArena(&GetGameState()->GameArena));
-	pathfinder->Open = BHeapCreate(SAllocatorArena(&GetGameState()->GameArena), RegionCompareCost, 1024);
-	HashMapTInitialize(&pathfinder->OpenSet, 1024, SAllocatorArena(&GetGameState()->GameArena));
-	HashSetTInitialize(&pathfinder->ClosedSet, 1024, SAllocatorArena(&GetGameState()->GameArena));
+	constant_var size_t PATHFINDER_REGION_SIZE = 1024;
+	HashMapTInitialize(&RegionMap, PATHFINDER_REGION_SIZE, SAllocatorArena(&GetGameState()->GameArena));
+	pathfinder->Open = BHeapCreate(SAllocatorArena(&GetGameState()->GameArena), RegionCompareCost, PATHFINDER_REGION_SIZE);
+	HashMapTInitialize(&pathfinder->OpenSet, PATHFINDER_REGION_SIZE, SAllocatorArena(&GetGameState()->GameArena));
+	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_REGION_SIZE, SAllocatorArena(&GetGameState()->GameArena));
 }
-
-void
-RegionUnload(Chunk* chunk)
-{
-	SAssert(chunk);
-
-	Vec2i chunkWorld = ChunkToTile(chunk->Coord);
-	Vec2i startRegionCoord = TileCoordToRegionCoord(chunkWorld);
-	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
-	{
-		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
-		{
-			Vec2i pos = startRegionCoord + Vec2i{ xDiv, yDiv };
-			Region* region = GetRegion(pos);
-			SAssert(region);
-
-			//for (int i = 0; i < ArrayLength(region->Paths); ++i)
-			//{
-			//	if (region->Paths[i])
-			//	{
-			//		ArrayListFree(SAllocatorGeneral(), region->Paths[i]);
-			//	}
-			//}
-			HashMapTRemove(&RegionMap, &pos);
-		}
-	}
-}
-
-Region*
-GetRegion(Vec2i tilePos)
-{
-	return HashMapTGet(&RegionMap, &tilePos);
-}
-
-internal void
-Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end,
-		 void(*callback)(Node*, void*), void* stack);
 
 void
 RegionLoad(TileMap* tilemap, Chunk* chunk)
@@ -122,13 +89,14 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 		RegionUnload(chunk);
 	}
 
+	// Creates regions and checks each side if able to move to neighboring region
 	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
 	{
 		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
 		{
 			Region region = {};
 
-			Vec2i pos = chunkWorld + Vec2i{ xDiv* REGION_SIZE, yDiv* REGION_SIZE };
+			Vec2i pos = chunkWorld + Vec2i{ xDiv * REGION_SIZE, yDiv * REGION_SIZE };
 
 			region.Coord = startRegion + Vec2i{ xDiv, yDiv };
 
@@ -228,14 +196,15 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 			HashMapTReplace(&RegionMap, &region.Coord, &region);
 		}
 	}
+
+	// Generate paths for regions
 	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
 	{
 		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
 		{
 			Vec2i regionCoord = startRegion + Vec2i{ xDiv, yDiv };
 			Region* region = HashMapTGet(&RegionMap, &regionCoord);
-			if (!region)
-				continue;
+			SAssert(region);
 
 			for (int i = 0; i < REGION_DIR_MAX; ++i)
 			{
@@ -266,12 +235,29 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 							 u8 pathLength = pathStack->Region->PathLengths[pathStack->Index];
 							 pathStack->Region->PathPaths[pathStack->Index][pathLength] = node->Pos;
 							 ++pathStack->Region->PathLengths[pathStack->Index];
-							 //ArrayListPush(SAllocatorGeneral(), pathStack->Region->Paths[pathStack->Index], node->Pos);
 							 pathStack->Region->PathCost[pathStack->Index] += (short)node->GCost;
 						 }, &stack);
-
-				//ArrayListPushAtIndex(SAllocatorGeneral(), region->Paths[i], region->SideConnections[nodeTo], 0);
 			}
+		}
+	}
+}
+
+void
+RegionUnload(Chunk* chunk)
+{
+	SAssert(chunk);
+
+	Vec2i chunkWorld = ChunkToTile(chunk->Coord);
+	Vec2i startRegionCoord = TileCoordToRegionCoord(chunkWorld);
+	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
+	{
+		for (int xDiv = 0; xDiv < DIVISIONS; ++xDiv)
+		{
+			Vec2i pos = startRegionCoord + Vec2i{ xDiv, yDiv };
+			Region* region = GetRegion(pos);
+			SAssert(region);
+			bool removed = HashMapTRemove(&RegionMap, &pos);
+			SAssert(removed);
 		}
 	}
 }
@@ -283,7 +269,7 @@ Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end, void(
 	HashMapTClear(&pathfinder->OpenSet);
 	HashSetTClear(&pathfinder->ClosedSet);
 
-	Node* node = AllocNode(Node);
+	Node* node = ArenaPushStruct(&TransientState.TransientArena, Node);
 	node->Pos = start;
 	node->Parent = nullptr;
 	node->GCost = 0;
@@ -331,7 +317,7 @@ Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end, void(
 					int cost = curNode->GCost + CalculateDistance(curNode->Pos, nextTile) + tileCost;
 					if (!nextCost || cost < *nextCost)
 					{
-						Node* nextNode = AllocNode(Node);
+						Node* nextNode = ArenaPushStruct(&TransientState.TransientArena, Node);
 						nextNode->Pos = nextTile;
 						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
@@ -388,10 +374,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 		return;
 	}
 
-	Region* startingRegion = HashMapTGet(&RegionMap, &regionStart);
-	SAssert(startingRegion);
-
-	RegionNode* node = AllocNode(RegionNode);
+	RegionNode* node = ArenaPushStruct(&TransientState.TransientArena, RegionNode);
 	node->Pos = regionStart;
 	node->Parent = nullptr;
 	node->GCost = 0;
@@ -421,9 +404,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 				// Don't process start region, we start in it and will pathfind to start of
 				// next region.
 				if (prev->SideFrom == UINT8_MAX)
-				{
 					break;
-				}
 
 				RegionPath regionPath = {};
 				regionPath.RegionCoord = prev->Pos;
@@ -504,10 +485,10 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 			{
 				Vec2i regionNextCoord = curNode->Pos + Vec2i_NEIGHTBORS[neighborDirection];
 
-				if (HashSetTContains(&pathfinder->ClosedSet, &regionNextCoord))
+				if (curRegion->Sides[neighborDirection] == Vec2i_NULL)
 					continue;
 
-				if (curRegion->Sides[neighborDirection] == Vec2i_NULL)
+				if (HashSetTContains(&pathfinder->ClosedSet, &regionNextCoord))
 					continue;
 
 				Region* regionNext = HashMapTGet(&RegionMap, &regionNextCoord);
@@ -521,8 +502,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 					if (!nextNodePtr || cost < (*nextNodePtr)->GCost)
 					{
 						SAssert(!nextNodePtr || (nextNodePtr && *nextNodePtr));
-						RegionNode* nextNode = AllocNode(RegionNode);
-
+						RegionNode* nextNode = ArenaPushStruct(&TransientState.TransientArena, RegionNode);
 
 						nextNode->Pos = regionNextCoord;
 						nextNode->Parent = curNode;

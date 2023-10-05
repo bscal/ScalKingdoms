@@ -51,12 +51,14 @@ void MoveEntity(GameState* state, ecs_entity_t id, Vec2i tile)
 		CMove* move = ecs_get_mut(state->World, id, CMove);
 		if (move)
 		{
-			Timer();
 			move->Start = transform->Pos;
 			move->Target = {};
 			move->Progress = 0;
 			move->IsCompleted = false;
-			PathfindRegion(transform->TilePos, tile, &move->MoveData);
+			{
+				Timer();
+				PathfindRegion(transform->TilePos, tile, &move->MoveData);
+			}
 			ecs_modified(state->World, id, CMove);
 		}
 	}
