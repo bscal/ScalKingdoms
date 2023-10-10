@@ -106,7 +106,7 @@ size_t ArenaAlignment(Arena* arena, size_t alignment)
 //! Retrieve memory arena's remaining size.
 size_t ArenaSizeRemaining(Arena* arena, size_t alignment)
 {
-	size_t res = arena->Size - (arena->TotalAllocated);
+	size_t res = arena->Size - arena->TotalAllocated;
 	return res;
 }
 

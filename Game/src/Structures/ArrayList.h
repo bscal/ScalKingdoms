@@ -9,8 +9,8 @@
 
 struct ArrayListHeader
 {
-    int Capacity;
-    int Count;
+	int Capacity;
+	int Count;
 };
 
 #define ArrayListGetHeader(a) ((ArrayListHeader*)(a)-1)
@@ -18,6 +18,7 @@ struct ArrayListHeader
 #define ArrayListFree(_alloc, a) ((a) ? SFree(_alloc, ArrayListGetHeader(a)) : 0)
 #define ArrayListPush(_alloc, a, value) (ArrayListMaybeGrow_Internal(_alloc, a, 1), (a)[ArrayListGetHeader(a)->Count++] = (value))
 #define ArrayListCount(a) ((a) ? ArrayListGetHeader(a)->Count : 0)
+#define ArrayListCapacity(a) ((a) ? ArrayListGetHeader(a)->Capacity : 0)
 #define ArrayListAdd(_alloc, a, num) (ArrayListMaybeGrow_Internal(_alloc, a, num), ArrayListGetHeader(a)->Count += (num), &(a)[ArrayListGetHeader(a)->Count - (num)])
 #define ArrayListLast(a) ((a)[ArrayListCount(a) - 1])
 #define ArrayListPop(a, idx)  do { (a)[idx] = ArrayListLast(a);  --ArrayListGetHeader(a)->Count; } while (0)
@@ -26,43 +27,63 @@ struct ArrayListHeader
 #define ArrayListClear(a) ((a) ? (ArrayListGetHeader(a)->Count = 0) : 0)
 #define ArrayListReserve(_alloc, a, num) (ArrayListAdd(_alloc, a, num), ArrayListClear(a))
 #define ArrayListPushAtIndex(_alloc, a, v, _index) \
-    do {                                            \
-        if ((_index) >= ArrayListCount(a))          \
-            ArrayListPush(_alloc, a, v);            \
-        else                                        \
-            (a)[(_index)] = (v);                    \
-    } while (0)
+	do {                                            \
+		if ((_index) >= ArrayListCount(a))          \
+			ArrayListPush(_alloc, a, v);            \
+		else                                        \
+			(a)[(_index)] = (v);                    \
+	} while (0)
 
-#define ArrayListMaybeGrow_Internal(_alloc, a, n) \
-    (((!a) || (ArrayListGetHeader(a)->Count) + (n) >= (ArrayListGetHeader(a)->Capacity)) \
-        ? (*((void**)&(a)) = ArrayListGrow((_alloc), (a), (n), sizeof(*(a)), __FILE__, __FUNCTION__, __LINE__)) : 0)
+#define ArrayListShrink(_alloc, a, num) \
+	do { \
+    if (a && num < ArrayListCapacity(a) && num > ArrayListCount(a)) { \
+        a = ArrayListShrink_Internal(_alloc, a, num, __FILE__, __FUNCTION__, __LINE__); \
+	}     \
+	} while (0)
 
 inline void* 
+ArrayListShrink_Internal(SAllocator allocator, void* arr, int num, int itemsize, const char* file, const char* function, int line)
+{
+	SAssert(IsAllocatorValid(allocator));
+	int oldSize = ArrayListCapacity(arr) * itemsize + sizeof(ArrayListHeader);
+	int newSize = num * itemsize + sizeof(ArrayListHeader);
+	ArrayListHeader* p = (ArrayListHeader*)SRealloc(allocator, ArrayListGetHeader(arr), (size_t)newSize, (size_t)oldSize);
+	SAssert(p);
+	p[0].Capacity = num;
+	SAssert(p[0].Count <= p[0].Capacity);
+	return p + 1;
+}
+
+#define ArrayListMaybeGrow_Internal(_alloc, a, n) \
+	(((!a) || (ArrayListGetHeader(a)->Count) + (n) >= (ArrayListGetHeader(a)->Capacity)) \
+		? (*((void**)&(a)) = ArrayListGrow((_alloc), (a), (n), sizeof(*(a)), __FILE__, __FUNCTION__, __LINE__)) : 0)
+
+inline void*
 ArrayListGrow(SAllocator allocator, void* arr, int increment, int itemsize, const char* file, const char* function, int line)
 {
-    SAssert(IsAllocatorValid(allocator));
-    ArrayListHeader header = (arr) ? *ArrayListGetHeader(arr) : ArrayListHeader{ };
-    int oldCapacity = header.Capacity;
-    int newCapacity = (oldCapacity < ARRAY_LIST_DEFAULT_SIZE) ? ARRAY_LIST_DEFAULT_SIZE : oldCapacity << 1;
-    int minNeeded = header.Count + increment;
-    int capacity = newCapacity > minNeeded ? newCapacity : minNeeded;
-    header.Capacity = capacity;
+	SAssert(IsAllocatorValid(allocator));
+	ArrayListHeader header = (arr) ? *ArrayListGetHeader(arr) : ArrayListHeader{ };
+	int oldCapacity = header.Capacity;
+	int newCapacity = (oldCapacity < ARRAY_LIST_DEFAULT_SIZE) ? ARRAY_LIST_DEFAULT_SIZE : oldCapacity << 1;
+	int minNeeded = header.Count + increment;
+	int capacity = newCapacity > minNeeded ? newCapacity : minNeeded;
+	header.Capacity = capacity;
 
-    size_t oldSize = (arr) ? (size_t)itemsize * (size_t)oldCapacity + sizeof(ArrayListHeader) : 0;
-    size_t size = (size_t)itemsize * (size_t)capacity + sizeof(ArrayListHeader);
-    
-    PushMemoryAdditionalInfo(file, function, line);
-    ArrayListHeader* p = (ArrayListHeader*)SRealloc(allocator, arr ? ArrayListGetHeader(arr) : 0, size, oldSize);
-    PopMemoryAdditionalInfo();
+	size_t oldSize = (arr) ? (size_t)itemsize * (size_t)oldCapacity + sizeof(ArrayListHeader) : 0;
+	size_t size = (size_t)itemsize * (size_t)capacity + sizeof(ArrayListHeader);
 
-    if (p)
-    {
-        p[0] = header;
-        return p + 1;
-    }
-    else
-    {
-        SError("Out of memory!");
-        return nullptr;
-    }
+	PushMemoryAdditionalInfo(file, function, line);
+	ArrayListHeader* p = (ArrayListHeader*)SRealloc(allocator, arr ? ArrayListGetHeader(arr) : 0, size, oldSize);
+	PopMemoryAdditionalInfo();
+
+	if (p)
+	{
+		p[0] = header;
+		return p + 1;
+	}
+	else
+	{
+		SError("Out of memory!");
+		return nullptr;
+	}
 }

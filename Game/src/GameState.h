@@ -21,6 +21,18 @@
 
 #include <luajit/src/lua.hpp>
 
+enum GUIScale
+{
+	SCALE_050,
+	SCALE_075,
+	SCALE_NORMAL,
+	SCALE_150,
+	SCALE_200,
+
+	SCALE_MAX
+};
+constant_var Vec2 GUIScaleResolutions[SCALE_MAX] = { { 0.5f, 0.5f }, { 0.75f, 0.75f }, { 1.0f, 1.0f }, { 1.5f, 1.5f }, { 2.0f, 2.0f } };
+
 struct AssetMgr
 {
 	Texture2D TileSpriteSheet;
@@ -37,6 +49,7 @@ struct GameState
 	GeneralPurposeAllocator GeneralPurposeMemory;
 
 	RenderTexture2D ScreenTexture;
+	RenderTexture2D GUITexture;
 
 	AssetMgr AssetMgr;
 
@@ -82,7 +95,6 @@ struct GameClient
 	bool IsConsoleOpen;
 	bool IsDebugWindowOpen;
 	bool IsDebugMode;
-	bool IsErrorWindowOpen;
 };
 
 global_var struct GameState State;

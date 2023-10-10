@@ -7,10 +7,10 @@
 template<typename K, typename V>
 struct HashMapTBucket
 {
+	V Value;
 	K Key;
 	u16 ProbeLength;
 	bool IsUsed;
-	V Value;
 };
 
 template<typename K, typename V>

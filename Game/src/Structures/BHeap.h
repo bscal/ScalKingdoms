@@ -48,5 +48,3 @@ BHeapItem BHeapPopMax(BHeap* bh);
 
 void BHeapClear(BHeap* bh);
 bool BHeapEmpty(BHeap* bh);
-
-int BHeapFind(BHeap* bh, void* key);

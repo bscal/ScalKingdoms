@@ -41,9 +41,8 @@ typedef Vector2 Vec2;
 
 #define SInfoLog(msg, ... ) TraceLog(LOG_INFO, msg, __VA_ARGS__)
 
+#define SWarnAlwaysAssert 0
 #define SWarn(msg, ... ) \
-	TraceLog(LOG_WARNING, msg, __VA_ARGS__); \
-	DebugBreak(void);\
 	TriggerErrorPopupWindow(true, TextFormat(msg, __VA_ARGS__), __FILE__, __FUNCTION__, __LINE__) \
 
 #define SError(msg, ...) \
@@ -77,6 +76,7 @@ constant_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
 constant_var int VIEW_RADIUS = 3;
 constant_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
+constant_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS + 1;
 
 enum class Direction : uint8_t
 {

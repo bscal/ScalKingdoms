@@ -5,13 +5,13 @@
 
 #include <inttypes.h>
 
-constant_var size_t GENERALPURPOSE_BUCKET_SIZE = 6;
+constant_var size_t GENERALPURPOSE_BUCKET_SIZE = 7;
 
 struct MemNode
 {
-    size_t size;
-    MemNode* next;
-    MemNode* prev;
+    size_t Size;
+    MemNode* Next;
+    MemNode* Prev;
 };
 
 struct AllocList

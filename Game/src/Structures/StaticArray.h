@@ -42,7 +42,7 @@ struct Buffer
 	constexpr _FORCE_INLINE_ void Push(const T* val)
 	{
 		SAssert(val);
-		SAssert(Count <= Capacity);
+		SAssert(Count < Capacity);
 		Data[Count] = *val;
 		++Count;
 	}
@@ -51,7 +51,7 @@ struct Buffer
 	{
 		SAssert(val);
 		SAssert(idx < Count);
-		SAssert(Count <= Capacity);
+		SAssert(Count < Capacity);
 		Data[Count] = Data[idx];
 		Data[idx] = *val;
 		++Count;
@@ -61,7 +61,7 @@ struct Buffer
 	{
 		SAssert(val);
 		SAssert(idx < Count);
-		SAssert(Count <= Capacity);
+		SAssert(Count < Capacity);
 		SMemMove(Data + idx + 1, Data + idx, (Count - idx) * sizeof(T));
 		Data[idx] = *val;
 		++Count;

@@ -609,8 +609,9 @@ NK_API void nk_raylib_input_keyboard(struct nk_context * ctx)
 NK_API void nk_raylib_input_mouse(struct nk_context * ctx)
 {
     const float scale = GetNuklearScaling(ctx);
-    const int mouseX = (int)((float)GetMouseX() / scale);
-    const int mouseY = (int)((float)GetMouseY() / scale);
+    // TODO(bscal): fix hardcoded scale
+    const int mouseX = (int)((float)GetMouseX() * 1.0f);
+    const int mouseY = (int)((float)GetMouseY() * 1.0f);
 
     nk_input_motion(ctx, mouseX, mouseY);
     nk_input_button(ctx, NK_BUTTON_LEFT, mouseX, mouseY, IsMouseButtonDown(MOUSE_LEFT_BUTTON));

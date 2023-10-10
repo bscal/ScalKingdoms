@@ -10,6 +10,7 @@ struct GUIState
 {
 	nk_context Ctx;
 	nk_user_font Font;
+	Vec2 Scale;
 };
 
 bool InitializeGUI(GameState* gameState, Font* font);

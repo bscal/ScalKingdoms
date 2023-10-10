@@ -7,7 +7,7 @@
 
 constant_var size_t GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE] =
 {
-	512, 1024, 2048, 4096, 8192, 16384
+	256, 512, 1024, 2048, 4096, 8192, 16384
 };
 constant_var size_t GENERALPURPOSE_ALIGNMENT = GENERALPURPOSE_BUCKET_SIZES[0];
 constant_var size_t MEM_SPLIT_THRESHOLD = GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1] << 1;
@@ -15,16 +15,40 @@ constant_var size_t MEM_SPLIT_THRESHOLD = GENERALPURPOSE_BUCKET_SIZES[GENERALPUR
 static_assert(AlignPowTwo64Ceil(AlignSize(1200, GENERALPURPOSE_BUCKET_SIZES[0])) == 2048);
 static_assert(ArrayLength(GENERALPURPOSE_BUCKET_SIZES) == GENERALPURPOSE_BUCKET_SIZE, "GENERALPURPOSE_BUCKET_SIZES count is not FREELIST_BUCKET_SIZE");
 
+internal _FORCE_INLINE_
+u32 ConvertAllocSizeToIndex(size_t allocSize)
+{
+	SAssert(allocSize >= GENERALPURPOSE_BUCKET_SIZES[0]);
+	SAssert(allocSize <= GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1]);
+	size_t allocSizeBucketIndex = allocSize / GENERALPURPOSE_BUCKET_SIZES[0];
+	SAssert(allocSizeBucketIndex < GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1] / allocSizeBucketIndex);
+
+	unsigned long index = 0;
+#if _WIN32
+	_BitScanForward(&index, (unsigned long)allocSizeBucketIndex);
+#else
+	// TODO gcc has __builtin_clz maybe look into.
+
+	while (powOf2 > 0)
+	{           // until all bits are zero
+		if ((powOf2 & 1) == 1)     // check lower bit
+			++index;
+		powOf2 >>= 1;              // shift bits, removing lower bit
+	}
+#endif
+	return (u32)index;
+}
 
 // 65536, 32768 16384, 8192 4096 2048 1024
+// 256, 512, 1024, 2048
 
 internal MemNode*
 SplitMemNode(MemNode* node, size_t bytes)
 {
 	uintptr_t n = (uintptr_t)node;
-	MemNode* r = (MemNode*)(n + (node->size - bytes));
-	node->size -= bytes;
-	r->size = bytes;
+	MemNode* r = (MemNode*)(n + (node->Size - bytes));
+	node->Size -= bytes;
+	r->Size = bytes;
 
 	return r;
 }
@@ -32,34 +56,34 @@ SplitMemNode(MemNode* node, size_t bytes)
 internal void
 InsertMemNodeBefore(AllocList* list, MemNode* insert, MemNode* curr)
 {
-	insert->next = curr;
+	insert->Next = curr;
 
-	if (curr->prev == nullptr) list->Head = insert;
+	if (curr->Prev == nullptr) list->Head = insert;
 	else
 	{
-		insert->prev = curr->prev;
-		curr->prev->next = insert;
+		insert->Prev = curr->Prev;
+		curr->Prev->Next = insert;
 	}
 
-	curr->prev = insert;
+	curr->Prev = insert;
 }
 
 internal MemNode*
 RemoveMemNode(AllocList* list, MemNode* node)
 {
-	if (node->prev != nullptr) node->prev->next = node->next;
+	if (node->Prev != nullptr) node->Prev->Next = node->Next;
 	else
 	{
-		list->Head = node->next;
-		if (list->Head != nullptr) list->Head->prev = nullptr;
+		list->Head = node->Next;
+		if (list->Head != nullptr) list->Head->Prev = nullptr;
 		else list->Tail = nullptr;
 	}
 
-	if (node->next != nullptr) node->next->prev = node->prev;
+	if (node->Next != nullptr) node->Next->Prev = node->Prev;
 	else
 	{
-		list->Tail = node->prev;
-		if (list->Tail != nullptr) list->Tail->next = nullptr;
+		list->Tail = node->Prev;
+		if (list->Tail != nullptr) list->Tail->Next = nullptr;
 		else list->Head = nullptr;
 	}
 
@@ -71,16 +95,16 @@ RemoveMemNode(AllocList* list, MemNode* node)
 internal MemNode*
 FindMemNode(AllocList* list, size_t bytes)
 {
-	for (MemNode* node = list->Head; node != nullptr; node = node->next)
+	for (MemNode* node = list->Head; node != nullptr; node = node->Next)
 	{
-		if (node->size < bytes)
+		if (node->Size < bytes)
 			continue;
 
 		// Try to reduce fragmentation. But can waste memory if allocating slightly above the largest
 		// freelist.
-		if (node->size <= bytes + MEM_SPLIT_THRESHOLD) 
+		if (node->Size <= bytes + MEM_SPLIT_THRESHOLD)
 			return RemoveMemNode(list, node);
-		else 
+		else
 			return SplitMemNode(node, bytes);
 	}
 
@@ -97,11 +121,11 @@ InsertMemNode(GeneralPurposeAllocator* freelist, AllocList* list, MemNode* node,
 	}
 	else
 	{
-		for (MemNode* iter = list->Head; iter != nullptr; iter = iter->next)
+		for (MemNode* iter = list->Head; iter != nullptr; iter = iter->Next)
 		{
 			if ((uintptr_t)iter == freelist->Offset)
 			{
-				freelist->Offset += iter->size;
+				freelist->Offset += iter->Size;
 				RemoveMemNode(list, iter);
 				iter = list->Head;
 
@@ -114,8 +138,8 @@ InsertMemNode(GeneralPurposeAllocator* freelist, AllocList* list, MemNode* node,
 
 			const uintptr_t inode = (uintptr_t)node;
 			const uintptr_t iiter = (uintptr_t)iter;
-			const uintptr_t iter_end = iiter + iter->size;
-			const uintptr_t node_end = inode + node->size;
+			const uintptr_t iter_end = iiter + iter->Size;
+			const uintptr_t node_end = inode + node->Size;
 
 			if (iter == node) return;
 			else if (iter < node)
@@ -125,15 +149,15 @@ InsertMemNode(GeneralPurposeAllocator* freelist, AllocList* list, MemNode* node,
 				else if ((iter_end == inode) && !is_bucket)
 				{
 					// if we can coalesce, do so.
-					iter->size += node->size;
+					iter->Size += node->Size;
 
 					return;
 				}
-				else if (iter->next == nullptr)
+				else if (iter->Next == nullptr)
 				{
 					// we reached the end of the free list -> append the node
-					iter->next = node;
-					node->prev = iter;
+					iter->Next = node;
+					node->Prev = iter;
 					list->Length++;
 
 					return;
@@ -145,19 +169,19 @@ InsertMemNode(GeneralPurposeAllocator* freelist, AllocList* list, MemNode* node,
 				if (iiter < node_end) return;
 				else if ((iter == list->Head) && !is_bucket)
 				{
-					if (iter_end == inode) iter->size += node->size;
+					if (iter_end == inode) iter->Size += node->Size;
 					else if (node_end == iiter)
 					{
-						node->size += list->Head->size;
-						node->next = list->Head->next;
-						node->prev = nullptr;
+						node->Size += list->Head->Size;
+						node->Next = list->Head->Next;
+						node->Prev = nullptr;
 						list->Head = node;
 					}
 					else
 					{
-						node->next = iter;
-						node->prev = nullptr;
-						iter->prev = node;
+						node->Next = iter;
+						node->Prev = nullptr;
+						iter->Prev = node;
 						list->Head = node;
 						list->Length++;
 					}
@@ -167,7 +191,7 @@ InsertMemNode(GeneralPurposeAllocator* freelist, AllocList* list, MemNode* node,
 				else if ((iter_end == inode) && !is_bucket)
 				{
 					// if we can coalesce, do so.
-					iter->size += node->size;
+					iter->Size += node->Size;
 					return;
 				}
 				else
@@ -234,40 +258,25 @@ void* GeneralPurposeAlloc(GeneralPurposeAllocator* allocator, size_t size)
 	SAssert(size > 0);
 	SAssert(size < allocator->Size);
 
-	MemNode* new_mem = nullptr;
+	MemNode* newMemNode = nullptr;
 	size_t allocSize = AlignSize(size + sizeof(MemNode), GENERALPURPOSE_ALIGNMENT);
 	SAssert(allocSize >= GENERALPURPOSE_ALIGNMENT);
 
 	// We check large allocations right away
 	if (allocSize > GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1])
-		new_mem = FindMemNode(&allocator->Large, allocSize);
+	{
+		newMemNode = FindMemNode(&allocator->Large, allocSize);
+	}
 	else
 	{
-		if (!IsPowerOf2(allocSize))
-			allocSize = AlignPowTwo64Ceil(allocSize);
-
-		SAssert(allocSize >= GENERALPURPOSE_BUCKET_SIZES[0]);
-		SAssert(allocSize <= GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1]);
-
-		static_assert(ArrayLength(allocator->Buckets) == GENERALPURPOSE_BUCKET_SIZE, "ArrayLength(allocator->Buckets) is not FREELIST_BUCKET_SIZE");
-		AllocList* bucketList;
-		switch (allocSize)
-		{
-		case(GENERALPURPOSE_BUCKET_SIZES[0]): bucketList = allocator->Buckets + 0; break;
-		case(GENERALPURPOSE_BUCKET_SIZES[1]): bucketList = allocator->Buckets + 1; break;
-		case(GENERALPURPOSE_BUCKET_SIZES[2]): bucketList = allocator->Buckets + 2; break;
-		case(GENERALPURPOSE_BUCKET_SIZES[3]): bucketList = allocator->Buckets + 3; break;
-		case(GENERALPURPOSE_BUCKET_SIZES[4]): bucketList = allocator->Buckets + 4; break;
-		case(GENERALPURPOSE_BUCKET_SIZES[5]): bucketList = allocator->Buckets + 5; break;
-		default:
-			SError("Invalid memory size for bucket!"); return nullptr;
-		}
-
+		allocSize = AlignPowTwo64Ceil(allocSize);
+		u32 bucketIndex = ConvertAllocSizeToIndex(allocSize);
+		AllocList* bucketList = allocator->Buckets + bucketIndex;
 		if (bucketList->Head)
-			new_mem = RemoveMemNode(bucketList, bucketList->Head);
+			newMemNode = RemoveMemNode(bucketList, bucketList->Head);
 	}
 
-	if (!new_mem)
+	if (!newMemNode)
 	{
 		// not enough memory to support the size!
 		if ((allocator->Offset - allocSize) < allocator->Mem)
@@ -284,8 +293,8 @@ void* GeneralPurposeAlloc(GeneralPurposeAllocator* allocator, size_t size)
 			allocator->Offset -= allocSize;
 
 			// Use the available freelist space as the new node.
-			new_mem = (MemNode*)allocator->Offset;
-			new_mem->size = allocSize;
+			newMemNode = (MemNode*)allocator->Offset;
+			newMemNode->Size = allocSize;
 		}
 	}
 
@@ -299,8 +308,8 @@ void* GeneralPurposeAlloc(GeneralPurposeAllocator* allocator, size_t size)
 	// |   memory   |
 	// |   space    | highest addr of block
 	// --------------
-	new_mem->next = new_mem->prev = nullptr;
-	uint8_t* final_mem = (uint8_t*)new_mem + sizeof(*new_mem);
+	newMemNode->Next = newMemNode->Prev = nullptr;
+	uint8_t* final_mem = (uint8_t*)newMemNode + sizeof(*newMemNode);
 	SAssert(final_mem);
 	return final_mem;
 }
@@ -327,8 +336,8 @@ void* GeneralPurposeRealloc(GeneralPurposeAllocator* _RESTRICT_ freelist, void* 
 		}
 
 		MemNode* node = (MemNode*)block;
-		SAssert(node->size != 0);
-		SAssert(node->size < freelist->Size);
+		SAssert(node->Size != 0);
+		SAssert(node->Size < freelist->Size);
 
 		uint8_t* resized_block = (uint8_t*)GeneralPurposeAlloc(freelist, size);
 		SAssert(resized_block);
@@ -336,8 +345,8 @@ void* GeneralPurposeRealloc(GeneralPurposeAllocator* _RESTRICT_ freelist, void* 
 		if (resized_block)
 		{
 			MemNode* resized = (MemNode*)(resized_block - sizeof(MemNode));
-			memmove(resized_block, ptr, (node->size > resized->size) 
-					? (resized->size - sizeof(MemNode)) : (node->size - sizeof(MemNode)));
+			SMemMove(resized_block, ptr, (node->Size > resized->Size)
+					? (resized->Size - sizeof(MemNode)) : (node->Size - sizeof(MemNode)));
 			GeneralPurposeFree(freelist, ptr);
 			SAssert(ptr);
 			return resized_block;
@@ -349,7 +358,7 @@ void* GeneralPurposeRealloc(GeneralPurposeAllocator* _RESTRICT_ freelist, void* 
 void GeneralPurposeFree(GeneralPurposeAllocator* _RESTRICT_ freelist, void* _RESTRICT_ ptr)
 {
 	static_assert(ArrayLength(GENERALPURPOSE_BUCKET_SIZES) == GENERALPURPOSE_BUCKET_SIZE, "GENERALPURPOSE_BUCKET_SIZES Count is not FREELIST_BUCKET_SIZE");
-	
+
 	SAssert(freelist);
 
 	if (!ptr)
@@ -362,8 +371,8 @@ void GeneralPurposeFree(GeneralPurposeAllocator* _RESTRICT_ freelist, void* _RES
 
 		SAssert(block >= freelist->Offset);
 		SAssert(block - freelist->Mem <= freelist->Size);
-		SAssert(mem_node->size > 0);
-		SAssert(mem_node->size < freelist->Size);
+		SAssert(mem_node->Size > 0);
+		SAssert(mem_node->Size < freelist->Size);
 
 		// REVISIT maybe just use the asserts
 		if (block < freelist->Offset || block - freelist->Mem > freelist->Size)
@@ -375,25 +384,12 @@ void GeneralPurposeFree(GeneralPurposeAllocator* _RESTRICT_ freelist, void* _RES
 		// If the mem_node is right at the arena offs, then merge it back to the arena.
 		if (block == freelist->Offset)
 		{
-			freelist->Offset += mem_node->size;
+			freelist->Offset += mem_node->Size;
 		}
-		else if (mem_node->size <= GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1])
+		else if (mem_node->Size <= GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1])
 		{
-			SAssert(mem_node->size >= GENERALPURPOSE_BUCKET_SIZES[0]);
-			SAssert(mem_node->size <= GENERALPURPOSE_BUCKET_SIZES[GENERALPURPOSE_BUCKET_SIZE - 1]);
-
-			static_assert(ArrayLength(freelist->Buckets) == GENERALPURPOSE_BUCKET_SIZE, "ArrayLength(freelist->Buckets) is not FREELIST_BUCKET_SIZE");
-			AllocList* bucketList;
-			switch (mem_node->size)
-			{
-			case(GENERALPURPOSE_BUCKET_SIZES[0]): bucketList = freelist->Buckets + 0; break;
-			case(GENERALPURPOSE_BUCKET_SIZES[1]): bucketList = freelist->Buckets + 1; break;
-			case(GENERALPURPOSE_BUCKET_SIZES[2]): bucketList = freelist->Buckets + 2; break;
-			case(GENERALPURPOSE_BUCKET_SIZES[3]): bucketList = freelist->Buckets + 3; break;
-			case(GENERALPURPOSE_BUCKET_SIZES[4]): bucketList = freelist->Buckets + 4; break;
-			case(GENERALPURPOSE_BUCKET_SIZES[5]): bucketList = freelist->Buckets + 5; break;
-			default: SError("Invalid memory size for bucket!");  return;
-			}
+			u32 bucketIndex = ConvertAllocSizeToIndex(mem_node->Size);
+			AllocList* bucketList = freelist->Buckets + bucketIndex;
 			InsertMemNode(freelist, bucketList, mem_node, true);
 		}
 		else
@@ -409,13 +405,13 @@ size_t GeneralPurposeGetFreeMemory(GeneralPurposeAllocator* freelist)
 
 	size_t total_remaining = freelist->Offset - freelist->Mem;
 
-	for (MemNode* n = freelist->Large.Head; n != nullptr; n = n->next)
-		total_remaining += n->size;
+	for (MemNode* n = freelist->Large.Head; n != nullptr; n = n->Next)
+		total_remaining += n->Size;
 
 	for (size_t i = 0; i < GENERALPURPOSE_BUCKET_SIZE; i++)
 	{
-		for (MemNode* n = freelist->Buckets[i].Head; n != nullptr; n = n->next)
-			total_remaining += n->size;
+		for (MemNode* n = freelist->Buckets[i].Head; n != nullptr; n = n->Next)
+			total_remaining += n->Size;
 	}
 
 	return total_remaining;

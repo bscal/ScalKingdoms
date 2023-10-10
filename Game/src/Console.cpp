@@ -96,8 +96,8 @@ void ConsoleDraw(GameClient* client, GUIState* guiState)
 		constexpr float PANEL_SIDE_PANEL = 32.0f;
 		constexpr float SUGGESTION_ROW_HEIGHT = 24.0f;
 
-		float width = (float)GetScreenWidth() - (PANEL_SIDE_PANEL * 2.0f);
-		float height = (float)GetScreenHeight() * .75f + SuggestionPanelSize;
+		float width = guiState->Scale.x - (PANEL_SIDE_PANEL * 2.0f);
+		float height = guiState->Scale.y * .75f + SuggestionPanelSize;
 		if (HeightAnimValue < height)
 		{
 			height = HeightAnimValue;

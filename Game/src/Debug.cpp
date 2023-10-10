@@ -9,6 +9,8 @@ struct Debugger
 {
 	bool IsDebugMode;
 	bool ShouldBreakOnWarning;
+	bool IsPopupOpen;
+	bool ShouldIgnorePopups;
 
 	const char* ErrorPopupWindowMessage;
 	const char* ErrorPopupWindowFile;
@@ -32,16 +34,16 @@ void DrawDebugWindow(GameClient* client, GameState* gameState, GUIState* guiStat
 
 		struct nk_context* ctx = &guiState->Ctx;
 
-		float width = (float)GetScreenWidth();
-		float height = (float)GetScreenHeight();
-		
+		float width = guiState->Scale.x;
+		float height = guiState->Scale.y;
+
 		ctx->style.window.fixed_background.data.color = {};
 
 		struct nk_rect bounds = { 2.0f, 2.0f, width - 4.0f, height - 4.0f };
 		if (nk_begin(ctx, WINDOW_NAME, bounds, NK_WINDOW_NO_SCROLLBAR))
 		{
 			nk_layout_space_begin(ctx, NK_STATIC, 0, INT_MAX);
-	
+
 			struct nk_color panelBgColor = { 100, 100, 100, 192 };
 			ctx->style.window.fixed_background.data.color = panelBgColor;
 
@@ -82,14 +84,14 @@ void DrawDebugWindow(GameClient* client, GameState* gameState, GUIState* guiStat
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "UpdateTime: %.3fms", Client.UpdateTime * 1000.0);
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "DrawTime: %.3fms", GetDrawTime() * 1000.0);
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "GeneralPurpose: %dkb / %dkb",
-					(int)((gameState->GeneralPurposeMemory.Size - GeneralPurposeGetFreeMemory(&gameState->GeneralPurposeMemory)) / 1024),
-					(int)(gameState->GeneralPurposeMemory.Size / 1024));
+						  (int)((gameState->GeneralPurposeMemory.Size - GeneralPurposeGetFreeMemory(&gameState->GeneralPurposeMemory)) / 1024),
+						  (int)(gameState->GeneralPurposeMemory.Size / 1024));
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "GameArena: %dkb / %dkb",
 						  (int)((gameState->GameArena.Size - ArenaSizeRemaining(&gameState->GameArena, 16)) / 1024),
 						  (int)(gameState->GameArena.Size / 1024));
 				nk_labelf(ctx, NK_TEXT_ALIGN_LEFT, "TempArena: %dkb / %dkb",
-					(int)((TransientState.TransientArena.Size - ArenaSizeRemaining(&TransientState.TransientArena, 16)) / 1024),
-					(int)(TransientState.TransientArena.Size / 1024));
+						  (int)((TransientState.TransientArena.Size - ArenaSizeRemaining(&TransientState.TransientArena, 16)) / 1024),
+						  (int)(TransientState.TransientArena.Size / 1024));
 
 				nk_group_end(ctx);
 			}
@@ -99,26 +101,39 @@ void DrawDebugWindow(GameClient* client, GameState* gameState, GUIState* guiStat
 	}
 }
 
+internal void
+ResetDebugger()
+{
+	Debugger.ErrorPopupWindowMessage = nullptr;
+	Debugger.ErrorPopupWindowFile = nullptr;
+	Debugger.ErrorPopupWindowFunction = nullptr;
+	Debugger.ErrorPopupWindowLineNum = 0;
+	Debugger.IsPopupOpen = false;
+	GetGameState()->IsGamePaused = false;
+}
+
 void TriggerErrorPopupWindow(bool isWarning, const char* errorMsg, const char* file, const char* function, int line)
 {
+	TraceLog((isWarning) ? LOG_WARNING : LOG_ERROR, errorMsg, NULL);
+
+#if SWarnAlwaysAssert
+	DebugBreak(void);
+#endif // SWarnAlwaysAssert
+
 	Debugger.ErrorPopupWindowIsWarning = isWarning;
 	Debugger.ErrorPopupWindowMessage = errorMsg;
 	Debugger.ErrorPopupWindowFile = file;
 	Debugger.ErrorPopupWindowFunction = function;
 	Debugger.ErrorPopupWindowLineNum = line;
-	Client.IsErrorWindowOpen = true;
+	Debugger.IsPopupOpen = true;
 	GetGameState()->IsGamePaused = true;
+
 	if (Debugger.ShouldBreakOnWarning)
 	{
 		DebugBreak(void);
 
-		Debugger.ErrorPopupWindowMessage = nullptr;
-		Debugger.ErrorPopupWindowFile = nullptr;
-		Debugger.ErrorPopupWindowFunction = nullptr;
-		Debugger.ErrorPopupWindowLineNum = 0;
+		ResetDebugger();
 		Debugger.ShouldBreakOnWarning = false;
-		GetGameState()->IsGamePaused = false;
-		Client.IsErrorWindowOpen = false;
 	}
 }
 
@@ -126,7 +141,7 @@ void DrawErrorPopupWindow(GameState* gameState)
 {
 	SAssert(gameState);
 
-	if (Client.IsErrorWindowOpen)
+	if (Debugger.IsPopupOpen && !Debugger.ShouldIgnorePopups)
 	{
 		nk_context* ctx = &gameState->GUIState.Ctx;
 		float width = (float)GetScreenWidth();
@@ -139,38 +154,41 @@ void DrawErrorPopupWindow(GameState* gameState)
 		bounds.y = height / 2 - 150;
 		bounds.w = 500;
 		bounds.h = 300;
-		if (nk_begin(ctx, "ErrorWindow", bounds, NK_WINDOW_NO_SCROLLBAR))
+		if (nk_begin(ctx, "ErrorWindow", bounds, NK_WINDOW_MOVABLE | NK_WINDOW_NO_SCROLLBAR))
 		{
 			nk_layout_row_static(ctx, bounds.h / 10.0f, (int)bounds.w, 1);
 
-			nk_label(ctx, (Debugger.ErrorPopupWindowIsWarning) ? "Warning occurred!" : "Error occured!", NK_TEXT_ALIGN_CENTERED);
-			nk_labelf(ctx, NK_TEXT_ALIGN_CENTERED, "Error: %s", (Debugger.ErrorPopupWindowMessage) ? Debugger.ErrorPopupWindowMessage : "Unknown error");
-			nk_labelf(ctx, NK_TEXT_ALIGN_CENTERED, "File: %s", (Debugger.ErrorPopupWindowFile) ? Debugger.ErrorPopupWindowFile : "Unknown file");
-			nk_labelf(ctx, NK_TEXT_ALIGN_CENTERED, "Function: %s", (Debugger.ErrorPopupWindowFunction) ? Debugger.ErrorPopupWindowFunction : "Unknown function");
-			nk_labelf(ctx, NK_TEXT_ALIGN_CENTERED, "Line: %d", Debugger.ErrorPopupWindowLineNum);
+			nk_color textColor = { 0, 0, 0, 255 };
 
-			nk_layout_row_dynamic(ctx, (bounds.h / 10.0f) * 3, 3);
+			nk_label_colored(ctx, (Debugger.ErrorPopupWindowIsWarning) ? "Warning occurred!" : "Error occured!", NK_TEXT_ALIGN_CENTERED, textColor);
+			nk_labelf_colored_wrap(ctx, textColor, "Error: %s", (Debugger.ErrorPopupWindowMessage) ? Debugger.ErrorPopupWindowMessage : "Unknown error");
+			nk_labelf_colored_wrap(ctx, textColor, "File: %s", (Debugger.ErrorPopupWindowFile) ? Debugger.ErrorPopupWindowFile : "Unknown file");
+			nk_labelf_colored_wrap(ctx, textColor, "Function: %s", (Debugger.ErrorPopupWindowFunction) ? Debugger.ErrorPopupWindowFunction : "Unknown function");
+			nk_labelf_colored_wrap(ctx, textColor, "Line: %d", Debugger.ErrorPopupWindowLineNum);
+
+			nk_style_button style = ctx->style.button;
+			style.text_alignment = NK_TEXT_CENTERED;
+
+			nk_layout_row_dynamic(ctx, (bounds.h / 10.0f) * 4, 4);
 			if (nk_button_label(ctx, "Continue"))
 			{
-				goto Cleanup;
+				ResetDebugger();
 			}
-			if (nk_button_label(ctx, "Break next warning"))
+			if (nk_button_label(ctx, "Ignore popups"))
+			{
+				Debugger.ShouldIgnorePopups = true;
+				ResetDebugger();
+			}
+			if (nk_button_label_styled(ctx, &style, "Break next warning"))
 			{
 				Debugger.ShouldBreakOnWarning = true;
 
-				goto Cleanup;
+				ResetDebugger();
 			}
 			if (nk_button_label(ctx, "Break now"))
 			{
 				DebugBreak(void);
-
-			Cleanup:
-				Debugger.ErrorPopupWindowMessage = nullptr;
-				Debugger.ErrorPopupWindowFile = nullptr;
-				Debugger.ErrorPopupWindowFunction = nullptr;
-				Debugger.ErrorPopupWindowLineNum = 0;
-				Client.IsErrorWindowOpen = false;
-				GetGameState()->IsGamePaused = false;
+				ResetDebugger();
 			}
 		}
 		nk_end(ctx);

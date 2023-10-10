@@ -5,6 +5,7 @@
 #include "Regions.h"
 #include "Tile.h"
 #include "Lib/Jobs.h"
+#include "Structures/SparseSet.h"
 #include "Structures/StaticArray.h"
 #include "Structures/BitArray.h"
 #include "Structures/HashMapT.h"
@@ -37,6 +38,7 @@ struct Chunk
 	bool IsLoaded; // TODO do we just remove this?
 	ItemStackHolder ItemHolder;
 	Tile TileArray[CHUNK_AREA];
+	SparseSet<ecs_entity_t, CHUNK_AREA> Entities;
 };
 
 struct ChunkLoaderData
@@ -46,7 +48,6 @@ struct ChunkLoaderData
 };
 
 constant_var int MAX_CHUNKS_TO_PROCESS = 8;
-constant_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS + 1;
 
 struct ChunkLoaderState
 {
@@ -57,6 +58,7 @@ struct ChunkLoaderState
 	Buffer<Chunk*, VIEW_DISTANCE_TOTAL_CHUNKS> ChunkPool;
 	fnl_state Noise;
 };
+
 
 struct TileMap
 {

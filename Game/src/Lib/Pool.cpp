@@ -4,83 +4,73 @@
 
 #include <inttypes.h>
 
-//! Initialize pool allocator.
-void PoolCreate(Pool* pool, SAllocator allocator, size_t size, size_t numBlocks, size_t blockSize)
+void PoolCreate(Pool* pool, SAllocator allocator, size_t numBlocks, size_t blockSize)
 {
-    PoolCreateAlign(pool, allocator, numBlocks, blockSize, DEFAULT_ALIGNMENT);
+	PoolCreateAlign(pool, allocator, numBlocks, blockSize, DEFAULT_ALIGNMENT);
 }
 
-//! Initialize pool allocator with specific block alignment.
 void PoolCreateAlign(Pool* pool, SAllocator allocator, size_t numBlocks, size_t blockSize,
-                     size_t blockAlign)
+					 size_t blockAlign)
 {
-    size_t actual_block_size, pool_size, block_index;
-    void* data, * curr;
-    uintptr_t* end;
+	SAssert(pool);
+	*pool = {};
+	pool->BlockSize = blockSize;
+	pool->BlockAlign = blockAlign;
+	pool->NumofBlocks = numBlocks;
 
-    pool = {};
-    pool->BlockSize = blockSize;
-    pool->BlockAlign = blockAlign;
-    pool->NumofBlocks = numBlocks;
+	size_t actual_block_size = blockSize + blockAlign;
+	pool->AllocationSize = numBlocks * actual_block_size;
 
-    actual_block_size = blockSize + blockAlign;
-    pool_size = numBlocks * actual_block_size;
+	void* data = SAllocAlign(allocator, pool->AllocationSize, (u32)blockAlign);
 
-    data = SAllocAlign(allocator, pool_size, (u32)blockAlign);
+	// NOTE: Init intrusive freelist
+	uintptr_t* end;
+	void* curr = data;
+	for (size_t block_index = 0; block_index < numBlocks - 1; block_index++)
+	{
+		uintptr_t* next = (uintptr_t*)curr;
+		*next = (uintptr_t)curr + actual_block_size;
+		curr = zpl_pointer_add(curr, actual_block_size);
+	}
 
-    // NOTE: Init intrusive freelist
-    curr = data;
-    for (block_index = 0; block_index < numBlocks - 1; block_index++)
-    {
-        uintptr_t* next = (uintptr_t*) curr;
-        *next = (uintptr_t) curr + actual_block_size;
-        curr = zpl_pointer_add(curr, actual_block_size);
-    }
+	end = (uintptr_t*)curr;
+	*end = (uintptr_t) nullptr;
 
-    end = (uintptr_t*) curr;
-    *end = (uintptr_t) nullptr;
-
-    pool->Start = data;
-    pool->FreeList = data;
+	pool->Start = data;
+	pool->FreeList = data;
 }
 
-SAllocatorProc(PoolAllocatorPorc)
+PoolResizable* PoolResizableCreate(SAllocator allocator, size_t size, size_t numBlocks,
+								   size_t blockSize, size_t blockAlign)
 {
-    Pool* pool = (Pool*)data;
-    void* res = nullptr;
+	size_t actual_block_size = blockSize + blockAlign;
+	size_t allocationSize = numBlocks * actual_block_size + sizeof(PoolResizable);
 
-    switch (allocatorType)
-    {
-    case ALLOCATOR_TYPE_MALLOC:
-    {
-        uintptr_t next_free;
-        SAssert(newSize == pool->BlockSize);
-        SAssert(align == pool->BlockAlign);
-        SAssert(pool->FreeList != nullptr);
+	void* data = SAllocAlign(allocator, allocationSize, (u32)blockAlign);
 
-        next_free = *(zpl_uintptr*) pool->FreeList;
-        res = pool->FreeList;
-        pool->FreeList = (void*) next_free;
-        pool->TotalSize += pool->BlockSize;
-    } break;
+	PoolResizable* poolResizable = (PoolResizable*)data;
 
-    case ALLOCATOR_TYPE_FREE:
-    {
-        uintptr_t* next;
-        if (!ptr)
-            return nullptr;
+	poolResizable->Pool.BlockSize = blockSize;
+	poolResizable->Pool.BlockAlign = blockAlign;
+	poolResizable->Pool.NumofBlocks = numBlocks;
+	poolResizable->Pool.AllocationSize = numBlocks * actual_block_size;
 
-        next = (uintptr_t*)ptr;
-        *next = (uintptr_t) pool->FreeList;
-        pool->FreeList = ptr;
-        pool->TotalSize -= pool->BlockSize;
-    } break;
+	// NOTE: Init intrusive freelist
+	uintptr_t* end;
+	void* listStart = poolResizable + 1;
+	void* curr = listStart;
+	for (size_t block_index = 0; block_index < numBlocks - 1; ++block_index)
+	{
+		uintptr_t* next = (uintptr_t*)curr;
+		*next = (uintptr_t)curr + actual_block_size;
+		curr = (void*)((zpl_u8*)curr + actual_block_size);
+	}
 
-    case ALLOCATOR_TYPE_REALLOC:
-    {
-        SError("You cannot resize something allocated by with a pool.");
-    }   break;
-    }
+	end = (uintptr_t*)curr;
+	*end = (uintptr_t) nullptr;
 
-    return res;
+	poolResizable->Pool.Start = listStart;
+	poolResizable->Pool.FreeList = listStart;
+
+	return poolResizable;
 }

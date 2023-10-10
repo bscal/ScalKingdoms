@@ -334,7 +334,7 @@ SAllocatorProc(ArenaAllocatorProc)
 {
 	Arena* arena = (Arena*)data;
 	void* res;
-
+	//SInfoLog("Arena alloc %d, %s, %s, %d", newSize, file, func, line);
 	switch (allocatorType)
 	{
 	case (ALLOCATOR_TYPE_MALLOC):

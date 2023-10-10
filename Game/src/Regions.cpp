@@ -67,8 +67,9 @@ CalculateDistance(Vec2i v0, Vec2i v1)
 void
 PathfinderRegionsInit(RegionPathfinder* pathfinder)
 {
-	constant_var size_t PATHFINDER_REGION_SIZE = 1024;
-	HashMapTInitialize(&RegionMap, PATHFINDER_REGION_SIZE, SAllocatorArena(&GetGameState()->GameArena));
+	constexpr size_t PATHFINDER_REGION_SIZE = 1024;
+	constexpr size_t REGION_MAP_SIZE = VIEW_DISTANCE_TOTAL_CHUNKS * DIVISIONS * DIVISIONS;
+	HashMapTInitialize(&RegionMap, REGION_MAP_SIZE, SAllocatorArena(&GetGameState()->GameArena));
 	pathfinder->Open = BHeapCreate(SAllocatorArena(&GetGameState()->GameArena), RegionCompareCost, PATHFINDER_REGION_SIZE);
 	HashMapTInitialize(&pathfinder->OpenSet, PATHFINDER_REGION_SIZE, SAllocatorArena(&GetGameState()->GameArena));
 	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_REGION_SIZE, SAllocatorArena(&GetGameState()->GameArena));
