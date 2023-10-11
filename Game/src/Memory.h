@@ -30,12 +30,6 @@ SAllocatorProc(ArenaAllocatorProc);
 #define SAllocatorMalloc() (SAllocator{ MallocAllocatorProc, nullptr })
 #define SAllocatorArena(arena) (SAllocator{ ArenaAllocatorProc, arena })
 
-inline bool
-IsAllocatorValid(SAllocator allocator)
-{
-	return allocator.Proc;
-}
-
 #define SAlloc(allocator, size)	\
 	allocator.Proc(ALLOCATOR_TYPE_MALLOC, allocator.Data, nullptr, size, 0, DEFAULT_ALIGNMENT, __FILE__, __FUNCTION__, __LINE__)
 

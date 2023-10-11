@@ -1,82 +1,137 @@
 #pragma once
 
-#include "StaticArray.h"
+#include "Allocator.h"
 #include "ArrayList.h"
 
-template<typename T, int Capacity>
+typedef u16 SparseSetSize_t;
+
+template<typename T>
 struct SparseSet
 {
-	typedef u16 SparseSetSize_t;
-
 	constant_var SparseSetSize_t EMPTY = 0xffff;
 
 	template<typename T>
-	struct SpareSetBucket
+	struct SparseSetBucket
 	{
 		T Value;
-		SparseSetSize_t Index;
+		SparseSetSize_t Id;
 	};
 
-
 	SAllocator Allocator;
-	ArrayList(SpareSetBucket<T>) Dense;
-	StaticArray<SparseSetSize_t, Capacity> Sparse;
+	ArrayList(SparseSetSize_t) Sparse;
+	ArrayList(SparseSetBucket<T>) Dense;
+	SparseSetSize_t Count;
 
-	void Initializer(SAllocator allocator)
+	void Initialize(SAllocator allocator, int capacity)
 	{
+		SAssert(IsAllocatorValid(allocator));
 		Allocator = allocator;
-		for (int i = 0; i < Capacity; ++i)
+		ArrayListReserve(Allocator, Sparse, capacity);
+
+		SAssert(Sparse);
+		ArrayListHeader* header = ArrayListGetHeader(Sparse);
+		header->Count = header->Capacity;
+
+		for (int i = 0; i < header->Capacity; ++i)
 		{
 			Sparse[i] = EMPTY;
 		}
 	}
 
-	void Add(SparseSetSize_t id, const T* value)
+	void Resize(int denseCapacity)
 	{
-		SAssert(id < Capacity);
+		ArrayListReserve(Allocator, Dense, denseCapacity);
 
-		SparseSetSize_t idx = ArrayListCount(Dense);
-		Sparse.Data[id] = idx;
-
-		SpareSetBucket bucket = {};
-		bucket.Value = *value;
-		bucket.Index = idx;
-
-		ArrayListPush(Allocator, Dense, bucket);
+		for (SparseSetSize_t i = (SparseSetSize_t)ArrayListCount(Dense); i < (SparseSetSize_t)ArrayListCapacity(Dense); ++i)
+		{
+			SparseSetBucket<T> tmp = {};
+			tmp.Id = i;
+			ArrayListPush(Allocator, Dense, tmp);
+		}
 	}
 
-	SparseSetSize_t Remove(SparseSetSize_t id)
+	SparseSetSize_t Add(T* value)
 	{
-		SAssert(id < Capacity);
+		SAssert(IsAllocatorValid(Allocator));
+		SAssert(Sparse);
+
+		if (Count < ArrayListCapacity(Sparse))
+		{
+			if (Count == ArrayListCapacity(Dense))
+			{
+				int newCap = (ArrayListCapacity(Dense)) ? ArrayListCapacity(Dense) * 2 : 1;
+				Resize(newCap);
+			}
+
+			SAssert(Dense);
+
+			SparseSetSize_t idx = Count;
+			++Count;
+
+			Dense[idx].Value = *value;
+			Sparse[Dense[idx].Id] = idx;
+
+			return Dense[idx].Id;
+		}
+		return EMPTY;
+	}
+
+	void Remove(SparseSetSize_t id)
+	{
+		SAssert(IsAllocatorValid(Allocator));
+		SAssert(Sparse);
+		SAssert(Dense);
+		SAssert(id < (SparseSetSize_t)ArrayListCapacity(Sparse));
 
 		SparseSetSize_t idx = Sparse[id];
-		Sparse[id] = EMPTY;
+		SparseSetBucket<T>* lastBucket = Dense + Count - 1;
 
-		SparseSetSize_t lastIdx = ArrayListCount(Dense) - 1;
-		if (idx < lastIdx)
-		{
-			ArrayListPop(Dense, idx);
-			SpareSetBucket* newId = Dense + idx;
-			Sparse[newId->Index] = idx;
-		}
-		else if (idx == lastIdx)
-		{
-			ArrayListPopLast(Dense);
-		}
-
-		int shouldResize = ArrayListCapacity(Dense) >> 2;
-		if (shouldResize > 8 && lastIdx < shouldResize)
-		{
-			ArrayListShrink(Allocator, Dense, shouldResize);
-		}
+		Sparse[lastBucket->Id] = EMPTY;
+		Dense[idx] = *lastBucket;
+		Dense[Count - 1].Id = id;
 		
-		return idx;
+		--Count;
 	}
 
-	bool Contains(SparseSetSize_t id)
+	T* Get(SparseSetSize_t id)
 	{
-		SAssert(id < Capacity);
-		return Sparse[id] != EMPTY;
-	}
+		SAssert(Sparse);
+		SAssert(Dense);
+		SAssert(id < (SparseSetSize_t)ArrayListCapacity(Sparse));
 
+		SparseSetSize_t idx = Sparse[id];
+
+		if (idx != EMPTY && Dense[idx].Id == id)
+			return &Dense[idx].Value;
+		else
+			return nullptr;
+	}
 };
+
+inline void TestSpareSet()
+{
+	SparseSet<u8> TestSet = {};
+	TestSet.Initialize(SAllocatorMalloc(), 64);
+
+	u8 v = 16;
+	SparseSetSize_t r = TestSet.Add(&v);
+
+	u8 vv = 32;
+	SparseSetSize_t rr = TestSet.Add(&vv);
+
+	SAssert(TestSet.Count == 2);
+	SAssert(TestSet.Dense[0].Value == v);
+	SAssert(r == 0);
+	SAssert(rr == 1);
+
+	u8 vvv = 64;
+	SparseSetSize_t rrr = TestSet.Add(&vvv);
+
+	TestSet.Remove(rr);
+
+	SAssert(rrr == 2);
+
+	SAssert(*TestSet.Get(r) == 16);
+	SAssert(!TestSet.Get(rr));
+	SAssert(TestSet.Count == 2);
+}

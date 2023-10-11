@@ -30,3 +30,9 @@ struct SAllocator
 	AllocatorProc* Proc;
 	void* Data;
 };
+
+inline bool
+IsAllocatorValid(SAllocator allocator)
+{
+	return allocator.Proc;
+}

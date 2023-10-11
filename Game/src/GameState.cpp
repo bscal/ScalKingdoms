@@ -102,8 +102,6 @@ GameInitialize()
 	bool guiInitialized = InitializeGUI(&State, &State.AssetMgr.MainFont);
 	SAssert(guiInitialized);
 
-	SetNuklearScaling(&State.GUIState.Ctx, 1.0f);
-
 	HashMapTInitialize(&State.EntityMap, 4096, SAllocatorArena(&GetGameState()->GameArena));
 
 	TileMgrInitialize(&State.AssetMgr.TileSpriteSheet);
@@ -134,6 +132,8 @@ GameInitialize()
 
 	if (Client.IsDebugMode)
 		SInfoLog("[ Game ] Running in DEBUG mode!");
+
+	TestSpareSet();
 
 	PopMemoryIgnoreFree();
 

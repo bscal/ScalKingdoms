@@ -38,7 +38,7 @@ struct Chunk
 	bool IsLoaded; // TODO do we just remove this?
 	ItemStackHolder ItemHolder;
 	Tile TileArray[CHUNK_AREA];
-	SparseSet<ecs_entity_t, CHUNK_AREA> Entities;
+	SparseSet<ecs_entity_t> Entities;
 };
 
 struct ChunkLoaderData
