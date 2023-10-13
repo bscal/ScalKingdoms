@@ -145,7 +145,7 @@ uint32_t HashMapTSet(HashMapT<K, V>* map, K* key, V* value)
 
 	uint32_t insertedIndex = HashMapT<K, V>::NOT_FOUND;
 	uint16_t probeLength = 0;
-	uint32_t idx = HashKey(key, sizeof(K), map->Capacity);
+	uint32_t idx = (uint32_t)HashAndMod(key, map->Capacity);
 	while (true)
 	{
 		HashMapTBucket<K, V>* bucket = &map->Buckets[idx];
@@ -216,7 +216,7 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 	SAssert(map->Buckets);
 
 	uint32_t probeLength = 0;
-	uint32_t idx = HashKey(key, sizeof(K), map->Capacity);
+	uint32_t idx = (uint32_t)HashAndMod(key, map->Capacity);
 	while (true)
 	{
 		HashMapTBucket<K, V>* bucket = &map->Buckets[idx];
@@ -255,7 +255,7 @@ bool HashMapTRemove(HashMapT<K, V>* map, const K* key)
 
 	SAssert(map->Buckets);
 
-	uint32_t index = HashKey(key, sizeof(K), map->Capacity);
+	uint32_t index = (uint32_t)HashAndMod(key, map->Capacity);
 	while (true)
 	{
 		HashMapTBucket<K, V>* bucket = &map->Buckets[index];

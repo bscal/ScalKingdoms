@@ -3,33 +3,28 @@
 #include "Core.h"
 #include "Memory.h"
 
-constexpr internal_var u32 HASHMAPKV_NOT_FOUND = UINT32_MAX;
+constexpr internal_var u64 HASHMAPKV_NOT_FOUND = UINT64_MAX;
 
 struct HashMapSlot
 {
-	u8 ProbeLength;
+	u64 Key;
+	u16 ProbeLength;
 	bool IsUsed;
 };
 
-typedef bool(*HashMapCompare)(const void*, const void*);
-
-// Robin hood hashmap seperating Slots (probelength, tombstone), Keys, Values
+// Robin hood hashmap with 8 byte size key
 struct HashMap
 {
+	SAllocator Alloc;
 	HashMapSlot* Slots;
-    void* Keys;
 	void* Values;
-	HashMapCompare CompareFunc;
-	u32 KeyStride;
     u32 ValueStride;
     u32 Capacity;
 	u32 Count;
 	u32 MaxCount;
-	SAllocator Alloc;
 };
 
-void HashMapInitialize(HashMap* map, HashMapCompare compareFunc, 
-	u32 keyStride, u32 valueStride, u32 capacity, SAllocator alloc);
+void HashMapInitialize(HashMap* map, u32 valueStride, u32 capacity, SAllocator alloc);
 
 void HashMapReserve(HashMap* map, uint32_t capacity);
 
@@ -37,18 +32,18 @@ void HashMapClear(HashMap* map);
 
 void HashMapFree(HashMap* map);
 
-void HashMapSet(HashMap* map, const void* key, const void* value);
+void HashMapSet(HashMap* map, u64 key, const void* value);
 
-void HashMapReplace(HashMap* map, const void* key, const void* value);
+void HashMapReplace(HashMap* map, u64 key, const void* value);
 
-void* HashMapSetZeroed(HashMap* map, const void* key);
+void* HashMapSetZeroed(HashMap* map, u64 key);
 
-u32 HashMapFind(HashMap* map, const void* key);
+u64 HashMapFind(HashMap* map, u64 key);
 
-void* HashMapGet(HashMap* map, const void* key);
+void* HashMapGet(HashMap* map, u64 key);
 
-bool HashMapRemove(HashMap* map, const void* key);
+bool HashMapRemove(HashMap* map, u64 key);
 
-void HashMapForEach(HashMap* map, void(*Fn)(void*, void*, void*), void* stackMemory);
+void HashMapForEach(HashMap* map, void(*Fn)(u64, void*, void*), void* stackMemory);
 
 void* HashMapIndex(HashMap* map, u32 idx);

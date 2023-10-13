@@ -130,7 +130,7 @@ HashSetTSet(HashSetT<K>* set, const K* key)
 	SAssert(set->Keys);
 
 	K swapKey = *key;
-	uint32_t idx = HashKey(key, sizeof(K), set->Capacity);
+	uint32_t idx = (uint32_t)HashAndMod(key, set->Capacity);
 	uint32_t probeLength = 0;
 	while (true)
 	{
@@ -174,7 +174,7 @@ HashSetTContains(HashSetT<K>* set, K* key)
 		return false;
 
 	uint32_t probeLength = 0;
-	uint32_t idx = HashKey(key, sizeof(K), set->Capacity);
+	uint32_t idx = (uint32_t)HashAndMod(key, set->Capacity);
 	while (true)
 	{
 		HashSetTBucket<K>* bucket = &set->Keys[idx];

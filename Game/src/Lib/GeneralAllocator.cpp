@@ -339,6 +339,9 @@ void* GeneralPurposeRealloc(GeneralPurposeAllocator* _RESTRICT_ freelist, void* 
 		SAssert(node->Size != 0);
 		SAssert(node->Size < freelist->Size);
 
+		if (size < node->Size)
+			return ptr;
+
 		uint8_t* resized_block = (uint8_t*)GeneralPurposeAlloc(freelist, size);
 		SAssert(resized_block);
 

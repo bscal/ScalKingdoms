@@ -10,30 +10,32 @@ constexpr internal_var float DEFAULT_LOADFACTOR = .85f;
 
 #define ToIdx(hash, cap) ((u32)((hash) & (u64)((cap) - 1)))
 #define IndexArray(arr, idx, stride) (((u8*)(arr)) + ((idx) * (stride)))
-#define IndexKey(hashmap, idx) (IndexArray(hashmap->Keys, idx, hashmap->KeyStride))
 #define IndexValue(hashmap, idx) (IndexArray(hashmap->Values, idx, hashmap->ValueStride))
 
 struct HashMapSetResults
 {
-    u32 Index;
+    u64 Index;
     bool Contained;
 };
 
 internal HashMapSetResults
-HashMapSet_Internal(HashMap* map, const void* key, const void* value);
+HashMapSet_Internal(HashMap* map, u64, const void* value);
 
-void HashMapInitialize(HashMap* map, HashMapCompare compareFunc, 
-	u32 keyStride, u32 valueStride, u32 capacity, SAllocator alloc)
+// Only use for capacity that are powers of 2
+internal u64
+HashMapHashKey(u64 key, u32 capacity)
+{
+	SAssert(capacity != 0);
+	return key & ((u64)capacity - 1ull);
+}
+
+void HashMapInitialize(HashMap* map, u32 valueStride, u32 capacity, SAllocator alloc)
 {
 	SAssert(map);
-	SAssert(compareFunc);
 	SAssert(IsAllocatorValid(alloc));
-    SAssert(keyStride > 0);
     SAssert(valueStride > 0);
 
-	map->CompareFunc = compareFunc;
 	map->Alloc = alloc;
-	map->KeyStride = keyStride;
     map->ValueStride = valueStride;
 	if (capacity > 0)
 	{
@@ -46,7 +48,6 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 {
 	SAssert(map);
 	SAssert(IsAllocatorValid(map->Alloc));
-    SAssert(map->KeyStride > 0);
     SAssert(map->ValueStride > 0);
 
 	if (capacity == 0)
@@ -61,8 +62,6 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 	if (map->Slots)
 	{
 		HashMap tmpMap = {};
-		tmpMap.CompareFunc = map->CompareFunc;
-		tmpMap.KeyStride = map->KeyStride;
         tmpMap.ValueStride = map->ValueStride;
 		tmpMap.Alloc = map->Alloc;
 		HashMapReserve(&tmpMap, capacity);
@@ -71,12 +70,11 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 		{
 			if (map->Slots[i].IsUsed)
 			{
-				HashMapSet(&tmpMap, IndexKey(map, i), IndexValue(map, i));
+				HashMapSet(&tmpMap, map->Slots->Key, IndexValue(map, i));
 			}
 		}
 		
 		SFree(map->Alloc, map->Slots);
-		SFree(map->Alloc, map->Keys);
         SFree(map->Alloc, map->Values);
 
 		SAssert(map->Count == tmpMap.Count);
@@ -89,8 +87,6 @@ void HashMapReserve(HashMap* map, uint32_t capacity)
 
 		map->Slots = (HashMapSlot*)SAlloc(map->Alloc, sizeof(HashMapSlot) * map->Capacity);
 		memset(map->Slots, 0, sizeof(HashMapSlot) * map->Capacity);
-
-		map->Keys = SAlloc(map->Alloc, map->KeyStride * map->Capacity);
 
         map->Values = SAlloc(map->Alloc, map->ValueStride * map->Capacity);
 	}
@@ -105,20 +101,19 @@ void HashMapClear(HashMap* map)
 void HashMapFree(HashMap* map)
 {
 	SFree(map->Alloc, map->Slots);
-	SFree(map->Alloc, map->Keys);
     SFree(map->Alloc, map->Values);
 	map->Capacity = 0;
 	map->Count = 0;
 }
 
 void 
-HashMapSet(HashMap* map, const void* key, const void* value)
+HashMapSet(HashMap* map, u64 key, const void* value)
 {
 	HashMapSet_Internal(map, key, value);
 }
 
 void 
-HashMapReplace(HashMap* map, const void* key, const void* value)
+HashMapReplace(HashMap* map, u64 key, const void* value)
 {
 	HashMapSetResults res = HashMapSet_Internal(map, key, value);
     if (res.Contained)
@@ -126,30 +121,29 @@ HashMapReplace(HashMap* map, const void* key, const void* value)
 }
 
 void* 
-HashMapSetZeroed(HashMap* map, const void* key)
+HashMapSetZeroed(HashMap* map, u64 key)
 {
 	HashMapSetResults res = HashMapSet_Internal(map, key, nullptr);
     return IndexValue(map, res.Index);
 }
 
-uint32_t HashMapFind(HashMap* map, const void* key)
+u64 HashMapFind(HashMap* map, u64 key)
 {
 	SAssert(map);
 	SAssert(key);
-	SAssert(map->CompareFunc);
 	SAssert(IsAllocatorValid(map->Alloc));
 
 	if (!map->Slots || map->Count == 0)
 		return HASHMAPKV_NOT_FOUND;
 
-	u32 idx = HashKey(key, map->KeyStride, map->Capacity);
+	u64 idx = HashMapHashKey(key, map->Capacity);
 	u32 probeLength = 0;
 	while (true)
 	{
 		HashMapSlot slot = map->Slots[idx];
 		if (!slot.IsUsed || probeLength > slot.ProbeLength)
 			return HASHMAPKV_NOT_FOUND;
-		else if (Compare(map, IndexKey(map, idx), key))
+		else if (slot.Key == key)
 			return idx;
 		else
 		{
@@ -163,26 +157,24 @@ uint32_t HashMapFind(HashMap* map, const void* key)
 }
 
 void* 
-HashMapGet(HashMap* map, const void* key)
+HashMapGet(HashMap* map, u64 key)
 {
-	u32 idx = HashMapFind(map, key);
+	u64 idx = HashMapFind(map, key);
     if (idx == HASHMAPKV_NOT_FOUND)
         return nullptr;
     else
         return IndexValue(map, idx);
 }
 
-bool HashMapRemove(HashMap* map, const void* key)
+bool HashMapRemove(HashMap* map, u64 key)
 {
 	SAssert(map);
-	SAssert(key);
-	SAssert(map->CompareFunc);
 	SAssert(IsAllocatorValid(map->Alloc));
 
 	if (!map->Slots || map->Count == 0)
 		return false;
 
-	u32 idx = HashKey(key, map->KeyStride, map->Capacity);
+	u64 idx = HashMapHashKey(key, map->Capacity);
 	while (true)
 	{
 		HashMapSlot bucket = map->Slots[idx];
@@ -190,11 +182,11 @@ bool HashMapRemove(HashMap* map, const void* key)
 		{
 			return false;
 		}
-		else if (Compare(map, key, IndexKey(map, idx)))
+		else if (bucket.Key == key)
 		{
 			while (true) // Move any entries after index closer to their ideal probe length.
 			{
-				uint32_t lastIdx = idx;
+				u64 lastIdx = idx;
 				++idx;
 				if (idx == map->Capacity)
 					idx = 0;
@@ -210,7 +202,6 @@ bool HashMapRemove(HashMap* map, const void* key)
 				else
 				{
 					map->Slots[lastIdx].ProbeLength = nextBucket.ProbeLength - 1;
-                    memcpy(IndexKey(map, lastIdx), IndexKey(map, idx), map->KeyStride);
                     memcpy(IndexValue(map, lastIdx), IndexValue(map, idx), map->ValueStride);
 				}
 			}
@@ -226,28 +217,25 @@ bool HashMapRemove(HashMap* map, const void* key)
 	return false;
 }
 
-void HashMapForEach(HashMap* map, void(*Fn)(void*, void*, void*), void* stackMemory)
+void HashMapForEach(HashMap* map, void(*Fn)(u64, void*, void*), void* stackMemory)
 {
 	SAssert(Fn);
 	for (uint32_t i = 0; i < map->Capacity; ++i)
 	{
 		if (map->Slots[i].IsUsed)
 		{
-			Fn(IndexKey(map, i), IndexValue(map, i), stackMemory);
+			Fn(map->Slots[i].Key, IndexValue(map, i), stackMemory);
 		}
 	}
 }
 
 internal HashMapSetResults
-HashMapSet_Internal(HashMap* map, const void* key, const void* value)
+HashMapSet_Internal(HashMap* map, u64 key, const void* value)
 {
 	SAssert(map);
 	SAssert(key);
-	SAssert(map->CompareFunc);
 	SAssert(IsAllocatorValid(map->Alloc));
-	SAssert(map->KeyStride > 0);
 	SAssert(map->ValueStride > 0);
-	SAssert(map->KeyStride + map->ValueStride < Kilobytes(16));
 
 	if (map->Count >= map->MaxCount)
 	{
@@ -256,10 +244,8 @@ HashMapSet_Internal(HashMap* map, const void* key, const void* value)
 
 	SAssert(map->Slots);
 
-    void* swapKey = StackAlloc(map->KeyStride);
+	u64 swapKey = key;
     SAssert(swapKey);
-
-    memcpy(swapKey, key, map->KeyStride);
 
     void* swapValue = StackAlloc(map->ValueStride);
 	SAssert(swapValue);
@@ -277,16 +263,17 @@ HashMapSet_Internal(HashMap* map, const void* key, const void* value)
     res.Index = HASHMAPKV_NOT_FOUND;
 	res.Contained = false;
 
-	u32 idx = HashKey(key, map->KeyStride, map->Capacity);
-	u8 probeLength = 0;
+	u64 idx = HashMapHashKey(key, map->Capacity);
+	u16 probeLength = 0;
 	while (true)
 	{
 		HashMapSlot* bucket = &map->Slots[idx];
 		if (!bucket->IsUsed) // Bucket is not used
 		{
+			bucket->Key = swapKey;
             bucket->IsUsed = true;
             bucket->ProbeLength = probeLength;
-            memcpy(IndexKey(map, idx), swapKey, map->KeyStride);
+
 			memcpy(IndexValue(map, idx), swapValue, map->ValueStride);
 
 			++map->Count;
@@ -298,7 +285,7 @@ HashMapSet_Internal(HashMap* map, const void* key, const void* value)
 		}
 		else
 		{
-			if (Compare(map, IndexKey(map, idx), swapKey))
+			if (bucket->Key == key)
 				return { idx, true };
 
 			if (probeLength > bucket->ProbeLength)
@@ -306,18 +293,8 @@ HashMapSet_Internal(HashMap* map, const void* key, const void* value)
                 if (res.Index == HASHMAPKV_NOT_FOUND)
                     res.Index = idx;
 
-				Swap(bucket->ProbeLength, probeLength, u8);
-                {
-					// Swaps byte by byte from current value to
-					// value parameter memory;
-					uint8_t* currentValue = IndexKey(map, idx);
-					for (uint32_t i = 0; i < map->KeyStride; ++i)
-					{
-						uint8_t tmp = currentValue[i];
-						currentValue[i] = ((uint8_t*)swapKey)[i];
-						((uint8_t*)swapKey)[i] = tmp;
-					}
-				}
+				Swap(bucket->Key, swapKey, u64);
+				Swap(bucket->ProbeLength, probeLength, u16);
 				{
 					// Swaps byte by byte from current value to
 					// value parameter memory;
@@ -335,8 +312,6 @@ HashMapSet_Internal(HashMap* map, const void* key, const void* value)
 			++idx;
 			if (idx == map->Capacity)
 				idx = 0;
-
-			SAssertMsg(probeLength <= 127, "probeLength is > 127, using bad hash?");
 		}
 	}
 	return res;

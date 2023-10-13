@@ -2,7 +2,17 @@
 
 #include "Core.h"
 
+#include <wyhash/wyhash.h>
 #include <raylib/src/raymath.h>
+
+template<typename T>
+_FORCE_INLINE_ u64 
+Hash(T& value)
+{
+	return wyhash(value, sizeof(T), 0, _wyp);
+}
+
+#define HashAndMod(value, capacity) (Hash((value)) & (capacity - 1))
 
 _FORCE_INLINE_ double GetMicroTime()
 {
@@ -105,13 +115,13 @@ FNVHash32(const void* const data, size_t length)
 }
 
 // Only use for capacity that are powers of 2
-_FORCE_INLINE_ u32
-HashKey(const void* key, size_t len, u32 capacity)
-{
-	u32 hash = FNVHash32((const u8*)key, len);
-	hash &= (capacity - 1);
-	return hash;
-}
+//_FORCE_INLINE_ u32
+//HashKey(const void* key, size_t len, u32 capacity)
+//{
+//	u32 hash = FNVHash32((const u8*)key, len);
+//	hash &= (capacity - 1);
+//	return hash;
+//}
 
 inline int
 FastAtoi(const char* str)

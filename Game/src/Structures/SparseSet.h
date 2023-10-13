@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Allocator.h"
-#include "ArrayList.h"
 
 typedef u16 SparseSetSize_t;
 
@@ -18,21 +17,22 @@ struct SparseSet
 	};
 
 	SAllocator Allocator;
-	ArrayList(SparseSetSize_t) Sparse;
-	ArrayList(SparseSetBucket<T>) Dense;
+	SparseSetSize_t* Sparse;
+	SparseSetBucket<T>* Dense;
+	SparseSetSize_t SparseCapacity;
+	SparseSetSize_t DenseCapacity;
 	SparseSetSize_t Count;
 
 	void Initialize(SAllocator allocator, int capacity)
 	{
 		SAssert(IsAllocatorValid(allocator));
 		Allocator = allocator;
-		ArrayListReserve(Allocator, Sparse, capacity);
+		SparseCapacity = (SparseSetSize_t)capacity;
+		Sparse = (SparseSetSize_t*)SAlloc(Allocator, capacity * sizeof(SparseSetSize_t));
 
 		SAssert(Sparse);
-		ArrayListHeader* header = ArrayListGetHeader(Sparse);
-		header->Count = header->Capacity;
 
-		for (int i = 0; i < header->Capacity; ++i)
+		for (int i = 0; i < capacity; ++i)
 		{
 			Sparse[i] = EMPTY;
 		}
@@ -40,13 +40,15 @@ struct SparseSet
 
 	void Resize(int denseCapacity)
 	{
-		ArrayListReserve(Allocator, Dense, denseCapacity);
+		Dense = (SparseSetBucket<T>*)SRealloc(Allocator,
+											  Dense, 
+											  denseCapacity * sizeof(SparseSetBucket<T>),
+											  DenseCapacity * sizeof(SparseSetBucket<T>));
+		DenseCapacity = (SparseSetSize_t)denseCapacity;
 
-		for (SparseSetSize_t i = (SparseSetSize_t)ArrayListCount(Dense); i < (SparseSetSize_t)ArrayListCapacity(Dense); ++i)
+		for (SparseSetSize_t i = Count; i < DenseCapacity; ++i)
 		{
-			SparseSetBucket<T> tmp = {};
-			tmp.Id = i;
-			ArrayListPush(Allocator, Dense, tmp);
+			Dense[i].Id = i;
 		}
 	}
 
@@ -55,11 +57,11 @@ struct SparseSet
 		SAssert(IsAllocatorValid(Allocator));
 		SAssert(Sparse);
 
-		if (Count < ArrayListCapacity(Sparse))
+		if (Count < SparseCapacity)
 		{
-			if (Count == ArrayListCapacity(Dense))
+			if (Count == DenseCapacity)
 			{
-				int newCap = (ArrayListCapacity(Dense)) ? ArrayListCapacity(Dense) * 2 : 1;
+				int newCap = (DenseCapacity) ? DenseCapacity * 2 : 1;
 				Resize(newCap);
 			}
 
@@ -73,7 +75,11 @@ struct SparseSet
 
 			return Dense[idx].Id;
 		}
-		return EMPTY;
+		else
+		{
+			SError("SparseSet is full!");
+			return EMPTY;
+		}
 	}
 
 	void Remove(SparseSetSize_t id)
@@ -81,7 +87,7 @@ struct SparseSet
 		SAssert(IsAllocatorValid(Allocator));
 		SAssert(Sparse);
 		SAssert(Dense);
-		SAssert(id < (SparseSetSize_t)ArrayListCapacity(Sparse));
+		SAssert(id < SparseCapacity);
 
 		SparseSetSize_t idx = Sparse[id];
 		SparseSetBucket<T>* lastBucket = Dense + Count - 1;
@@ -97,7 +103,7 @@ struct SparseSet
 	{
 		SAssert(Sparse);
 		SAssert(Dense);
-		SAssert(id < (SparseSetSize_t)ArrayListCapacity(Sparse));
+		SAssert(id < SparseCapacity);
 
 		SparseSetSize_t idx = Sparse[id];
 

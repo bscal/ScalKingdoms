@@ -275,7 +275,10 @@ NK_API void
 DrawNuklear(struct nk_context * ctx)
 {
     const struct nk_command *cmd;
-    const float scale = GetNuklearScaling(ctx);
+    // Set to 1 currently, scaling did not work how I liked so
+    // I render ui onto a texture of scaled size and then draw
+    // to frame buffer. set to 1 so it hopefully just get optimized out
+    const float scale = 1.f;//GetNuklearScaling(ctx);
 
     nk_foreach(cmd, ctx) {
         switch (cmd->type) {
