@@ -48,7 +48,6 @@ internal void RlFreeOverride(void* ptr)
 int
 GameInitialize()
 {
-	// TODO Move to virtual memory?
 	size_t permanentMemorySize = Megabytes(16);
 	size_t gameMemorySize = Megabytes(16);
 	size_t frameMemorySize = Megabytes(16);
@@ -302,7 +301,7 @@ void InputUpdate()
 			next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
 		}
 
-		if (next.IsAllocated())
+		if (next.Memory)
 		{
 			for (u32 i = 0; i < next.Count; ++i)
 			{
@@ -408,13 +407,9 @@ UnloadAssets(GameState* gameState)
 internal void
 RescaleGUI(GameState* gameState, GUIState* guiState, GUIScale scale)
 {
-	int w = GetScreenWidth();
-	int h = GetScreenHeight();
-
 	UnloadRenderTexture(gameState->GUITexture);
 
-	float newW = (float)w * GUIScaleResolutions[scale].x;
-	float newY = (float)h * GUIScaleResolutions[scale].y;
-	guiState->Scale = { newW, newY };
-	gameState->GUITexture = LoadRenderTexture((int)newW, (int)newY);
+	guiState->Scale.x = (float)GetScreenWidth() * GUIScaleResolutions[scale].x;
+	guiState->Scale.y = (float)GetScreenHeight() * GUIScaleResolutions[scale].y;
+	gameState->GUITexture = LoadRenderTexture((int)guiState->Scale.x, (int)guiState->Scale.y);
 }

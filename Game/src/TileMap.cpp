@@ -58,22 +58,19 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 		Vec2i reso = { CHUNK_SIZE_PIXELS, CHUNK_SIZE_PIXELS };
 		chunk->RenderTexture = LoadRenderTextureEx(reso, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8, false);
 
-		SAssert(chunk->RenderTexture.id != 0);
+		chunk->Entities.Initialize(SAllocatorGeneral(), CHUNK_AREA);
 
+		SAssert(chunk->RenderTexture.id != 0);
 		tilemap->ChunkLoader.ChunkPool.Push(&chunk);
 	}
 	SAssert(tilemap->ChunkLoader.ChunkPool.Count == VIEW_DISTANCE_TOTAL_CHUNKS);
 
 	HashMapTInitialize(&tilemap->ChunkMap, VIEW_DISTANCE_TOTAL_CHUNKS, SAllocatorArena(&GetGameState()->GameArena));
 
+	// Init chunkloader
 	tilemap->ChunkLoader.Tilemap = tilemap;
-
-	// Init noise
 	tilemap->ChunkLoader.Noise = fnlCreateState();
 	tilemap->ChunkLoader.Noise.noise_type = FNL_NOISE_OPENSIMPLEX2;
-
-	//tilemap->ChunkLoader.ChunksToAdd.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
-	//tilemap->ChunkLoader.ChunkToRemove.Reserve(SAllocatorArena(&GetGameState()->GameArena), MAX_CHUNKS_TO_PROCESS);
 
 	SInfoLog("Tilemap Initialized!");
 }
