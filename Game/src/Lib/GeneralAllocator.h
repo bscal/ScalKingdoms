@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Core.h"
-#include "Allocator.h"
+#include "Base.h"
+#include "Memory.h"
 
 #include <inttypes.h>
 

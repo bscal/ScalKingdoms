@@ -1,5 +1,7 @@
 #include "Utils.h"
 
+#include "Core.h"
+
 void
 TextSplitBuffered(const char* text, char delimiter, int* _RESTRICT_ count,
 	char* _RESTRICT_ buffer, int bufferLength,

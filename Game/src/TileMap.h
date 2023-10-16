@@ -11,7 +11,6 @@
 #include "Structures/HashMapT.h"
 
 #include <FastNoiseLite/FastNoiseLite.h>
-#include <stdint.h>
 
 struct GameState;
 

@@ -23,8 +23,8 @@ typedef uint64_t u64;
 #define constant_var constexpr static
 #define local_persist static
 
-constant_var float PI = (float)3.14159265358979323846;
-constant_var float TAO = PI * 2.0;
+#define PI 3.14159265358979323846f
+constant_var float TAO = PI * 2.0f;
 constant_var size_t CACHE_LINE = 64;
 constant_var size_t DEFAULT_ALIGNMENT = 16;
 

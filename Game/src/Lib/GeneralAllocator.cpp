@@ -1,7 +1,6 @@
 #include "GeneralAllocator.h"
 
-#include "Memory.h"
-#include "Utils.h"
+#include "Core.h"
 
 #include <stdlib.h>
 

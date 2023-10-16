@@ -209,11 +209,10 @@ uint32_t HashMapTFind(HashMapT<K, V>* map, K* key)
 	SAssert(key);
 	SAssert(IsAllocatorValid(map->Alloc));
 	SAssert(*key == *key);
-
-	if (!map->Buckets || map->Count == 0)
-		return HashMapT<K, V>::NOT_FOUND;
-
 	SAssert(map->Buckets);
+
+	if (!map->Buckets)
+		return HashMapT<K, V>::NOT_FOUND;
 
 	uint32_t probeLength = 0;
 	uint32_t idx = (uint32_t)HashAndMod(key, map->Capacity);

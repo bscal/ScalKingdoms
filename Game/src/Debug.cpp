@@ -194,3 +194,29 @@ void DrawErrorPopupWindow(GameState* gameState)
 		nk_end(ctx);
 	}
 }
+
+Timer::Timer()
+{
+	End = 0;
+	Name = nullptr;
+	StartSecs = GetTime();
+	Start = zpl_rdtsc();
+}
+
+Timer::Timer(const char* name)
+{
+	Name = name;
+	End = 0;
+	StartSecs = GetTime();
+	Start = zpl_rdtsc();
+}
+
+Timer::~Timer()
+{
+	End = zpl_rdtsc() - Start;
+	double EndSeconds = GetTime() - StartSecs;
+	if (Name)
+		SInfoLog("[ Timer ] Timer %s took %llu cycles, %f ns", Name, End, EndSeconds * 1000 * 1000);
+	else
+		SInfoLog("[ Timer ] Timer took %llu cycles, %f ns", End, EndSeconds * 1000 * 1000);
+}

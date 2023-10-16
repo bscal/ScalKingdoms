@@ -7,13 +7,13 @@
 #include <flecs/flecs.h>
 
 #include <raylib/src/raylib.h>
-#undef PI
-
-#include <stdint.h>
+#include <raylib/src/raymath.h>
 
 #include "Base.h"
 #include "Vector2i.h"
+#include "Utils.h"
 #include "Debug.h"
+#include "Memory.h"
 
 /*
 *
@@ -97,6 +97,29 @@ constant_var Vector2 VEC2_LEFT = { -1 , 0 };
 constant_var float
 TileDirectionToTurns[] = { TAO * 0.75f, 0.0f, TAO * 0.25f, TAO * 0.5f };
 
+//
+// Vector2 operator overloads
+//
+static inline Vector2 operator+(Vector2 left, Vector2 right)
+{
+	return Vector2Add(left, right);
+}
+
+static inline Vector2 operator-(Vector2 left, Vector2 right)
+{
+	return Vector2Subtract(left, right);
+}
+
+static inline Vector2 operator*(Vector2 left, Vector2 right)
+{
+	return Vector2Multiply(left, right);
+}
+
+static inline Vector2 operator/(Vector2 left, Vector2 right)
+{
+	return Vector2Divide(left, right);
+}
+
 #define FMT_VEC2(v) TextFormat("Vector2(x: %.3f, y: %.3f)", v.x, v.y)
 #define FMT_VEC2I(v) TextFormat("Vector2i(x: %d, y: %d)", v.x, v.y)
 #define FMT_RECT(rect) TextFormat("Rectangle(x: %.3f, y: %.3f, w: %.3f, h: %.3f)", rect.x, rect.y, rect.width, rect.height)
@@ -111,6 +134,3 @@ inline int ScalTestPasses;
 #define ScalTestRun(func) \
 	++ScalTestCounter; \
 	ScalTestPasses += func()
-
-#define TimerStart(name) Timer(name)
-#define TimerStartFunc() TimerStart(__FUNCTION__)

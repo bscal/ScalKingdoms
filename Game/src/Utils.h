@@ -1,9 +1,10 @@
 #pragma once
 
-#include "Core.h"
+#include "Base.h"
 
 #include <wyhash/wyhash.h>
-#include <raylib/src/raymath.h>
+
+#include <raylib/src/raylib.h>
 
 template<typename T>
 _FORCE_INLINE_ u64 
@@ -114,19 +115,10 @@ FNVHash32(const void* const data, size_t length)
 	return val;
 }
 
-// Only use for capacity that are powers of 2
-//_FORCE_INLINE_ u32
-//HashKey(const void* key, size_t len, u32 capacity)
-//{
-//	u32 hash = FNVHash32((const u8*)key, len);
-//	hash &= (capacity - 1);
-//	return hash;
-//}
 
 inline int
 FastAtoi(const char* str)
 {
-	SAssert(str);
 	int val = 0;
 	for (; *str; ++str)
 	{
@@ -177,59 +169,3 @@ ColorToInt(Color c)
 	return res;
 }
 
-//
-// Vector2 operator overloads
-//
-static inline Vector2 operator+(Vector2 left, Vector2 right)
-{
-	return Vector2Add(left, right);
-}
-
-static inline Vector2 operator-(Vector2 left, Vector2 right)
-{
-	return Vector2Subtract(left, right);
-}
-
-static inline Vector2 operator*(Vector2 left, Vector2 right)
-{
-	return Vector2Multiply(left, right);
-}
-
-static inline Vector2 operator/(Vector2 left, Vector2 right)
-{
-	return Vector2Divide(left, right);
-}
-
-struct Timer
-{
-	u64 Start;
-	u64 End;
-	double StartSecs;
-	const char* Name;
-
-	Timer()
-	{
-		End = 0;
-		Name = nullptr;
-		StartSecs = GetTime();
-		Start = zpl_rdtsc();
-	}
-
-	Timer(const char* name)
-	{
-		Name = name;
-		End = 0;
-		StartSecs = GetTime();
-		Start = zpl_rdtsc();
-	}
-
-	~Timer()
-	{
-		End = zpl_rdtsc() - Start;
-		double EndSeconds = GetTime() - StartSecs;
-		if (Name)
-			SInfoLog("[ Timer ] Timer %s took %llu cycles, %f ns", Name, End, EndSeconds * 1000 * 1000);
-		else
-			SInfoLog("[ Timer ] Timer took %llu cycles, %f ns", End, EndSeconds * 1000 * 1000);
-	}
-};

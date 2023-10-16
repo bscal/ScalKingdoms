@@ -7,8 +7,6 @@
 #include "Tile.h"
 #include "Utils.h"
 
-#include <raylib/src/raymath.h>
-
 #include <math.h>
 
 // TODO
@@ -44,9 +42,6 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 
 	tilemap->LastChunkCoord = Vec2i{ INT32_MAX, INT32_MAX };
 	tilemap->Dimensions = dimensions;
-
-	//tilemap->ChunkLoader.ChunkPool.Reserve(SAllocatorArena(&GetGameState()->GameArena), VIEW_DISTANCE_TOTAL_CHUNKS);
-	//SAssert(tilemap->ChunkLoader.ChunkPool.IsAllocated());
 
 	for (int i = 0; i < tilemap->ChunkLoader.ChunkPool.Capacity; ++i)
 	{
@@ -89,7 +84,7 @@ TileMapFree(TileMap* tilemap)
 			InternalChunkUnload(tilemap, chunk);
 		}
 	}
-
+	
 	for (int i = 0; i < tilemap->ChunkLoader.ChunkPool.Count; ++i)
 	{
 		UnloadRenderTexture(tilemap->ChunkLoader.ChunkPool.Data[i]->RenderTexture);
@@ -522,19 +517,19 @@ ChunkThreadFunc(JobArgs* args)
 {
 	ChunkLoaderState* chunkLoader = (ChunkLoaderState*)args->StackMemory;
 	SAssert(chunkLoader);
-	TileMap* tilemap = chunkLoader->Tilemap;
-	SAssert(tilemap);
+	SAssert(chunkLoader->Tilemap);
+	SAssert(chunkLoader->ChunksToAdd.Data);
+	SAssert(chunkLoader->ChunksToRemove.Data);
 
-	if (!tilemap->ChunkMap.Buckets)
+	TileMap* tilemap = chunkLoader->Tilemap;
+	if (!tilemap || !tilemap->ChunkMap.Buckets)
 	{
 		SAssertMsg(false, "Chunk thread, ChunkMap, is NULL");
 		return;
 	}
 
 	Vec2 position = Vector2Multiply(chunkLoader->TargetPosition, { INVERSE_TILE_SIZE, INVERSE_TILE_SIZE });
-	Vec2 chunkPos = position;
-	chunkPos.x *= INVERSE_CHUNK_SIZE;
-	chunkPos.y *= INVERSE_CHUNK_SIZE;
+	Vec2 chunkPos = Vector2Multiply(position, { INVERSE_CHUNK_SIZE, INVERSE_CHUNK_SIZE });
 
 	// Checks for chunks needing to be loaded
 	Vec2i start = Vec2ToVec2i(chunkPos) - Vec2i{ VIEW_RADIUS, VIEW_RADIUS };
@@ -547,6 +542,10 @@ ChunkThreadFunc(JobArgs* args)
 				break;
 
 			Vec2i coord = { x, y };
+
+			if (!IsChunkInBounds(tilemap, coord))
+				continue;
+
 			Vec2 center;
 			center.x = (float)coord.x * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
 			center.y = (float)coord.y * CHUNK_SIZE + ((float)CHUNK_SIZE / 2);
@@ -571,11 +570,11 @@ ChunkThreadFunc(JobArgs* args)
 
 	for (u32 i = 0; i < tilemap->ChunkMap.Capacity; ++i)
 	{
-		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
-			continue;
-
 		if (chunkLoader->ChunksToRemove.Count >= MAX_CHUNKS_TO_PROCESS)
 			break;
+		
+		if (!tilemap->ChunkMap.Buckets[i].IsUsed)
+			continue;
 
 		Vec2i key = tilemap->ChunkMap.Buckets[i].Key;
 		Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
