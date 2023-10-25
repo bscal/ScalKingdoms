@@ -84,7 +84,7 @@ struct InternalState
 //	Start working on a job queue
 //	After the job queue is finished, it can switch to an other queue and steal jobs from there
 internal void 
-work(u32 startingQueue)
+Work(u32 startingQueue)
 {
 	for (u32 i = 0; i < JobInternalState.NumThreads; ++i)
 	{
@@ -140,6 +140,7 @@ void JobsInitialize(u32 maxThreadCount)
 	JobInternalState.JobQueuePerThread = (JobQueue*)SCalloc(SAllocatorGeneral(), JobInternalState.NumThreads * sizeof(JobQueue));
 
 	ArrayListReserve(SAllocatorGeneral(), JobInternalState.Threads, (int)JobInternalState.NumThreads);
+	SAssert(JobInternalState.Threads);
 
 	for (u32 threadIdx = 0; threadIdx < JobInternalState.NumThreads; ++threadIdx)
 	{
@@ -152,7 +153,7 @@ void JobsInitialize(u32 maxThreadCount)
 
 				while (zpl_atomic32_load(&JobInternalState.IsAlive))
 				{
-					work(*threadIdx);
+					Work(*threadIdx);
 
 					// Wait for more work
 					zpl_semaphore_wait(&thread->semaphore);
@@ -184,7 +185,7 @@ void JobsInitialize(u32 maxThreadCount)
 		if (ret != 0)
 			handle_error_en(ret, std::string(" pthread_setname_np[" + std::to_string(threadID) + ']').c_str());
 #undef handle_error_en
-#endif // _WIN32
+#endif
 	}
 
 	double timeEnd = GetTime() - startTime;
@@ -275,7 +276,7 @@ void JobHandleWait(const JobHandle* handle)
 
 		// work() will pick up any jobs that are on stand by and execute them on this thread:
 		zpl_i32 idx = zpl_atomic32_fetch_add(&JobInternalState.NextQueueIndex, 1) % JobInternalState.NumThreads;
-		work(idx);
+		Work(idx);
 
 		while (JobHandleIsBusy(handle))
 		{

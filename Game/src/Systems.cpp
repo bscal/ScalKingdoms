@@ -44,15 +44,15 @@ void MoveSystem(ecs_iter_t* it)
 
 		u8 pathType;
 		Vec2i target;
-		if (moves[i].MoveData.StartPathLength > 0)
+		if (moves[i].MoveData.StartPath.Count > 0)
 		{
 			// Gets last index since paths are from back to front order
-			target = moves[i].MoveData.StartPath[moves[i].MoveData.StartPathLength - 1];
+			target = *moves[i].MoveData.StartPath.Last();
 			pathType = 0;
 		}
-		else if (moves[i].MoveData.PathLength > 0)
+		else if (moves[i].MoveData.Path.Count > 0)
 		{
-			RegionPath pathData = moves[i].MoveData.Path[moves[i].MoveData.PathLength - 1];
+			RegionPath pathData = *moves[i].MoveData.Path.Last();
 			Region* region = GetRegion(pathData.RegionCoord);
 			SAssert(region);
 			u8 pathLength = region->PathLengths[(int)pathData.Direction];
@@ -61,9 +61,9 @@ void MoveSystem(ecs_iter_t* it)
 			target = path[pathLength - 1 - moves[i].MoveData.PathProgress];
 			pathType = 1;
 		}
-		else if (moves[i].MoveData.EndPathLength > 0)
+		else if (moves[i].MoveData.EndPath.Count > 0)
 		{
-			target = moves[i].MoveData.EndPath[moves[i].MoveData.EndPathLength - 1];
+			target = *moves[i].MoveData.EndPath.Last();
 			pathType = 2;
 		}
 		else
@@ -83,10 +83,10 @@ void MoveSystem(ecs_iter_t* it)
 			transforms[i].Pos = moves[i].Target;
 
 			if (pathType == 0)
-				--moves[i].MoveData.StartPathLength;
+				--moves[i].MoveData.StartPath.Count;
 			else if (pathType == 1)
 			{
-				RegionPath pathData = moves[i].MoveData.Path[moves[i].MoveData.PathLength - 1];
+				RegionPath pathData = *moves[i].MoveData.Path.Last();
 				Region* region = GetRegion(pathData.RegionCoord);
 				u8 pathLength = region->PathLengths[(int)pathData.Direction];
 				Vec2i* path = region->PathPaths[(int)pathData.Direction];
@@ -94,11 +94,11 @@ void MoveSystem(ecs_iter_t* it)
 				if (moves[i].MoveData.PathProgress == pathLength)
 				{
 					moves[i].MoveData.PathProgress = 0;
-					--moves[i].MoveData.PathLength;
+					--moves[i].MoveData.Path.Count;
 				}
 			}
 			else if (pathType == 2)
-				--moves[i].MoveData.EndPathLength;
+				--moves[i].MoveData.EndPath.Count;
 		}
 
 		// Handle move to new tile

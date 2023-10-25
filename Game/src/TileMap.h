@@ -36,8 +36,8 @@ struct Chunk
 	bool IsGenerated;
 	bool IsLoaded; // TODO do we just remove this?
 	ItemStackHolder ItemHolder;
-	Tile TileArray[CHUNK_AREA];
 	SparseSet<ecs_entity_t> Entities;
+	Tile TileArray[CHUNK_AREA];
 };
 
 struct ChunkLoaderData

@@ -19,11 +19,11 @@ struct HashSetT
 	constexpr static uint32_t DEFAULT_RESIZE = 2;
 	constexpr static float DEFAULT_LOADFACTOR = 0.85f;
 
+	SAllocator Alloc;
 	HashSetTBucket<K>* Keys;
 	uint32_t Capacity;
 	uint32_t Count;
 	uint32_t MaxCount;
-	SAllocator Alloc;
 };
 
 template<typename K>

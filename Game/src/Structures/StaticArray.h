@@ -34,7 +34,7 @@ struct Buffer
 	T Data[Capacity];
 
 	constexpr _FORCE_INLINE_ T* At(size_t idx) { return SAssert(idx < Capacity); return Data + idx; }
-	constexpr _FORCE_INLINE_ T* AtCopy(size_t idx) { return SAssert(idx < Capacity); return Data[idx]; }
+	constexpr _FORCE_INLINE_ T AtCopy(size_t idx) { return SAssert(idx < Capacity); return Data[idx]; }
 	constexpr _FORCE_INLINE_ size_t MemorySize() { return Capacity * sizeof(T); }
 	constexpr _FORCE_INLINE_ T* Last() { return Data + ((Count > 0) ? Count - 1 : 0); }
 	constexpr _FORCE_INLINE_ void Clear() { Count = 0; }

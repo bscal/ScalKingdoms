@@ -6,7 +6,7 @@
 #include "TileMap.h"
 #include "Tile.h"
 
-constant_var u8 INVERSE[] = { 2, 3, 0, 1 };
+constant_var u8 INVERSE_DIRECTIONS[] = { 2, 3, 0, 1 };
 
 internal_var HashMapT<Vec2i, Region> RegionMap;
 
@@ -352,10 +352,10 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 	HashMapTClear(&pathfinder->OpenSet);
 	HashSetTClear(&pathfinder->ClosedSet);
 
-	moveData->PathLength = 0;
 	moveData->PathProgress = 0;
-	moveData->StartPathLength = 0;
-	moveData->EndPathLength = 0;
+	moveData->Path.Clear();
+	moveData->StartPath.Clear();
+	moveData->EndPath.Clear();
 	moveData->StartRegionTilePos = tileStart;
 	moveData->EndRegionTilePos = tileEnd;
 
@@ -369,8 +369,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 				 [](Node* node, void* stack)
 				 {
 					 RegionMoveData* moveData = (RegionMoveData*)stack;
-					 moveData->StartPath[moveData->StartPathLength] = node->Pos;
-					 ++moveData->StartPathLength;
+					 moveData->StartPath.Push(&node->Pos);
 				 }, moveData);
 		return;
 	}
@@ -385,6 +384,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 
 	BHeapPushMin(pathfinder->Open, node, node);
 	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node);
+
 	while (pathfinder->Open->Count > 0)
 	{
 		BHeapItem item = BHeapPopMin(pathfinder->Open);
@@ -427,17 +427,17 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 				// Converts dirTo and sideFrom to path index
 				regionPath.Direction = (RegionDirection)DIRECTION_2_REGION_DIR[prev->SideFrom][toDir];
 
-				moveData->Path[moveData->PathLength] = regionPath;
-				++moveData->PathLength;
+				moveData->Path.Push(&regionPath);
 
 				lastPos = prev->Pos;
 				prev = prev->Parent;
 			}
 			
-			if (moveData->PathLength > 0)
+			// If we moved more then 2 regions away
+			if (moveData->Path.Count > 0)
 			{
 				// cur tile -> 1st path pos (doesn't include start region)
-				RegionPath firstRegionPath = moveData->Path[moveData->PathLength - 1];
+				RegionPath firstRegionPath = *moveData->Path.Last();
 				Region* firstRegion = GetRegion(firstRegionPath.RegionCoord);
 				SAssert(firstRegion);
 				u8 firstRegionPathLength = firstRegion->PathLengths[(int)firstRegionPath.Direction];
@@ -457,13 +457,12 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 							 PathfindToStartStack* stackCasted = (PathfindToStartStack*)stack;
 							 if (node->Pos != stackCasted->EndPos)
 							 {
-								 stackCasted->MoveData->StartPath[stackCasted->MoveData->StartPathLength] = node->Pos;
-								++stackCasted->MoveData->StartPathLength;
+								 stackCasted->MoveData->StartPath.Push(&node->Pos);
 							 }
 						 }, &stack);
 
 				// last pos in last path -> end tile
-				RegionPath lastRegionPath = moveData->Path[0];
+				RegionPath lastRegionPath = moveData->Path.Data[0];
 				Region* lastRegion = GetRegion(lastRegionPath.RegionCoord);
 				SAssert(lastRegion);
 				Vec2i lastRegionPathTarget = lastRegion->PathPaths[(int)lastRegionPath.Direction][0];
@@ -471,12 +470,11 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 						 [](Node* node, void* stack)
 						 {
 							 RegionMoveData* moveData = (RegionMoveData*)stack;
-							 moveData->EndPath[moveData->EndPathLength] = node->Pos;
-							 ++moveData->EndPathLength;
+							 moveData->EndPath.Push(&node->Pos);
 						 }, moveData);
 				// We deincreament by 1 because first element is the same position as last element
-				// of the region path.
-				--moveData->EndPathLength;
+				// of the region path
+				--moveData->EndPath.Count;
 			}
 			return;
 		}
@@ -503,8 +501,8 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 					if (!nextNodePtr || cost < (*nextNodePtr)->GCost)
 					{
 						SAssert(!nextNodePtr || (nextNodePtr && *nextNodePtr));
-						RegionNode* nextNode = ArenaPushStruct(&TransientState.TransientArena, RegionNode);
 
+						RegionNode* nextNode = ArenaPushStruct(&TransientState.TransientArena, RegionNode);
 						nextNode->Pos = regionNextCoord;
 						nextNode->Parent = curNode;
 						nextNode->GCost = cost;
@@ -512,7 +510,7 @@ PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 						nextNode->FCost = nextNode->GCost + nextNode->HCost;
 						// This takes inverse because neighborDirection is direction from curNode -> nextNode
 						// So when we look at a node we know what side we are on.
-						nextNode->SideFrom = INVERSE[neighborDirection];
+						nextNode->SideFrom = INVERSE_DIRECTIONS[neighborDirection];
 
 						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
 						if (!nextNodePtr)
@@ -539,11 +537,11 @@ DrawRegions()
 	const CMove* move = ecs_get(GetGameState()->World, Client.SelectedEntity, CMove);
 	if (move)
 	{
-		for (int i = 0; i < move->MoveData.PathLength; ++i)
+		for (int i = 0; i < move->MoveData.Path.Count; ++i)
 		{
 			DrawRectangle(
-				move->MoveData.Path[i].RegionCoord.x * REGION_SIZE * TILE_SIZE,
-				move->MoveData.Path[i].RegionCoord.y * REGION_SIZE * TILE_SIZE,
+				move->MoveData.Path.Data[i].RegionCoord.x * REGION_SIZE * TILE_SIZE,
+				move->MoveData.Path.Data[i].RegionCoord.y * REGION_SIZE * TILE_SIZE,
 				REGION_SIZE * TILE_SIZE,
 				REGION_SIZE * TILE_SIZE,
 				{ 255, 0, 0, 100 });

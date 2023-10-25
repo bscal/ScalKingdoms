@@ -12,7 +12,7 @@ struct TileInfo
 	int MovementCost;
 };
 
-enum TileFlags : uint8_t
+enum TileFlags : u8
 {
 	TILE_FLAG_COLLISION = Bit(0),
 	TILE_FLAG_LIQUID = Bit(1),

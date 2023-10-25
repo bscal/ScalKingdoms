@@ -2,6 +2,7 @@
 
 #include "Core.h"
 
+#include "Structures/StaticArray.h"
 #include "Structures/BHeap.h"
 #include "Structures/HashMapT.h"
 #include "Structures/HashSetT.h"
@@ -16,7 +17,7 @@ constant_var int REGION_SIZE = CHUNK_SIZE / DIVISIONS;
 // Order of tiles we check on side to get one most near middle of a region side
 constant_var u8 REGION_SIDE_POINTS[REGION_SIZE] = { 3, 4, 2, 5, 1, 6, 0, 7 };
 
-enum class RegionDirection : u8
+enum class RegionDirection : int
 {
 	N2W,
 	N2S,
@@ -81,13 +82,10 @@ struct RegionMoveData
 {
 	Vec2i StartRegionTilePos;
 	Vec2i EndRegionTilePos;
-	u8 PathLength;
-	u8 PathProgress;
-	u8 StartPathLength;
-	u8 EndPathLength;
-	RegionPath Path[128];
-	Vec2i StartPath[64];
-	Vec2i EndPath[32];
+	int PathProgress;
+	Buffer<RegionPath, 128> Path;	// Regions path
+	Buffer<Vec2i, 64> StartPath;	// Path from start -> first region in Path, or to end position if no regions
+	Buffer<Vec2i, 32> EndPath;		// Last region to end position
 };
 
 void PathfinderRegionsInit(RegionPathfinder* pathfinder);

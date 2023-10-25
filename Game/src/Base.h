@@ -2,8 +2,11 @@
 
 #include <stdint.h>
 
-static_assert(sizeof(size_t) == sizeof(uint64_t), "ScalEngine does not support 32bit");
-static_assert(sizeof(char) == sizeof(uint8_t), "ScalEngine does not support char with sizeof > 1");
+static_assert(sizeof(size_t) == sizeof(unsigned long long), "ScalEngine does not support 32bit");
+static_assert(sizeof(int) == sizeof(long), "sizeof int != sizeof long");
+static_assert(sizeof(int) == sizeof(float), "sizeof int != sizeof float");
+static_assert(sizeof(char) == 1, "sizeof char does not == 1");
+static_assert(sizeof(uint8_t) == 1, "sizeof uint8_t does not == 1");
 
 typedef int bool32;
 
