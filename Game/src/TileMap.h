@@ -74,12 +74,6 @@ void TileMapFree(TileMap* tilemap);
 void TileMapUpdate(GameState* gameState, TileMap* tilemap);
 void TileMapDraw(TileMap* tilemap, Rectangle screenRect);
 
-Vec2i TileToChunk(Vec2i tile);
-
-Vec2i ChunkToTile(Vec2i chunk);
-
-size_t GetLocalTileIdx(Vec2i tile);
-
 Chunk* GetChunk(TileMap* tilemap, Vec2i tile);
 Chunk* GetChunkByCoordNoCache(TileMap* tilemap, Vec2i chunkCoord);
 
@@ -100,3 +94,12 @@ void SetTileId(Chunk* chunk, size_t idx, u16 tile, short layer);
 
 bool IsChunkInBounds(TileMap* tilemap, Vec2i coord);
 bool IsTileInBounds(TileMap* tilemap, Vec2i coord);
+
+inline Vec2i 
+ChunkToTile(Vec2i chunk)
+{
+	Vec2i res;
+	res.x = chunk.x * CHUNK_SIZE;
+	res.y = chunk.y * CHUNK_SIZE;
+	return res;
+}

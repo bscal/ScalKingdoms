@@ -5,6 +5,7 @@
 
 #define ARRAY_LIST_DEFAULT_SIZE 8
 
+// dynamic resizable array
 #define ArrayList(T) T*
 
 struct ArrayListHeader
@@ -87,3 +88,205 @@ ArrayListGrow(SAllocator allocator, void* arr, int increment, int itemsize, cons
 		return nullptr;
 	}
 }
+
+// dynamic allocated resizable void* array
+struct SArray
+{
+	SAllocator Allocator;
+	void* Memory;
+	uint32_t Capacity;
+	uint32_t Count;
+	uint32_t Stride;
+};
+
+inline SArray ArrayCreate(SAllocator allocator, uint32_t capacity, uint32_t stride);
+inline void ArrayFree(SArray* sArray);
+inline void ArrayResize(SArray* sArray, uint32_t newCapacity);
+inline void ArraySetCount(SArray* sArray, uint32_t count);
+inline uint64_t GetArrayMemorySize(SArray* sArray);
+inline void ArrayPush(SArray* sArray, const void* valuePtr);
+inline void ArrayPop(SArray* sArray, void* dest);
+inline void ArraySetAt(SArray* sArray, uint32_t index, const void* valuePtr);
+inline void ArrayPopAt(SArray* sArray, uint32_t index, void* dest);
+inline void* ArrayPeekAt(SArray* sArray, uint32_t index);
+inline void ArrayClear(SArray* sArray);
+inline void ArrayRemove(SArray* sArray);
+
+inline SArray ArrayCreate(SAllocator allocator, uint32_t capacity, uint32_t stride)
+{
+	SAssert(IsAllocatorValid(allocator));
+	SAssert(stride > 0);
+	SArray sArray;
+	sArray.Allocator = allocator;
+	sArray.Memory = nullptr;
+	sArray.Capacity = 0;
+	sArray.Count = 0;
+	sArray.Stride = stride;
+	if (capacity > 0)
+		ArrayResize(&sArray, capacity);
+	return sArray;
+}
+
+inline void ArrayFree(SArray* sArray)
+{
+	SAssert(sArray);
+	if (!sArray->Memory)
+	{
+		TraceLog(LOG_ERROR, "outSArray Memory is already freed!");
+		return;
+	}
+	size_t size = (size_t)sArray->Capacity * sArray->Stride;
+	SFree(sArray->Allocator, sArray->Memory);
+}
+
+inline void ArrayResize(SArray* sArray, uint32_t newCapacity)
+{
+	SAssert(sArray);
+	SAssert(sArray->Stride > 0);
+
+	if (newCapacity == 0)
+		newCapacity = 8;
+
+	if (newCapacity <= sArray->Capacity)
+		return;
+
+	size_t oldSize = (size_t)sArray->Capacity * sArray->Stride;
+	size_t newSize = (size_t)newCapacity * sArray->Stride;
+	sArray->Memory = SRealloc(sArray->Allocator, sArray->Memory, newSize, oldSize);
+	sArray->Capacity = newCapacity;
+}
+
+inline void ArraySetCount(SArray* sArray, uint32_t count)
+{
+	SAssert(sArray);
+
+	uint32_t initialCount = sArray->Count;
+	if (initialCount >= count)
+		return;
+
+	ArrayResize(sArray, count);
+
+	size_t start = (size_t)initialCount * sArray->Stride;
+	size_t end = (size_t)sArray->Capacity * sArray->Stride;
+	SAssert(end - start > 0);
+	SAssert((uint8_t*)sArray->Memory + start <= (uint8_t*)sArray->Memory + end);
+	SZero((uint8_t*)sArray->Memory + start, end - start);
+	sArray->Count = count;
+}
+
+inline size_t GetArrayMemorySize(SArray* sArray)
+{
+	SAssert(sArray);
+	return sArray->Capacity * sArray->Stride;
+}
+
+inline void ArrayPush(SArray* sArray, const void* valuePtr)
+{
+	SAssert(sArray);
+
+	if (sArray->Count == sArray->Capacity)
+	{
+		ArrayResize(sArray, sArray->Capacity * 2);
+	}
+
+	char* dest = (char*)sArray->Memory;
+	size_t offset = (size_t)sArray->Count * sArray->Stride;
+	SCopy(dest + offset, valuePtr, sArray->Stride);
+	++sArray->Count;
+}
+
+inline void ArrayPop(SArray* sArray, void* dest)
+{
+	SAssert(sArray);
+
+	if (sArray->Count == 0) return;
+
+	const char* src = (char*)(sArray->Memory);
+	size_t offset = (size_t)(sArray->Count - 1) * sArray->Stride;
+	SCopy(dest, src + offset, sArray->Stride);
+	--sArray->Count;
+}
+
+inline void ArraySetAt(SArray* sArray, uint32_t index, const void* valuePtr)
+{
+	SAssert(sArray);
+	SAssert(sArray->Memory);
+	SAssert(sArray->Stride > 0);
+	SAssert(index < sArray->Count);
+	SAssert(index < sArray->Capacity);
+
+	char* dest = (char*)(sArray->Memory);
+	size_t offset = index * sArray->Stride;
+	SCopy(dest + offset, valuePtr, sArray->Stride);
+}
+
+inline void ArrayPopAt(SArray* sArray, uint32_t index, void* dest)
+{
+	SAssert(sArray);
+	SAssert(sArray->Memory);
+	SAssert(sArray->Stride > 0);
+	SAssert(index < sArray->Count);
+	SAssert(index < sArray->Capacity);
+
+	size_t offset = (size_t)index * sArray->Stride;
+	char* popAtAddress = (char*)(sArray->Memory) + offset;
+	SCopy(dest, popAtAddress, sArray->Stride);
+	if (index != sArray->Count)
+	{
+		// Moves last element in array popped position
+		size_t lastIndexOffset = (size_t)sArray->Count * sArray->Stride;
+		char* lastIndexAddress = (char*)(sArray->Memory) + lastIndexOffset;
+		SCopy(popAtAddress, lastIndexAddress, sArray->Stride);
+	}
+	--sArray->Count;
+}
+
+inline void* ArrayPeekAt(SArray* sArray, uint32_t index)
+{
+	SAssert(sArray);
+	SAssert(sArray->Memory);
+	SAssert(sArray->Stride > 0);
+	SAssert(index < sArray->Count);
+	SAssert(index < sArray->Capacity);
+
+	size_t offset = (size_t)index * sArray->Stride;
+	return ((char*)(sArray->Memory) + offset);
+}
+
+inline void ArrayClear(SArray* sArray)
+{
+	SAssert(sArray);
+	sArray->Count = 0;
+}
+
+inline void ArrayRemove(SArray* sArray)
+{
+	SAssert(sArray);
+	if (sArray->Count > 0)
+	{
+		--sArray->Count;
+	}
+}
+
+inline bool ArrayRemoveAt(SArray* sArray, uint32_t index)
+{
+	SAssert(sArray);
+	SAssert(sArray->Memory);
+	SAssert(sArray->Stride > 0);
+	SAssert(index < sArray->Count);
+	SAssert(index < sArray->Capacity);
+
+	size_t offset = (size_t)index * sArray->Stride;
+	char* address = ((char*)(sArray->Memory)) + offset;
+	bool shouldMoveLast = sArray->Count != 0 && index != (sArray->Count - 1);
+	if (shouldMoveLast)
+	{
+		// Moves last element in array popped position
+		uint64_t lastIndexOffset = (size_t)(sArray->Count - 1) * sArray->Stride;
+		char* lastIndexAddress = ((char*)(sArray->Memory)) + lastIndexOffset;
+		SCopy(address, lastIndexAddress, sArray->Stride);
+	}
+	--sArray->Count;
+	return shouldMoveLast;
+}
+

@@ -91,7 +91,7 @@ project "Game"
 
     defines
     {
-        "SCAL_BUILD_DLL"
+      --  "SCAL_BUILD_DLL"
     }
 
     includedirs

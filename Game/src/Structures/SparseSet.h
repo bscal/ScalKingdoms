@@ -3,11 +3,11 @@
 #include "Base.h"
 #include "Memory.h"
 
-typedef u16 SparseSetSize_t;
-
 template<typename T>
 struct SparseSet
 {
+	typedef u16 SparseSetSize_t;
+
 	constant_var SparseSetSize_t EMPTY = 0xffff;
 
 	template<typename T>
@@ -42,7 +42,7 @@ struct SparseSet
 	void Resize(int denseCapacity)
 	{
 		Dense = (SparseSetBucket<T>*)SRealloc(Allocator,
-											  Dense, 
+											  Dense,
 											  denseCapacity * sizeof(SparseSetBucket<T>),
 											  DenseCapacity * sizeof(SparseSetBucket<T>));
 		DenseCapacity = (SparseSetSize_t)denseCapacity;
@@ -96,7 +96,7 @@ struct SparseSet
 		Sparse[lastBucket->Id] = EMPTY;
 		Dense[idx] = *lastBucket;
 		Dense[Count - 1].Id = id;
-		
+
 		--Count;
 	}
 
@@ -115,16 +115,127 @@ struct SparseSet
 	}
 };
 
+struct SparseArray
+{
+	SAllocator Allocator;
+	u32* Sparse;
+	u32* Dense;
+	u32 Count;
+	u32 SparseCapacity;
+	u32 DenseCapacity;
+
+	void Initialize(SAllocator allocator, u32 capacity)
+	{
+		SAssert(IsAllocatorValid(allocator));
+		Allocator = allocator;
+		SparseCapacity = capacity;
+		Sparse = (u32*)SAlloc(Allocator, capacity * sizeof(u32));
+
+		SAssert(Sparse);
+
+		for (u32 i = 0; i < capacity; ++i)
+		{
+			Sparse[i] = UINT32_MAX;
+		}
+	}
+
+	void Resize(u32 denseCapacity)
+	{
+		SAssert(IsAllocatorValid(Allocator));
+
+		if (denseCapacity <= DenseCapacity)
+			return;
+
+		if (denseCapacity > SparseCapacity)
+		{
+			SError("SparseArray is full and cannot resize!");
+			return;
+		}
+
+		Dense = (u32*)SRealloc(Allocator,
+							   Dense,
+							   denseCapacity * sizeof(u32),
+							   DenseCapacity * sizeof(u32));
+		DenseCapacity = denseCapacity;
+
+		for (u32 i = Count; i < DenseCapacity; ++i)
+		{
+			Dense[i] = i;
+		}
+	}
+
+	u32 Add(u32 id)
+	{
+		SAssert(Sparse);
+
+		if (Count == DenseCapacity)
+		{
+			u32 newCap = (DenseCapacity) ? DenseCapacity * 2 : 1;
+			Resize(newCap);
+		}
+
+		SAssert(Dense);
+		u32 idx = Count;
+		++Count;
+
+		Dense[idx] = id;
+		Sparse[id] = idx;
+		return idx;
+	}
+
+	u32 Remove(u32 id)
+	{
+		SAssert(Sparse);
+		SAssert(Dense);
+		SAssert(id < SparseCapacity);
+
+		if (Count > 0 && Contains(id))
+		{
+			u32 idx = Sparse[id];
+			u32 lastIdx = Count - 1;
+			u32 lastId = Dense[lastIdx];
+
+			Sparse[lastId] = UINT32_MAX;
+			Dense[idx] = lastId;
+			Dense[lastIdx] = id;
+
+			--Count;
+
+			return idx;
+		}
+		return UINT32_MAX;
+	}
+
+	int Get(u32 id)
+	{
+		SAssert(Sparse);
+		SAssert(Dense);
+		SAssert(id < SparseCapacity);
+		if (Contains(id))
+			return Dense[Sparse[id]];
+		else
+			return UINT32_MAX;
+	}
+
+	bool Contains(u32 id)
+	{
+		SAssert(Sparse);
+		SAssert(Dense);
+		SAssert(id < SparseCapacity);
+		return Sparse[id] != UINT32_MAX;
+	}
+};
+
 inline void TestSpareSet()
 {
 	SparseSet<u8> TestSet = {};
 	TestSet.Initialize(SAllocatorMalloc(), 64);
 
 	u8 v = 16;
-	SparseSetSize_t r = TestSet.Add(&v);
+	u16 r = TestSet.Add(&v);
 
 	u8 vv = 32;
-	SparseSetSize_t rr = TestSet.Add(&vv);
+	u16 rr = TestSet.Add(&vv);
 
 	SAssert(TestSet.Count == 2);
 	SAssert(TestSet.Dense[0].Value == v);
@@ -132,7 +243,7 @@ inline void TestSpareSet()
 	SAssert(rr == 1);
 
 	u8 vvv = 64;
-	SparseSetSize_t rrr = TestSet.Add(&vvv);
+	u16 rrr = TestSet.Add(&vvv);
 
 	TestSet.Remove(rr);
 

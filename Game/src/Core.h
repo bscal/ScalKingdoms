@@ -11,9 +11,11 @@
 
 #include "Base.h"
 #include "Vector2i.h"
+#include "RectI.h"
 #include "Utils.h"
 #include "Debug.h"
 #include "Memory.h"
+#include "Lib/Random.h"
 
 /*
 *
@@ -76,7 +78,13 @@ constant_var int CHUNK_AREA = CHUNK_SIZE * CHUNK_SIZE;
 
 constant_var int VIEW_RADIUS = 3;
 constant_var int VIEW_DISTANCE_SQR = ((VIEW_RADIUS + 1) * CHUNK_SIZE) * ((VIEW_RADIUS + 1) * CHUNK_SIZE);
-constant_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_RADIUS * 2) * (VIEW_RADIUS * 2) + VIEW_RADIUS + 1;
+constant_var int VIEW_DISTANCE_SIZE = VIEW_RADIUS * 2 + 1;
+constant_var int VIEW_DISTANCE_TOTAL_CHUNKS = (VIEW_DISTANCE_SIZE + 1) * (VIEW_DISTANCE_SIZE + 1);
+
+constant_var int VIEW_WIDTH = 4;
+constant_var int VIEW_WIDTH_TILES = VIEW_WIDTH * CHUNK_SIZE;
+constant_var int VIEW_SIZE_TILES = VIEW_WIDTH_TILES * VIEW_WIDTH_TILES;
+constant_var int VIEW_MIDDLE_TILES = VIEW_WIDTH_TILES / 2;
 
 enum class Direction : uint8_t
 {
@@ -125,12 +133,3 @@ static inline Vector2 operator/(Vector2 left, Vector2 right)
 #define FMT_RECT(rect) TextFormat("Rectangle(x: %.3f, y: %.3f, w: %.3f, h: %.3f)", rect.x, rect.y, rect.width, rect.height)
 #define FMT_BOOL(boolVar) TextFormat("%s", ((boolVar)) ? "true" : "false")
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
-
-inline int ScalTestCounter;
-inline int ScalTestPasses;
-
-#define ScalTest int ScalTest_
-
-#define ScalTestRun(func) \
-	++ScalTestCounter; \
-	ScalTestPasses += func()

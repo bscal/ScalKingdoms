@@ -82,14 +82,15 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 
 #ifdef SCAL_PLATFORM_WINDOWS
 #ifdef SCAL_BUILD_DLL
-#define API cxtern "C" __declspec(dllexport)
+#define SAPI extern "C" __declspec(dllexport)
 #else
-#define API extern "C" __declspec(dllimport)
+#define SAPI extern "C" __declspec(dllimport)
 #endif // SCAL_BUILD_DLL
 #else
-#define API extern "C"
+#define SAPI extern "C"
 #endif
 
+#define Unpack(...) __VA_ARGS__
 #define Stringify(x) #x
 #define Expand(x) Stringify(x)
 
@@ -114,7 +115,7 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 
 #define Min(v0, v1) ((v0 < v1) ? v0 : v1)
 #define Max(v0, v1) ((v0 > v1) ? v0 : v1)
-#define SClamp(v, min, max) Min(max, Max(min, v))
+#define ClampValue(v, min, max) Min(max, Max(min, v))
 
 // Double linked list : First, Last, Node
 #define DLPushBackT(f, l, n, Next, Prev) (((f) == 0 \

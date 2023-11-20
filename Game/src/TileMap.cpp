@@ -28,6 +28,25 @@ internal void OnChunkUnload(GameState* gameState, TileMap* tilemap, Chunk* chunk
 internal void OnChunkBake(GameState* gameState, Chunk* chunk); // When baked
 internal void OnChunkUpdate(GameState* gameState, Chunk* chunk); // When a chunk update is triggered.
 
+internal Vec2i
+TileToChunk(Vec2i tile)
+{
+	Vec2i chunkCoord;
+	chunkCoord.x = (int)floorf((float)tile.x / (float)CHUNK_SIZE);
+	chunkCoord.y = (int)floorf((float)tile.y / (float)CHUNK_SIZE);
+	return chunkCoord;
+}
+
+internal size_t
+GetLocalTileIdx(Vec2i tile)
+{
+	int x = IntModNegative(tile.x, CHUNK_SIZE);
+	int y = IntModNegative(tile.y, CHUNK_SIZE);
+	size_t idx = (size_t)x + (size_t)y * CHUNK_SIZE;
+	SAssert(idx < CHUNK_AREA);
+	return idx;
+}
+
 void
 TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 {
@@ -56,6 +75,7 @@ TileMapInit(GameState* gameState, TileMap* tilemap, Rectangle dimensions)
 		chunk->Entities.Initialize(SAllocatorGeneral(), CHUNK_AREA);
 
 		SAssert(chunk->RenderTexture.id != 0);
+
 		tilemap->ChunkLoader.ChunkPool.Push(&chunk);
 	}
 	SAssert(tilemap->ChunkLoader.ChunkPool.Count == VIEW_DISTANCE_TOTAL_CHUNKS);
@@ -225,7 +245,8 @@ InternalChunkUnload(TileMap* tilemap, Chunk* chunk)
 internal void 
 ChunkTick(GameState* gameState, Chunk* chunk)
 {
-	if (chunk->BakeState != ChunkUpdateState::None || chunk->UpdateState != ChunkUpdateState::None)
+	if (chunk->BakeState != ChunkUpdateState::None
+		|| chunk->UpdateState != ChunkUpdateState::None)
 	{
 		bool bakeNeighbors = chunk->BakeState == ChunkUpdateState::SelfAndNeighbors;
 		bool updateNeighbors = chunk->UpdateState == ChunkUpdateState::SelfAndNeighbors;
@@ -240,7 +261,7 @@ ChunkTick(GameState* gameState, Chunk* chunk)
 				
 				if (bakeNeighbors && neighborChunk->BakeState == ChunkUpdateState::None)
 					neighborChunk->BakeState = ChunkUpdateState::Self;
-				
+
 				if (updateNeighbors && neighborChunk->UpdateState == ChunkUpdateState::None)
 					neighborChunk->UpdateState = ChunkUpdateState::Self;
 			}
@@ -339,33 +360,6 @@ InternalChunkGenerate(TileMap* tilemap, Chunk* chunk)
 			chunk->TileArray[localIdx] = tile;
 		}
 	}
-}
-
-Vec2i
-TileToChunk(Vec2i tile)
-{
-	Vec2i chunkCoord;
-	chunkCoord.x = (int)floorf((float)tile.x / (float)CHUNK_SIZE);
-	chunkCoord.y = (int)floorf((float)tile.y / (float)CHUNK_SIZE);
-	return chunkCoord;
-}
-
-Vec2i ChunkToTile(Vec2i chunk)
-{
-	Vec2i res;
-	res.x = chunk.x * CHUNK_SIZE;
-	res.y = chunk.y * CHUNK_SIZE;
-	return res;
-}
-
-size_t
-GetLocalTileIdx(Vec2i tile)
-{
-	int x = IntModNegative(tile.x, CHUNK_SIZE);
-	int y = IntModNegative(tile.y, CHUNK_SIZE);
-	size_t idx = (size_t)x + (size_t)y * CHUNK_SIZE;
-	SAssert(idx < CHUNK_AREA);
-	return idx;
 }
 
 Chunk*

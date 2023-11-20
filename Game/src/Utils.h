@@ -7,7 +7,7 @@
 #include <raylib/src/raylib.h>
 
 template<typename T>
-_FORCE_INLINE_ u64 
+_FORCE_INLINE_ u64
 Hash(T& value)
 {
 	return wyhash(value, sizeof(T), 0, _wyp);
@@ -20,7 +20,7 @@ _FORCE_INLINE_ double GetMicroTime()
 	return GetTime() * 1000000.0;
 }
 
-_FORCE_INLINE_ constexpr int 
+_FORCE_INLINE_ constexpr int
 IntModNegative(int a, int b)
 {
 	int res = a % b;
@@ -129,9 +129,9 @@ FastAtoi(const char* str)
 
 // TODO move
 void
-TextSplitBuffered(const char* text, char delimiter, int* _RESTRICT_ count, 
-	char* _RESTRICT_ buffer, int bufferLength,
-	char** _RESTRICT_ splitBuffer, int splitBufferLength);
+TextSplitBuffered(const char* text, char delimiter, int* _RESTRICT_ count,
+				  char* _RESTRICT_ buffer, int bufferLength,
+				  char** _RESTRICT_ splitBuffer, int splitBufferLength);
 
 void RemoveWhitespace(char* s);
 
@@ -147,7 +147,7 @@ STR2INT Str2Int(int* out, const char* s, int base);
 
 STR2INT Str2UInt(u32* out, const char* s, int base);
 
-inline Color 
+inline Color
 IntToColor(int colorInt)
 {
 	Color c;
@@ -168,4 +168,5 @@ ColorToInt(Color c)
 	res |= (c.a << 0);
 	return res;
 }
+
 

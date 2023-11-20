@@ -9,6 +9,7 @@
 #include "TextureAtlas.h"
 #include "GameTypes.h"
 #include "Components.h"
+#include "Entity.h"
 
 #include "Structures/SList.h"
 #include "Structures/ArrayList.h"
@@ -79,7 +80,7 @@ struct TransientGameState
 struct GameClient
 {
 	Vec2i GameResolution;
-
+	RectI TileViewUpdateRect;
 	ecs_entity_t Player;
 	ecs_entity_t SelectedEntity;
 

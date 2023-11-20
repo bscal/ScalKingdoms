@@ -2,6 +2,7 @@
 
 #include "Core.h"
 
+// Basically small wrapper around C array;
 template<typename T, size_t ElementCount>
 struct StaticArray
 {
@@ -25,6 +26,7 @@ struct StaticArray
 	}
 };
 
+// C array of T, keeps track of element with Count
 template<typename T, int Capacity>
 struct Buffer
 {

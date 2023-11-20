@@ -8,6 +8,8 @@
 #include "Debug.h"
 #include "RenderUtils.h"
 #include "Components.h"
+#include "Lighting.h"
+
 #include "Lib/Jobs.h"
 
 #include "raylib/src/rlgl.h"
@@ -149,6 +151,8 @@ GameInitialize()
 					}, &val);
 	}
 
+	LightMapInitialize();
+
 	ArenaSnapshotEnd(tempMemoryInit);
 
 	GameRun();
@@ -204,6 +208,11 @@ GameRun()
 
 		DrawRegions();
 
+		DrawTexturePro(LightMap.Texture.texture
+					   , { 0, 0, LIGHTMAP_WIDTH, LIGHTMAP_WIDTH }
+					   , { (float)LightMap.Position.x * TILE_SIZE, (float)LightMap.Position.y * TILE_SIZE, LIGHTMAP_WIDTH * TILE_SIZE, LIGHTMAP_WIDTH * TILE_SIZE }
+		, {}, 0, WHITE);
+
 		EndMode2D();
 		EndTextureMode();
 
@@ -236,6 +245,7 @@ GameRun()
 void GameUpdate()
 {
 	TileMapUpdate(&State, &State.TileMap);
+	LightMapUpdate(&State);
 }
 
 void GameLateUpdate()
@@ -338,6 +348,20 @@ void InputUpdate()
 	if (IsKeyPressed(KEY_EQUAL))
 	{
 		Client.IsDebugWindowOpen = !Client.IsDebugWindowOpen;
+	}
+
+	if (IsKeyPressed(KEY_U))
+	{
+		Vec2i tile = ScreenToTile();
+		if (IsTileInLightMap(tile))
+		{
+			Vec2i lightMapCoord = WorldToLightMap(tile);
+			size_t idx = lightMapCoord.x + lightMapCoord.y * LIGHTMAP_WIDTH;
+			LightMap.Colors.At(idx)->r += .75f;
+			LightMap.Colors.At(idx)->g += 0;
+			LightMap.Colors.At(idx)->b += 0;
+			LightMap.Colors.At(idx)->a += 1;
+		}
 	}
 
 }

@@ -33,8 +33,9 @@ global_var SpriteMgr SpriteManager;
 _FORCE_INLINE_ Sprite* 
 SpriteGet(u16 id)
 {
-	if (id >= SpriteManager.Sprites.Capacity)
+	if (id >= SpriteManager.Sprites.Count)
 	{
+		SWarn("SpriteGet id is >= the Count, id = %u, count = %d", id, SpriteManager.Sprites.Count);
 		return SpriteManager.Sprites.Data;
 	}
 	else
@@ -66,9 +67,9 @@ SpriteRegister(SpriteRect rect, Vector2 origin)
 	return id;
 }
 
-#define SpriteDef(name) inline u16 name
+#define SpriteDefine(name, spriteRect, origin) inline u16 name = SpriteRegister(Unpack spriteRect, Unpack origin)
 
 namespace Sprites
 {
-    SpriteDef(PLAYER) = SpriteRegister({ 0, 0, 16, 16 }, { 8, 8 });
+    SpriteDefine(PLAYER, ({ 0, 0, 16, 16 }), ({ 8, 8 }));
 }

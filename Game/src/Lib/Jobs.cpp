@@ -135,7 +135,7 @@ void JobsInitialize(u32 maxThreadCount)
 
 	JobInternalState.NumCores = coreCount;
 	// Uses coreCount instead of threadCount, -1 for main thread
-	JobInternalState.NumThreads = (u32)SClamp(coreCount - 1, 1, (int)maxThreadCount);
+	JobInternalState.NumThreads = (u32)ClampValue(coreCount - 1, 1, (int)maxThreadCount);
 
 	JobInternalState.JobQueuePerThread = (JobQueue*)SCalloc(SAllocatorGeneral(), JobInternalState.NumThreads * sizeof(JobQueue));
 

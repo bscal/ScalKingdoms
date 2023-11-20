@@ -70,6 +70,12 @@ struct BitArray
 
 	uint64_t Memory[ElementCount];
 
+	_FORCE_INLINE_ void Reset()
+	{
+		for (uint64_t i = 0; i < ElementCount; ++i)
+			Memory[i] = 0;
+	}
+
 	_FORCE_INLINE_ bool Get(uint64_t bit) const
 	{
 		SAssert(bit < SizeInBits);

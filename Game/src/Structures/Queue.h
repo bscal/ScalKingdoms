@@ -31,8 +31,9 @@ struct Queue
 		SFree(Allocator, Memory);
 	}
 
-	_FORCE_INLINE_ bool IsEmpty() { return Count == 0; }
-	_FORCE_INLINE_ bool IsFull() { return Count == Capacity; }
+	_FORCE_INLINE_ void Clear() { Count = 0; First = Last; }
+	_FORCE_INLINE_ bool IsEmpty() const { return Count == 0; }
+	_FORCE_INLINE_ bool IsFull() const { return Count == Capacity; }
 	_FORCE_INLINE_ int LastIndex() { return (Last - 1) & (Capacity - 1); }
 	_FORCE_INLINE_ T* At(int i)
 	{
