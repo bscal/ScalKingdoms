@@ -108,3 +108,4 @@ struct BitArray
 		Memory[index] = BitToggle(Memory[index], indexBit);
 	}
 };
+

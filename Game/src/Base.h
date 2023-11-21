@@ -106,7 +106,7 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 #define FlagFalse(state, flag) ((state & flag) != flag)
 
 #define BitGet(state, bit) ((state >> bit) & 1ULL)
-#define BitSet(state, bit) ((state | 1ULL) << bit)
+#define BitSet(state, bit) (state | (1ULL << bit))
 #define BitClear(state, bit) (state & ~(1ULL << bit))
 #define BitToggle(state, bit) (state ^ (1ULL << bit))
 #define BitMask(state, mask) (FlagTrue(state, mask))

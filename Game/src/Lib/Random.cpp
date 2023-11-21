@@ -4,8 +4,8 @@
 
 #include <time.h>
 
-thread_local global_var SRandom GlobalRandom;
-thread_local global_var bool IsInitialized;
+thread_local internal_var SRandom GlobalRandom;
+thread_local internal_var bool IsInitialized;
 
 SRandom* GetThreadSRandom()
 {

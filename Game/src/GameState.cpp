@@ -55,7 +55,7 @@ GameInitialize()
 	size_t frameMemorySize = Megabytes(16);
 	size_t totalMemory = permanentMemorySize + gameMemorySize + frameMemorySize;
 	zpl_virtual_memory vm = zpl_vm_alloc(0, totalMemory);
-
+	
 	uintptr_t memoryOffset = (uintptr_t)vm.data;
 
 	ArenaCreate(&State.GameArena, (void*)memoryOffset, permanentMemorySize);
@@ -208,9 +208,9 @@ GameRun()
 
 		DrawRegions();
 
-		DrawTexturePro(LightMap.Texture.texture
+		DrawTexturePro(LightMapState.Texture.texture
 					   , { 0, 0, LIGHTMAP_WIDTH, LIGHTMAP_WIDTH }
-					   , { (float)LightMap.Position.x * TILE_SIZE, (float)LightMap.Position.y * TILE_SIZE, LIGHTMAP_WIDTH * TILE_SIZE, LIGHTMAP_WIDTH * TILE_SIZE }
+					   , { (float)LightMapState.Position.x * TILE_SIZE, (float)LightMapState.Position.y * TILE_SIZE , LIGHTMAP_WIDTH * TILE_SIZE, LIGHTMAP_WIDTH * TILE_SIZE }
 		, {}, 0, WHITE);
 
 		EndMode2D();
@@ -357,10 +357,10 @@ void InputUpdate()
 		{
 			Vec2i lightMapCoord = WorldToLightMap(tile);
 			size_t idx = lightMapCoord.x + lightMapCoord.y * LIGHTMAP_WIDTH;
-			LightMap.Colors.At(idx)->r += .75f;
-			LightMap.Colors.At(idx)->g += 0;
-			LightMap.Colors.At(idx)->b += 0;
-			LightMap.Colors.At(idx)->a += 1;
+			LightMapState.Colors.At(idx)->r += .75f;
+			LightMapState.Colors.At(idx)->g += 0;
+			LightMapState.Colors.At(idx)->b += 0;
+			LightMapState.Colors.At(idx)->a += 1;
 		}
 	}
 

@@ -21,6 +21,10 @@ struct AllocList
     size_t Length;
 };
 
+// Allocates from an array of FreeLists bases on size. Sizes are
+// ceiled to a power of 2. And aligned with lowest alloc size.
+// Larger values maybe split buckets if they fit nicely, or just take memory from
+// the buffer.
 struct GeneralPurposeAllocator
 {
     uintptr_t Mem;
