@@ -117,6 +117,8 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 #define Max(v0, v1) ((v0 > v1) ? v0 : v1)
 #define ClampValue(v, min, max) Min(max, Max(min, v))
 
+#define CallConstructor(object, T) new (object) T
+
 // Double linked list : First, Last, Node
 #define DLPushBackT(f, l, n, Next, Prev) (((f) == 0 \
 											? (f) = (l) = (n), (n)->Next = (n)->Prev = 0) \

@@ -4,7 +4,7 @@
 
 struct Flag8
 {
-	constexpr static int FLAG_COUNT = 8;
+	constexpr static uint8_t FLAG_COUNT = UINT8_MAX;
 
 	uint8_t Flags;
 
@@ -22,7 +22,7 @@ struct Flag8
 
 struct Flag32
 {
-	constexpr static int FLAG_COUNT = 32;
+	constexpr static uint32_t FLAG_COUNT = UINT32_MAX;
 
 	uint32_t Flags;
 
@@ -40,7 +40,7 @@ struct Flag32
 
 struct Flag64
 {
-	constexpr static int FLAG_COUNT = 64;
+	constexpr static uint64_t FLAG_COUNT = UINT64_MAX;
 
 	uint64_t Flags;
 

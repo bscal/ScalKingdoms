@@ -277,7 +277,8 @@ void InputUpdate()
 	}
 
 	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
-	State.Camera.target = Vector2Lerp(State.Camera.target, transform->Pos, 4.0f * DeltaTime);
+	//State.Camera.target = Vector2Lerp(State.Camera.target, transform->Pos, 4.0f * DeltaTime);
+	State.Camera.target = State.Camera.target + movement;
 	if (IsKeyPressed(KEY_P))
 	{
 		State.Camera.target = transform->Pos;

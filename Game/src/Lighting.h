@@ -12,6 +12,19 @@ constant_var int LIGHT_MAX_RADIUS = 32;
 constant_var int LIGHTMAP_WIDTH = 64;
 constant_var int LIGHTMAP_WIDTH_HALF = LIGHTMAP_WIDTH / 2;
 
+// Used to translate tile coordinates 
+constant_var i8 TranslationTable[8][4] =
+{
+	{  1,  0,  0, -1 },
+	{  0,  1, -1,  0 },
+	{  0, -1, -1,  0 },
+	{ -1,  0,  0, -1 },
+	{ -1,  0,  0,  1 },
+	{  0, -1,  1,  0 },
+	{  0,  1,  1,  0 },
+	{  1,  0,  0,  1 },
+};
+
 struct LightMapColor
 {
 	float r;
@@ -32,8 +45,8 @@ struct LightMap
 	RenderTexture2D Texture;
 	Vec2i Position;
 	Vec2i Dimensions;
-	BitArray<LIGHTMAP_WIDTH* LIGHTMAP_WIDTH> WasTileUpdatedSet;
-	StaticArray<LightMapColor, LIGHTMAP_WIDTH* LIGHTMAP_WIDTH> Colors;
+	BitArray<LIGHTMAP_WIDTH * LIGHTMAP_WIDTH> WasTileUpdatedSet;
+	StaticArray<LightMapColor, LIGHTMAP_WIDTH * LIGHTMAP_WIDTH> Colors;
 };
 
 global_var LightMap LightMapState;
@@ -55,14 +68,14 @@ LightMapUpdate(GameState* gameState)
 	SZero(LightMapState.Colors.Data, LightMapState.Colors.MemorySize());
 
 	Light light;
-	light.Color = { .75f, 0, 0, .25f };
+	light.Color = { 1.f, 1.f, 1.f, .1f };
 	light.Pos = { 0,0 };
 	light.Radius = 5;
 	UpdateLight(&light);
 
-	const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
-	LightMapState.Position.x = transform->TilePos.x - LIGHTMAP_WIDTH_HALF;
-	LightMapState.Position.y = transform->TilePos.y - LIGHTMAP_WIDTH_HALF;
+	//const CTransform* transform = ecs_get(State.World, Client.Player, CTransform);
+	LightMapState.Position.x = (int)floorf(State.Camera.target.x / TILE_SIZE) - LIGHTMAP_WIDTH_HALF;
+	LightMapState.Position.y = (int)floorf(State.Camera.target.y / TILE_SIZE) - LIGHTMAP_WIDTH_HALF;
 	LightMapState.Dimensions.x = LightMapState.Position.x + LIGHTMAP_WIDTH;
 	LightMapState.Dimensions.y = LightMapState.Position.y + LIGHTMAP_WIDTH;
 }
@@ -95,23 +108,11 @@ struct Slope
 	_FORCE_INLINE_ bool Less(int otherY, int otherX) { return this->y * otherX < this->x * otherY; } // this < y/x
 };
 
-// Used to translate tile coordinates 
-constant_var int TranslationTable[8][4] =
-{
-	{  1,  0,  0, -1 },
-	{  0,  1, -1,  0 },
-	{  0, -1, -1,  0 },
-	{ -1,  0,  0, -1 },
-	{ -1,  0,  0,  1 },
-	{  0, -1,  1,  0 },
-	{  0,  1,  1,  0 },
-	{  1,  0,  0,  1 },
-};
-
-_FORCE_INLINE_ bool DoesBlockLight(Vec2i coord)
+_FORCE_INLINE_ bool 
+DoesBlockLight(Vec2i coord)
 {
 	Tile* tile = GetTile(&State.TileMap, coord);
-	return tile && tile->Flags.Get(TILE_FLAG_COLLISION);
+	return tile && tile->Flags.Get(TILE_FLAG_BLOCKS_LIGHT);
 }
 
 internal void
@@ -173,7 +174,8 @@ ProcessOctants(Light* light, int radius, u8 octant, int x, Slope top, Slope bott
 				}
 			}
 		}
-		if (wasOpaque != 0) break; // if the column ended in a clear tile, continue processing the current sector
+		if (wasOpaque != 0)
+			break; // if the column ended in a clear tile, continue processing the current sector
 	}
 }
 

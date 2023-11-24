@@ -56,8 +56,6 @@ typedef Vector2 Vec2;
 	TraceLog(LOG_FATAL, "Fatal error detected, program crashed! File: %s, Line: %s", __FILE__, __LINE__); \
 	DebugBreak(void) \
 
-#define CALL_CONSTRUCTOR(object, T) new (object) T
-
 constant_var int WIDTH = 1920;
 constant_var int HEIGHT = 1080;
 constant_var int GAME_WIDTH = 1600;

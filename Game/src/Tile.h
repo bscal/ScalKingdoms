@@ -17,6 +17,7 @@ enum TileFlags : u8
 	TILE_FLAG_COLLISION = Bit(0),
 	TILE_FLAG_LIQUID = Bit(1),
 	TILE_FLAG_IS_HIDDEN = Bit(2),
+	TILE_FLAG_BLOCKS_LIGHT = Bit(3),
 };
 
 struct Tile
