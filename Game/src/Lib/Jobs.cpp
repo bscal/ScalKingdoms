@@ -128,14 +128,19 @@ void JobsInitialize(u32 maxThreadCount)
 	zpl_affinity affinity;
 	zpl_affinity_init(&affinity);
 
-	int coreCount = (int)affinity.core_count;
-	int threadCount = (int)affinity.thread_count;
+	u32 coreCount = (u32)affinity.core_count;
+	u32 threadCount = (u32)affinity.thread_count;
 
 	zpl_affinity_destroy(&affinity);
 
+	if (coreCount == 0)
+	{
+		SError("coreCount == 0");
+	}
+
 	JobInternalState.NumCores = coreCount;
-	// Uses coreCount instead of threadCount, -1 for main thread
-	JobInternalState.NumThreads = (u32)ClampValue(coreCount - 1, 1, (int)maxThreadCount);
+	// -2, 1 for main thread, 1 so pc can do other things
+	JobInternalState.NumThreads = ClampValue(threadCount - 2, 1, maxThreadCount);
 
 	JobInternalState.JobQueuePerThread = (JobQueue*)SCalloc(SAllocatorGeneral(), JobInternalState.NumThreads * sizeof(JobQueue));
 
