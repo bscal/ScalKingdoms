@@ -4,9 +4,9 @@
 
 #include "Structures/BitArray.h"
 
-struct TileInfo
+struct TileDef
 {
-	Rectangle Src;
+	Rectangle SpriteSheetRect;
 	Rectangle Occulution;
 	Flag8 DefaultTileFlags;
 	int MovementCost;
@@ -30,12 +30,11 @@ struct Tile
 
 void TileMgrInitialize(Texture2D* tileSetTexture);
 
-u16 TileMgrRegisterTile(const TileInfo* tileInfo);
+u16 TileMgrRegisterTile(const TileDef* tileInfo);
 
 #define RegisterTile(tilesConstName, tileInfo) (tilesConstName = TileMgrRegisterTile(&(tileInfo)))
 
-TileInfo* GetTileInfo(u16 id);
-TileInfo* GetTileInfoTile(Tile tile);
+TileDef* GetTileDef(u16 id);
 Texture2D* GetTileSheet();
 
 Rectangle CoordToRec(int x, int y);

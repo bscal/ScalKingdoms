@@ -1,6 +1,7 @@
 #include "Pathfinder.h"
 
 #include "GameState.h"
+#include "TileMapFixed.h"
 #include "Tile.h"
 
 #include <math.h>
@@ -45,7 +46,7 @@ PathfinderInit(Pathfinder* pathfinder)
 }
 
 SList<Vec2i>
-PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
+PathFindArray(Pathfinder* pathfinder, TileMap_t* tilemap, Vec2i start, Vec2i end)
 {
 	Node* node = FindPath(pathfinder, tilemap, start, end);
 	if (node)
@@ -68,7 +69,7 @@ PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 	}
 }
 
-int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
+int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap_t* tilemap, Vec2i start, Vec2i end)
 {
 	Node* node = FindPath(pathfinder, tilemap, start, end);
 	if (node)
@@ -92,7 +93,7 @@ int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilem
 }
 
 Node*
-FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
+FindPath(Pathfinder* pathfinder, TileMap_t* tilemap, Vec2i start, Vec2i end)
 {
 	BHeapClear(pathfinder->Open);
 	HashMapTClear(&pathfinder->OpenSet);
@@ -145,7 +146,7 @@ FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end)
 				else
 				{
 					int* nextCost = HashMapTGet(&pathfinder->OpenSet, &next);
-					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
+					int tileCost = GetTileDef(tile->BackgroundId)->MovementCost;
 					int cost = curNode->GCost + ManhattanDistance(curNode->Pos, next) + tileCost;
 					if (!nextCost || cost < *nextCost)
 					{

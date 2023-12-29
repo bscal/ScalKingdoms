@@ -3,16 +3,12 @@
 #include "GameState.h"
 #include "Components.h"
 #include "Pathfinder.h"
-#include "TileMap.h"
+#include "TileMapFixed.h"
 #include "Tile.h"
 
 constant_var u8 INVERSE_DIRECTIONS[] = { 2, 3, 0, 1 };
 
 internal_var HashMapT<Vec2i, Region> RegionMap;
-
-internal void
-Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end,
-		 void(*callback)(Node*, void*), void* stack);
 
 Region*
 GetRegion(Vec2i tilePos)
@@ -75,19 +71,96 @@ PathfinderRegionsInit(RegionPathfinder* pathfinder)
 	HashSetTInitialize(&pathfinder->ClosedSet, PATHFINDER_REGION_SIZE, SAllocatorArena(&GetGameState()->GameArena));
 }
 
+internal void
+Pathfind(Pathfinder* pathfinder, TileMapFixed* tilemap, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack)
+{
+	BHeapClear(pathfinder->Open);
+	HashMapTClear(&pathfinder->OpenSet);
+	HashSetTClear(&pathfinder->ClosedSet);
+
+	Node* node = ArenaPushStruct(&TransientState.TransientArena, Node);
+	node->Pos = start;
+	node->Parent = nullptr;
+	node->GCost = 0;
+	node->HCost = CalculateDistance(start, end);
+	node->FCost = node->GCost + node->HCost;
+
+	BHeapPushMin(pathfinder->Open, node, node);
+	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node->GCost);
+
+	while (pathfinder->Open->Count > 0)
+	{
+		BHeapItem item = BHeapPopMin(pathfinder->Open);
+
+		Node* curNode = (Node*)item.User;
+
+		HashMapTRemove(&pathfinder->OpenSet, &curNode->Pos);
+		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
+
+		if (curNode->Pos == end)
+		{
+			Node* prev = curNode;
+			while (prev)
+			{
+				callback(prev, stack);
+				prev = prev->Parent;
+			}
+			return;
+		}
+		else
+		{
+			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
+			{
+				Vec2i nextTile = curNode->Pos + Vec2i_NEIGHTBORS[i];
+
+				if (HashSetTContains(&pathfinder->ClosedSet, &nextTile))
+					continue;
+
+				Tile* tile = GetTile(tilemap, nextTile);
+				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
+					continue;
+				else
+				{
+					int* nextCost = HashMapTGet(&pathfinder->OpenSet, &nextTile);
+					int tileCost = GetTileDef(tile->BackgroundId)->MovementCost;
+					int cost = curNode->GCost + CalculateDistance(curNode->Pos, nextTile) + tileCost;
+					if (!nextCost || cost < *nextCost)
+					{
+						Node* nextNode = ArenaPushStruct(&TransientState.TransientArena, Node);
+						nextNode->Pos = nextTile;
+						nextNode->Parent = curNode;
+						nextNode->GCost = cost;
+						nextNode->HCost = CalculateDistance(nextTile, end);
+						nextNode->FCost = nextNode->GCost + nextNode->HCost;
+
+						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
+						if (!nextCost)
+						{
+							HashMapTSet(&pathfinder->OpenSet, &nextTile, &nextNode->GCost);
+						}
+						else
+						{
+							*nextCost = nextNode->GCost;
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
 void
-RegionLoad(TileMap* tilemap, Chunk* chunk)
+RegionLoad(TileMapFixed* tilemap, Vec2i chunkCoord)
 {
 	SAssert(tilemap);
-	SAssert(chunk);
 
-	Vec2i chunkWorld = ChunkToTile(chunk->Coord);
+	Vec2i chunkWorld = ChunkToTile(chunkCoord);
 	Vec2i startRegion = TileCoordToRegionCoord(chunkWorld);
 
 	Region* alreadyExistsRegion = GetRegion(startRegion);
 	if (alreadyExistsRegion)
 	{
-		RegionUnload(chunk);
+		RegionUnload(chunkCoord);
 	}
 
 	// Creates regions and checks each side if able to move to neighboring region
@@ -229,7 +302,7 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 				stack.Region = region;
 				stack.Index = i;
 
-				Pathfind(&GetGameState()->Pathfinder, &GetGameState()->TileMap, start, end,
+				Pathfind(&GetGameState()->Pathfinder, &GetGameState()->MainTileMap, start, end,
 						 [](Node* node, void* stack)
 						 {
 							 RegionPathStack* pathStack = (RegionPathStack*)stack;
@@ -244,11 +317,9 @@ RegionLoad(TileMap* tilemap, Chunk* chunk)
 }
 
 void
-RegionUnload(Chunk* chunk)
+RegionUnload(Vec2i chunkCoord)
 {
-	SAssert(chunk);
-
-	Vec2i chunkWorld = ChunkToTile(chunk->Coord);
+	Vec2i chunkWorld = ChunkToTile(chunkCoord);
 	Vec2i startRegionCoord = TileCoordToRegionCoord(chunkWorld);
 	for (int yDiv = 0; yDiv < DIVISIONS; ++yDiv)
 	{
@@ -263,90 +334,12 @@ RegionUnload(Chunk* chunk)
 	}
 }
 
-internal void
-Pathfind(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end, void(*callback)(Node*, void*), void* stack)
-{
-	BHeapClear(pathfinder->Open);
-	HashMapTClear(&pathfinder->OpenSet);
-	HashSetTClear(&pathfinder->ClosedSet);
-
-	Node* node = ArenaPushStruct(&TransientState.TransientArena, Node);
-	node->Pos = start;
-	node->Parent = nullptr;
-	node->GCost = 0;
-	node->HCost = CalculateDistance(start, end);
-	node->FCost = node->GCost + node->HCost;
-
-	BHeapPushMin(pathfinder->Open, node, node);
-	HashMapTSet(&pathfinder->OpenSet, &node->Pos, &node->GCost);
-
-	while (pathfinder->Open->Count > 0)
-	{
-		BHeapItem item = BHeapPopMin(pathfinder->Open);
-
-		Node* curNode = (Node*)item.User;
-
-		HashMapTRemove(&pathfinder->OpenSet, &curNode->Pos);
-		HashSetTSet(&pathfinder->ClosedSet, &curNode->Pos);
-
-		if (curNode->Pos == end)
-		{
-			Node* prev = curNode;
-			while (prev)
-			{
-				callback(prev, stack);
-				prev = prev->Parent;
-			}
-			return;
-		}
-		else
-		{
-			for (size_t i = 0; i < ArrayLength(Vec2i_NEIGHTBORS); ++i)
-			{
-				Vec2i nextTile = curNode->Pos + Vec2i_NEIGHTBORS[i];
-
-				if (HashSetTContains(&pathfinder->ClosedSet, &nextTile))
-					continue;
-
-				Tile* tile = GetTile(tilemap, nextTile);
-				if (!tile || tile->Flags.Get(TILE_FLAG_COLLISION))
-					continue;
-				else
-				{
-					int* nextCost = HashMapTGet(&pathfinder->OpenSet, &nextTile);
-					int tileCost = GetTileInfo(tile->BackgroundId)->MovementCost;
-					int cost = curNode->GCost + CalculateDistance(curNode->Pos, nextTile) + tileCost;
-					if (!nextCost || cost < *nextCost)
-					{
-						Node* nextNode = ArenaPushStruct(&TransientState.TransientArena, Node);
-						nextNode->Pos = nextTile;
-						nextNode->Parent = curNode;
-						nextNode->GCost = cost;
-						nextNode->HCost = CalculateDistance(nextTile, end);
-						nextNode->FCost = nextNode->GCost + nextNode->HCost;
-
-						BHeapPushMin(pathfinder->Open, nextNode, nextNode);
-						if (!nextCost)
-						{
-							HashMapTSet(&pathfinder->OpenSet, &nextTile, &nextNode->GCost);
-						}
-						else
-						{
-							*nextCost = nextNode->GCost;
-						}
-					}
-				}
-			}
-		}
-	}
-}
-
 void
 PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData)
 {
 	RegionPathfinder* pathfinder = &GetGameState()->RegionPathfinder;
 	Pathfinder* pathfinderForTiles = &GetGameState()->Pathfinder;
-	TileMap* tilemap = &GetGameState()->TileMap;
+	TileMapFixed* tilemap = &GetGameState()->MainTileMap;
 
 	BHeapClear(pathfinder->Open);
 	HashMapTClear(&pathfinder->OpenSet);

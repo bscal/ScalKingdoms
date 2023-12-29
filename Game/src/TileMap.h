@@ -2,7 +2,6 @@
 
 #include "Core.h"
 #include "GameTypes.h"
-#include "Regions.h"
 #include "Tile.h"
 #include "Lib/Jobs.h"
 #include "Structures/SparseSet.h"
@@ -13,6 +12,7 @@
 #include <FastNoiseLite/FastNoiseLite.h>
 
 struct GameState;
+struct TileMap;
 
 constant_var int LAYER_BACKGROUND	= 0;
 constant_var int LAYER_FOREGROUND	= 1;

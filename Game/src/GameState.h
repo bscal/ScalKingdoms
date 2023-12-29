@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "TileMap.h"
+#include "TileMapFixed.h"
 #include "Regions.h"
 #include "Actions.h"
 #include "Pathfinder.h"
@@ -56,7 +57,8 @@ struct GameState
 
 	GUIState GUIState;
 
-	TileMap TileMap;
+	//TileMap TileMap;
+	TileMapFixed MainTileMap;
 
 	Camera2D Camera;
 
@@ -105,6 +107,9 @@ global_var struct GameClient Client;
 #define DeltaTime GetFrameTime()
 
 #define GetGameState() (&State)
+
+#define GetGameArena() (SAllocatorArena(&State.GameArena))
+#define GetTransientArena() (SAllocatorArena(&TransientState.TransientArena))
 
 _FORCE_INLINE_ static Vec2i
 ScreenToTile()
@@ -156,3 +161,25 @@ _FORCE_INLINE_ Vec2 TileToWorldCenter(Vec2i tile)
 	};
 	return res;
 }
+
+constant_var int CONTAINER_MAX_SLOTS = 128;
+constant_var int ITEMSTACK_MAX_AMOUNT = 256;
+
+i16 ItemStackIncrement(CItemStack* stack, i16 amount);
+i16 ItemStackDeincrement(CItemStack* stack, i16 amount);
+
+struct Container
+{
+	ArrayList(CItemStack) Items;
+
+	void Init(int size);
+	bool Add(CItemStack item);
+	bool Remove(u16 itemId, i16 amount);
+	bool Contains(u16 itemId, i16 amount);
+};
+
+struct StockPile
+{
+	Container ItemContainer;
+	ArrayList(Vec2i) Tiles;
+};

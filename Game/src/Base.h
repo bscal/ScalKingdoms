@@ -70,13 +70,13 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 #endif
 #endif
 
-#ifndef _NEVER_INLINE
+#ifndef _NEVER_INLINE_
 #if defined(__clang__) || defined(__GNUC__)
-#define _NEVER_INLINE __attribute__((__noinline__)) inline
+#define _NEVER_INLINE_ __attribute__((__noinline__)) inline
 #elif defined(_MSC_VER)
 #define _NEVER_INLINE __declspec(noinline)
 #else
-#define _NEVER_INLINE 
+#define _NEVER_INLINE_ 
 #endif
 #endif
 

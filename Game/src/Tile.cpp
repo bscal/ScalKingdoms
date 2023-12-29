@@ -6,7 +6,7 @@
 struct TileMgr
 {
 	Texture2D* TileSetTexture;
-	ArrayList(TileInfo) TileDefinitions;
+	ArrayList(TileDef) TileDefinitions;
 };
 
 internal_var TileMgr TileManager;
@@ -17,29 +17,29 @@ void TileMgrInitialize(Texture2D* tileSetTexture)
 
 	ArrayListReserve(SAllocatorGeneral(), TileManager.TileDefinitions, 64);
 
-	TileInfo empty = {};
-	empty.Src = CoordToRec(1, 0);
+	TileDef empty = {};
+	empty.SpriteSheetRect = CoordToRec(1, 0);
 	RegisterTile(Tiles::EMPTY, empty);
 
-	TileInfo stone = {};
-	stone.Src = CoordToRec(4, 0);
+	TileDef stone = {};
+	stone.SpriteSheetRect = CoordToRec(4, 0);
 	Tiles::STONE = TileMgrRegisterTile(&stone);
 
-	TileInfo blueStone = {};
-	blueStone.Src = CoordToRec(1, 3);
+	TileDef blueStone = {};
+	blueStone.SpriteSheetRect = CoordToRec(1, 3);
 	Tiles::BLUE_STONE = TileMgrRegisterTile(&blueStone);
 
-	TileInfo wall = {};
-	wall.Src = CoordToRec(17, 3);
+	TileDef wall = {};
+	wall.SpriteSheetRect = CoordToRec(17, 3);
 	wall.DefaultTileFlags.Set(TILE_FLAG_COLLISION, true);
 	Tiles::FIRE_WALL = TileMgrRegisterTile(&wall);
 
-	TileInfo woodDoor = {};
-	woodDoor.Src = CoordToRec(3, 2);
+	TileDef woodDoor = {};
+	woodDoor.SpriteSheetRect = CoordToRec(3, 2);
 	RegisterTile(Tiles::WOOD_DOOR, woodDoor);
 }
 
-u16 TileMgrRegisterTile(const TileInfo* tileInfo)
+u16 TileMgrRegisterTile(const TileDef* tileInfo)
 {
 	u16 id = (uint16_t)ArrayListCount(TileManager.TileDefinitions);
 
@@ -48,19 +48,15 @@ u16 TileMgrRegisterTile(const TileInfo* tileInfo)
 	return id;
 }
 
-TileInfo* GetTileInfo(u16 id)
+TileDef* GetTileDef(u16 id)
 {
 	SAssert(TileManager.TileDefinitions);
 	SAssert(id < ArrayListCount(TileManager.TileDefinitions));
+
 	if (id >= ArrayListCount(TileManager.TileDefinitions))
 		return &TileManager.TileDefinitions[0];
 
 	return &TileManager.TileDefinitions[id];
-}
-
-TileInfo* GetTileInfoTile(Tile tile)
-{
-	return GetTileInfo(tile.BackgroundId);
 }
 
 Texture2D* GetTileSheet()

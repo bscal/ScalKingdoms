@@ -1,6 +1,6 @@
 #pragma once
 
-#include "TileMap.h"
+#include "TileMapFixed.h"
 
 #include "Structures/BHeap.h"
 #include "Structures/HashMap.h"
@@ -29,10 +29,12 @@ struct Node
 	int GCost;
 };
 
+typedef TileMapFixed TileMap_t;
+
 void PathfinderInit(Pathfinder* pathfinder);
 
-SList<Vec2i> PathFindArray(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
+SList<Vec2i> PathFindArray(Pathfinder* pathfinder, TileMap_t* tilemap, Vec2i start, Vec2i end);
 
-int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
+int PathFindArrayFill(Vec2i* inFillArray, Pathfinder* pathfinder, TileMap_t* tilemap, Vec2i start, Vec2i end);
 
-Node* FindPath(Pathfinder* pathfinder, TileMap* tilemap, Vec2i start, Vec2i end);
+Node* FindPath(Pathfinder* pathfinder, TileMap_t* tilemap, Vec2i start, Vec2i end);

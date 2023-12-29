@@ -61,6 +61,7 @@ LightMapInitialize()
 }
 void
 UpdateLight(Light* light);
+
 inline void
 LightMapUpdate(GameState* gameState)
 {
@@ -68,7 +69,7 @@ LightMapUpdate(GameState* gameState)
 	SZero(LightMapState.Colors.Data, LightMapState.Colors.MemorySize());
 
 	Light light;
-	light.Color = { 1.f, 1.f, 1.f, .1f };
+	light.Color = { 1.f, 0.f, 0.f, .5f };
 	light.Pos = { 0,0 };
 	light.Radius = 5;
 	UpdateLight(&light);
@@ -111,7 +112,7 @@ struct Slope
 _FORCE_INLINE_ bool 
 DoesBlockLight(Vec2i coord)
 {
-	Tile* tile = GetTile(&State.TileMap, coord);
+	Tile* tile = GetTile(&State.MainTileMap, coord);
 	return tile && tile->Flags.Get(TILE_FLAG_BLOCKS_LIGHT);
 }
 
@@ -134,7 +135,7 @@ ProcessOctants(Light* light, int radius, u8 octant, int x, Slope top, Slope bott
 			txty.y += x * TranslationTable[octant][2] + y * TranslationTable[octant][3];
 
 			int distance;
-			bool inRange = IsTileInLightMap(txty)
+			bool inRange = FixedChunkIsTileInBounds(&GetGameState()->MainTileMap, txty) && IsTileInLightMap(txty)
 				&& ((distance = Vector2i{ x, y }.ManhattanDistanceWithCosts({})) <= radius * 10);
 
 			if (inRange)

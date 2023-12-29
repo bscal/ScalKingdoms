@@ -7,7 +7,7 @@
 #include "Structures/HashMapT.h"
 #include "Structures/HashSetT.h"
 
-struct TileMap;
+struct TileMapFixed;
 struct Chunk;
 struct CMove;
 
@@ -90,8 +90,8 @@ struct RegionMoveData
 
 void PathfinderRegionsInit(RegionPathfinder* pathfinder);
 
-void RegionLoad(TileMap* tilemap, Chunk* chunk);
-void RegionUnload(Chunk* chunk);
+void RegionLoad(TileMapFixed* tilemap, Vec2i chunkCoord);
+void RegionUnload(Vec2i chunkCoord);
 
 void PathfindRegion(Vec2i tileStart, Vec2i tileEnd, RegionMoveData* moveData);
 

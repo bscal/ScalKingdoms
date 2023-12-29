@@ -107,7 +107,8 @@ GameInitialize()
 
 	TileMgrInitialize(&State.AssetMgr.TileSpriteSheet);
 
-	TileMapInit(&State, &State.TileMap, { -8, -8, 8, 8 });
+	//TileMapInit(&State, &State.TileMap, { -8, -8, 8, 8 });
+	TileMapFixedCreate(&State.MainTileMap, 4, 0);
 
 	// Entities
 	State.World = ecs_init();
@@ -200,7 +201,8 @@ GameRun()
 		BeginMode2D(State.Camera);
 		ClearBackground(BLACK);
 
-		TileMapDraw(&State.TileMap, screenRect);
+		//TileMapDraw(&State.TileMap, screenRect);
+		TileMapFixedDraw(&State.MainTileMap, screenRect);
 
 		ecs_run(State.World, ecs_id(DrawEntities), DeltaTime, NULL);
 
@@ -244,7 +246,8 @@ GameRun()
 
 void GameUpdate()
 {
-	TileMapUpdate(&State, &State.TileMap);
+	//TileMapUpdate(&State, &State.TileMap);
+	TileMapFixedUpdate(&State.MainTileMap, &State);
 	LightMapUpdate(&State);
 }
 
@@ -309,7 +312,7 @@ void InputUpdate()
 		SList<Vec2i> next;
 		{
 			Timer();
-			next = PathFindArray(&State.Pathfinder, &State.TileMap, transform->TilePos, tile);
+			next = PathFindArray(&State.Pathfinder, &State.MainTileMap, transform->TilePos, tile);
 		}
 
 		if (next.Memory)
@@ -317,7 +320,7 @@ void InputUpdate()
 			for (u32 i = 0; i < next.Count; ++i)
 			{
 				Tile t = NewTile(Tiles::WOOD_DOOR);
-				SetTile(&State.TileMap, next.AtCopy(i), &t);
+				//SetTile(&State.MainTileMap, next.AtCopy(i), &t);
 			}
 		}
 	}
@@ -376,7 +379,8 @@ GameShutdown()
 
 	UnloadRenderTexture(State.ScreenTexture);
 
-	TileMapFree(&State.TileMap);
+	//TileMapFree(&State.TileMap);
+	TileMapFixedUnload(&State.MainTileMap, &State);
 
 	UnloadAssets(&State);
 
@@ -437,4 +441,120 @@ RescaleGUI(GameState* gameState, GUIState* guiState, GUIScale scale)
 	guiState->Scale.x = (float)GetScreenWidth() * GUIScaleResolutions[scale].x;
 	guiState->Scale.y = (float)GetScreenHeight() * GUIScaleResolutions[scale].y;
 	gameState->GUITexture = LoadRenderTexture((int)guiState->Scale.x, (int)guiState->Scale.y);
+}
+
+i16 ItemStackIncrement(CItemStack* stack, i16 amount)
+{
+	SAssert(stack);
+	SAssert(amount > 0);
+
+	if (stack->Type != 0)
+	{
+		i16 newAmount = stack->Quantity + amount;
+		if (newAmount > ITEMSTACK_MAX_AMOUNT)
+		{
+			stack->Quantity = ITEMSTACK_MAX_AMOUNT;
+			return newAmount - ITEMSTACK_MAX_AMOUNT;
+		}
+		else
+		{
+			stack->Quantity = newAmount;
+			return 0;
+		}
+	}
+	return amount;
+}
+
+i16 ItemStackDeincrement(CItemStack* stack, i16 amount)
+{
+	SAssert(stack);
+	SAssert(amount > 0);
+
+	if (stack->Type != 0)
+	{
+		i16 newAmount = stack->Quantity - amount;
+
+		if (newAmount <= 0)
+			stack->Type = 0;
+
+		stack->Quantity = newAmount;
+
+		return newAmount;
+	}
+	return amount;
+}
+
+void Container::Init(int size)
+{
+	SAssert(size > 0);
+	if (Items)
+	{
+		SError("Items array already created");
+	}
+
+	ArrayListReserve(GetGameArena(), Items, size);
+}
+
+bool Container::Add(CItemStack item)
+{
+	SAssert(Items);
+
+	if (ArrayListCount(Items) == ArrayListCapacity(Items))
+	{
+		return false;
+	}
+	else
+	{
+		ArrayListPush(GetGameArena(), Items, item);
+		return true;
+	}
+}
+
+bool Container::Remove(u16 itemId, i16 amount)
+{
+	SAssert(Items);
+
+	if (itemId == 0 || amount == 0)
+		return false;
+
+	i16 amountNeeded = amount;
+
+	for (int i = 0; i < ArrayListCount(Items); ++i)
+	{
+		if (Items[i].Type == itemId)
+		{
+			i16 currentQuantity = Items[i].Quantity;
+			ItemStackDeincrement(&Items[i], amountNeeded);
+			amountNeeded -= currentQuantity;
+			if (amountNeeded <= 0)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool Container::Contains(u16 itemId, i16 amount)
+{
+	SAssert(Items);
+
+	if (itemId == 0 || amount == 0)
+		return false;
+
+	i16 amountNeeded = amount;
+
+	for (int i = 0; i < ArrayListCount(Items); ++i)
+	{
+		if (Items[i].Type == itemId)
+		{
+			i16 currentQuantity = Items[i].Quantity;
+			amountNeeded -= currentQuantity;
+			if (amountNeeded <= 0)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }

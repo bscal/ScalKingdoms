@@ -20,13 +20,13 @@ internal void InternalChunkUnload(TileMap* tilemap, Chunk* chunk);
 internal void InternalChunkGenerate(TileMap* tilemap, Chunk* chunk);
 
 // Main thread chunk function
-internal void ChunkTick(GameState* gameState, Chunk* chunk); // Every tick
+internal void ChunkTick(TileMap* tilemap, Chunk* chunk); // Every tick
 
 // Main thread chunk events
-internal void OnChunkLoad(GameState* gameState, Chunk* chunk);
-internal void OnChunkUnload(GameState* gameState, TileMap* tilemap, Chunk* chunk);
-internal void OnChunkBake(GameState* gameState, Chunk* chunk); // When baked
-internal void OnChunkUpdate(GameState* gameState, Chunk* chunk); // When a chunk update is triggered.
+internal void OnChunkLoad(TileMap* tilemap, Chunk* chunk);
+internal void OnChunkUnload(TileMap* tilemap, Chunk* chunk);
+internal void OnChunkBake(TileMap* tilemap, Chunk* chunk); // When baked
+internal void OnChunkUpdate(TileMap* tilemap, Chunk* chunk); // When a chunk update is triggered.
 
 internal Vec2i
 TileToChunk(Vec2i tile)
@@ -100,7 +100,7 @@ TileMapFree(TileMap* tilemap)
 		if (tilemap->ChunkMap.Buckets[i].IsUsed)
 		{
 			Chunk* chunk = tilemap->ChunkMap.Buckets[i].Value;
-			OnChunkUnload(GetGameState(), tilemap, chunk);
+			OnChunkUnload(tilemap, chunk);
 			InternalChunkUnload(tilemap, chunk);
 		}
 	}
@@ -128,7 +128,7 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 		// Remove unused chunks from map
 		for (int i = 0; i < chunkLoader->ChunksToRemove.Count; ++i)
 		{
-			OnChunkUnload(gameState, tilemap, chunkLoader->ChunksToRemove.Data[i].ChunkPtr);
+			OnChunkUnload(tilemap, chunkLoader->ChunksToRemove.Data[i].ChunkPtr);
 			HashMapTRemove(&tilemap->ChunkMap, &chunkLoader->ChunksToRemove.Data[i].Key);
 		}
 		chunkLoader->ChunksToRemove.Clear();
@@ -137,7 +137,7 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 		for (int i = 0; i < chunkLoader->ChunksToAdd.Count; ++i)
 		{
 			HashMapTSet(&tilemap->ChunkMap, &chunkLoader->ChunksToAdd.Data[i].Key, &chunkLoader->ChunksToAdd.Data[i].ChunkPtr);
-			OnChunkLoad(gameState, chunkLoader->ChunksToAdd.Data[i].ChunkPtr);
+			OnChunkLoad(tilemap, chunkLoader->ChunksToAdd.Data[i].ChunkPtr);
 		}
 		chunkLoader->ChunksToAdd.Clear();
 
@@ -156,15 +156,15 @@ TileMapUpdate(GameState* gameState, TileMap* tilemap)
 
 		if (chunk->BakeState != ChunkUpdateState::None)
 		{
-			OnChunkBake(gameState, chunk);
+			OnChunkBake(tilemap, chunk);
 		}
 
 		if (chunk->UpdateState != ChunkUpdateState::None)
 		{
-			OnChunkUpdate(gameState, chunk);
+			OnChunkUpdate(tilemap, chunk);
 		}
 
-		ChunkTick(gameState, chunk);
+		ChunkTick(tilemap, chunk);
 	}
 }
 
@@ -243,7 +243,7 @@ InternalChunkUnload(TileMap* tilemap, Chunk* chunk)
 }
 
 internal void 
-ChunkTick(GameState* gameState, Chunk* chunk)
+ChunkTick(TileMap* tilemap, Chunk* chunk)
 {
 	if (chunk->BakeState != ChunkUpdateState::None
 		|| chunk->UpdateState != ChunkUpdateState::None)
@@ -255,7 +255,7 @@ ChunkTick(GameState* gameState, Chunk* chunk)
 			for (size_t i = 0; i < ArrayLength(Vec2i_CARDINALS); ++i)
 			{
 				Vec2i neighbor = chunk->Coord + Vec2i_CARDINALS[i];
-				Chunk* neighborChunk = GetChunkByCoordNoCache(&gameState->TileMap, neighbor);
+				Chunk* neighborChunk = GetChunkByCoordNoCache(tilemap, neighbor);
 				if (!neighborChunk)
 					continue;
 				
@@ -273,27 +273,27 @@ ChunkTick(GameState* gameState, Chunk* chunk)
 }
 
 internal void 
-OnChunkLoad(GameState* gameState, Chunk* chunk)
+OnChunkLoad(TileMap* tilemap, Chunk* chunk)
 {
 }
 
 internal void 
-OnChunkUnload(GameState* gameState, TileMap* tilemap, Chunk* chunk)
+OnChunkUnload(TileMap* tilemap, Chunk* chunk)
 {
 	if (tilemap->LastChunkCoord == chunk->Coord)
 		tilemap->LastChunkCoord = Vec2i_NULL;
 	
-	RegionUnload(chunk);
+	RegionUnload(chunk->Coord);
 }
 
 internal void 
-OnChunkUpdate(GameState* gameState, Chunk* chunk)
+OnChunkUpdate(TileMap* tilemap, Chunk* chunk)
 {
-	RegionLoad(&gameState->TileMap, chunk);
+	//RegionLoad(tilemap, chunk->Coord);
 }
 
 internal void
-OnChunkBake(GameState* gameState, Chunk* chunk)
+OnChunkBake(TileMap* tilemap, Chunk* chunk)
 {
 	Texture2D* tileSpriteSheet = GetTileSheet();
 
@@ -309,14 +309,14 @@ OnChunkBake(GameState* gameState, Chunk* chunk)
 
 			Tile* tile = &chunk->TileArray[localIdx];
 
-			Rectangle src = GetTileInfo(tile->BackgroundId)->Src;
+			Rectangle src = GetTileDef(tile->BackgroundId)->SpriteSheetRect;
 			Rectangle dst = { posX, posY, TILE_SIZE, TILE_SIZE };
 			
 			DrawTexturePro(*tileSpriteSheet, src, dst, {}, 0, WHITE);
 
 			if (tile->ForegroundId > 0)
 			{
-				src = GetTileInfo(tile->ForegroundId)->Src;
+				src = GetTileDef(tile->ForegroundId)->SpriteSheetRect;
 				DrawTexturePro(*tileSpriteSheet, src, dst, {}, 0, WHITE);
 			}
 		}
@@ -352,7 +352,7 @@ InternalChunkGenerate(TileMap* tilemap, Chunk* chunk)
 			Tile tile = {};
 			tile.BackgroundId = bgId;
 
-			TileInfo* tileInfo = GetTileInfo(bgId);
+			TileDef* tileInfo = GetTileDef(bgId);
 			tile.Flags = tileInfo->DefaultTileFlags;
 
 			Tile fgTile = {};

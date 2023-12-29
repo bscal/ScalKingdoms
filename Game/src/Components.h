@@ -2,6 +2,8 @@
 
 #include "Core.h"
 
+#include "Regions.h"
+
 #include "Structures/BitArray.h"
 #include "Structures/HashSetT.h"
 
@@ -44,7 +46,7 @@ struct CHealth
 struct CItemStack
 {
 	u16 Type;
-	u16 Quantity;
+	i16 Quantity;
 };
 
 inline ECS_COMPONENT_DECLARE(CTransform);
