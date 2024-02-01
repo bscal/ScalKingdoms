@@ -29,7 +29,7 @@ struct Console
 	int EntryLength; 
 	char EntryString[CONSOLE_ENTRY_LENGTH];
 
-	HashMapStr Commands;
+	HashMapStr<Command> Commands;
 	Queue<String> Entries;
 
 	String* CurrentCommandArgString;
@@ -42,7 +42,7 @@ internal_var struct Console Console;
 void ConsoleInit()
 {
 	PushMemoryIgnoreFree();
-	HashMapStrInitialize(&Console.Commands, sizeof(Command), 256, SAllocatorArena(&GetGameState()->GameArena));
+	HashMapStrInitialize(&Console.Commands, 256, SAllocatorArena(&GetGameState()->GameArena));
 	Console.Entries.Init(SAllocatorArena(&GetGameState()->GameArena), CONSOLE_MAX_ENTRIES);
 	PopMemoryIgnoreFree();
 

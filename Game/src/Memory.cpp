@@ -356,7 +356,7 @@ SAllocatorProc(ArenaAllocatorProc)
 
 	case (ALLOCATOR_TYPE_FREE):
 	{
-		SWarn("Do not free ArenaAllocators");
+		SWarn("Do not free ArenaAllocators, %s, %s, %d", file, func, line);
 		res = nullptr;
 	} break;
 

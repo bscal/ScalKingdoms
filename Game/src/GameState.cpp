@@ -558,3 +558,13 @@ bool Container::Contains(u16 itemId, i16 amount)
 	}
 	return false;
 }
+
+void TileMapUpdateZoneId(TileMapFixed* tilemap)
+{
+	ArenaSnapshot snapshot = ArenaSnapshotBegin(&TransientState.TransientArena);
+
+	HashSetT<Vec2i> TilesChecked = {};
+	TilesChecked.Alloc = SAllocatorArena(snapshot.Arena);
+
+	ArenaSnapshotEnd(snapshot);
+}

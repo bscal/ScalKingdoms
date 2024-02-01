@@ -43,6 +43,12 @@ extern "C" {
     inline void StringSetLength(String str, u32 len) { StringHeader(str)->Length = len; }
     inline void StringSetCapacity(String str, u32 cap) { StringHeader(str)->Capacity = cap; }
 
+    _FORCE_INLINE_ u32
+    HashString(String string)
+    {
+	    return (u32)wyhash(string, StringLength(string), 0, _wyp);
+    }
+
     inline String StringMake(SAllocator a, const char* str)
     {
         size_t len = str ? strlen(str) : 0;

@@ -55,7 +55,7 @@ SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile)
 	ArrayListReserve(SAllocatorArena(&GetGameState()->GameArena), atlas.Rects, length);
 	ArrayListAdd(SAllocatorArena(&GetGameState()->GameArena), atlas.Rects, length);
 
-	HashMapStrInitialize(&atlas.NameToIndex, sizeof(u16), length, SAllocatorArena(&GetGameState()->GameArena));
+	HashMapStrInitialize(&atlas.NameToIndex, length, SAllocatorArena(&GetGameState()->GameArena));
 	atlas.Texture = LoadTexture(imgPath);
 
 	char s0[16];

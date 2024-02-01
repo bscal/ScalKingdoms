@@ -131,3 +131,35 @@ static inline Vector2 operator/(Vector2 left, Vector2 right)
 #define FMT_RECT(rect) TextFormat("Rectangle(x: %.3f, y: %.3f, w: %.3f, h: %.3f)", rect.x, rect.y, rect.width, rect.height)
 #define FMT_BOOL(boolVar) TextFormat("%s", ((boolVar)) ? "true" : "false")
 #define FMT_ENTITY(ent) TextFormat("Entity(%u, Id: %u, Gen: %u", ent, GetId(ent), GetGen(ent))
+
+struct Result
+{
+	int Error;
+	bool Failed;
+};
+
+#define SUCCESS() Result{}
+#define FAILURE(errorCode) Result { errorCode, true }
+
+inline 
+void HandleResult(Result result)
+{
+	if (result.Failed)
+	{
+		const char* msg;
+
+	#define DEFINE_ERR(code, text) case(code): msg = text; break 
+
+		switch (result.Error)
+		{
+		DEFINE_ERR(0, "No message defined");
+		default: msg = "Unknown error";
+		}
+
+		SError("[ Result ] Result was FAILURE. ErrorCode: %d, msg", result.Error, msg);
+	}
+	else
+	{
+		SInfoLog("[ Result ] Result was SUCCESS");
+	}
+}

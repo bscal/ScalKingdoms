@@ -16,7 +16,7 @@ struct SpriteAtlas
 {
 	Texture2D Texture;
 	ArrayList(Rect16) Rects;
-	HashMapStr NameToIndex;
+	HashMapStr<u16> NameToIndex;
 };
 
 SpriteAtlas SpriteAtlasLoad(const char* dirPath, const char* atlasFile);

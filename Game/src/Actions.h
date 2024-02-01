@@ -13,6 +13,23 @@ typedef bool(*StartAction)(ecs_entity_t, ActionType*, CEntityAction*);
 typedef bool(*UpdateAction)(ecs_entity_t, ActionType*, CEntityAction*);
 typedef u16(*EndAction)(ecs_entity_t, ActionType*, CEntityAction*);
 
+struct ActionState
+{
+	union
+	{
+		struct Move
+		{
+			Vec2i Position;
+		} Move;
+	};
+};
+
+struct ActionT
+{
+	ActionState State;
+	u16 ActionType;
+};
+
 struct ActionType
 {
 	InitAction OnInitAction;

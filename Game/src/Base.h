@@ -113,6 +113,8 @@ constant_var size_t DEFAULT_ALIGNMENT = 16;
 
 #define Swap(x, y, T) do { T temp = (x); (x) = (y); (y) = temp; } while(0)
 
+#define Cast(T, v) static_cast<T>(v)
+
 #define Min(v0, v1) ((v0 < v1) ? v0 : v1)
 #define Max(v0, v1) ((v0 > v1) ? v0 : v1)
 #define ClampValue(v, min, max) Min(max, Max(min, v))
